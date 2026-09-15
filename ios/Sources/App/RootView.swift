@@ -114,7 +114,6 @@ struct RootView: View {
         }
         .onChange(of: state.spaces) { _, _ in sync.noteLocalChange() }
         .modifier(CompactBarBridge(state: state, controller: compactBar))
-        .zenToast($state.toast)
         .onChange(of: scenePhase) { _, phase in
             // Flush the session on the way out; a jetsam gives no warning.
             if phase != .active { state.saveNow() }
@@ -302,6 +301,9 @@ struct RootView: View {
                 .environment(\.zenPalette, palette)
                 .zIndex(3)
         }
+
+        ZenToastOverlay(message: $state.toast)
+            .zIndex(4)
     }
 
     // MARK: Compact-mode grabber
@@ -541,11 +543,17 @@ private struct CompactBarBridge: ViewModifier {
             .onChange(of: state.settings.compactModeEnabled) { _, _ in sync() }
             .onChange(of: state.settings.compactHideDelay) { _, _ in sync() }
             .onChange(of: controller.phase) { _, phase in state.compactBarPhase = phase }
-            // The omnibox pauses the countdown while it is up and hands the
-            // bar back whole on the way out — see `omniboxDidChange`.
-            .onChange(of: state.isOmniboxOpen) { _, open in
-                controller.omniboxDidChange(open: open)
+            // Anything covering the page pauses the countdown and hands the
+            // bar back whole on the way out — see `coveredDidChange`.
+            .onChange(of: isCovered) { _, covered in
+                controller.coveredDidChange(covered)
             }
+    }
+
+    /// The page is not what you are looking at right now.
+    private var isCovered: Bool {
+        state.isOmniboxOpen || state.isSettingsPresented || state.isHistorySheetPresented
+            || state.isSidebarVisible
     }
 
     /// The machine runs whenever compact mode is on, whichever halves of the

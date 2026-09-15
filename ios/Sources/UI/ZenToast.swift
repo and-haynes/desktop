@@ -54,15 +54,16 @@ struct ZenToast: View {
     }
 }
 
-extension View {
-    /// Hang a toast over this view. Its own layer rather than a `ZStack` at the
-    /// call site so `RootView`'s modifier chain does not grow.
-    func zenToast(_ message: Binding<ZenToastMessage?>) -> some View {
-        modifier(ZenToastLayer(message: message))
-    }
-}
-
-private struct ZenToastLayer: ViewModifier {
+/// The toast, positioned and timed.
+///
+/// A view in the root's overlay stack rather than a `.overlay` modifier on the
+/// root's outer chain, which is where this started and did not work: the root
+/// ignores the bottom safe area so the page can run under the home indicator,
+/// so an overlay hung on the *outside* of that chain lands below the bar and
+/// half off the screen — and it misses `zenPalette`, which is set inside the
+/// chain, so it draws in the default colours as well. Both go away by living
+/// where the compact grabber lives.
+struct ZenToastOverlay: View {
     @Binding var message: ZenToastMessage?
     @Environment(\.zenPalette) private var palette
 
@@ -70,26 +71,29 @@ private struct ZenToastLayer: ViewModifier {
     /// the bar while you are trying to use it.
     private static let duration: TimeInterval = 2.6
 
-    func body(content: Content) -> some View {
-        content
-            .overlay(alignment: .bottom) {
-                if let message {
-                    ZenToast(message: message)
-                        .environment(\.zenPalette, palette)
-                        // Clear of the bar, which is what you were just using.
-                        .padding(.bottom, 92)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                        .zIndex(4)
-                }
+    var body: some View {
+        VStack {
+            Spacer()
+            if let message {
+                ZenToast(message: message)
+                    // Clear of the bar, which is what you were just using.
+                    .padding(.bottom, 92)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
             }
-            .animation(.spring(response: 0.34, dampingFraction: 0.88), value: message)
-            // Keyed on the message's identity, so a replacement restarts the
-            // countdown instead of inheriting the first one's remaining time.
-            .task(id: message?.id) {
-                guard message != nil else { return }
-                try? await Task.sleep(for: .seconds(Self.duration))
-                guard !Task.isCancelled else { return }
-                message = nil
-            }
+        }
+        .animation(.spring(response: 0.34, dampingFraction: 0.88), value: message)
+        // Keyed on the message's identity, so a replacement restarts the
+        // countdown instead of inheriting the first one's remaining time.
+        .task(id: message?.id) {
+            guard message != nil else { return }
+            try? await Task.sleep(for: .seconds(Self.duration))
+            guard !Task.isCancelled else { return }
+            message = nil
+        }
+        // No `allowsHitTesting(false)` here, though the instinct is right: a
+        // `Spacer` has nothing to hit, so the full-height stack does not
+        // swallow taps on the page anyway — and turning hit testing off takes
+        // the toast out of XCUITest's reach as well, which cost a UI test that
+        // could see the toast in a screenshot and not in a query.
     }
 }

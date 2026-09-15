@@ -28,6 +28,14 @@
 //  embeds YouTube via `<iframe>` gets "no video" here, because scripts cannot
 //  see into another origin's document. YouTube's own mobile site plays in a
 //  same-origin `<video>` and works.
+//
+//  One environment note, because it cost an hour: **the iOS Simulator has no
+//  Picture in Picture.** `document.pictureInPictureEnabled` is false and
+//  `webkitSupportsPresentationMode("picture-in-picture")` returns false, while
+//  `webkitSetPresentationMode` is still a perfectly callable function that
+//  silently does nothing. So the request is gated on the support check rather
+//  than on the method existing, and the simulator honestly reports
+//  `unsupported`. The floating-window half can only be seen on hardware.
 
 import Foundation
 
@@ -106,13 +114,26 @@ enum VideoPopOut {
           if (!v) return JSON.stringify({ found: false, status: "none", candidates: 0 });
           var out = zenDescribeVideo(v);
           try {
-            // The WebKit spelling is the one that works on iOS; the standard
-            // one is there for when it does not.
-            if (typeof v.webkitSetPresentationMode === "function") {
-              v.webkitSetPresentationMode("picture-in-picture");
+            // Ask before telling. `webkitSetPresentationMode` exists whether or
+            // not this device can actually do Picture in Picture, and calling
+            // it where it cannot does *nothing at all* — no throw, no rejected
+            // promise, no change of mode. Reporting that as success is how you
+            // get a menu item that appears to work and never does; the
+            // simulator, which has no PiP at all, is the case that found it.
+            var mode = "picture-in-picture";
+            var canWebkit =
+              typeof v.webkitSetPresentationMode === "function" &&
+              (typeof v.webkitSupportsPresentationMode !== "function" ||
+                v.webkitSupportsPresentationMode(mode) === true);
+            var canStandard =
+              typeof v.requestPictureInPicture === "function" &&
+              document.pictureInPictureEnabled !== false &&
+              v.disablePictureInPicture !== true;
+            if (canWebkit) {
+              v.webkitSetPresentationMode(mode);
               out.status = "requested";
               out.api = "webkit";
-            } else if (typeof v.requestPictureInPicture === "function") {
+            } else if (canStandard) {
               v.requestPictureInPicture();
               out.status = "requested";
               out.api = "standard";

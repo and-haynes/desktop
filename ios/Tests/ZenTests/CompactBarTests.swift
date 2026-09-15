@@ -239,33 +239,33 @@ final class CompactBarTests: XCTestCase {
         XCTAssertTrue(clock.hasPending)
     }
 
-    // MARK: The omnibox
+    // MARK: A covered page
 
     /// The overlay covers the bar, so a countdown that runs behind it can only
     /// do harm: it buzzes a hide haptic at someone typing a search.
-    func testTheOmniboxPausesTheStillTimer() {
+    func testACoveredPagePausesTheStillTimer() {
         let bar = makeController()
-        bar.omniboxDidChange(open: true)
+        bar.coveredDidChange(true)
         XCTAssertEqual(bar.phase, .expanded)
         XCTAssertFalse(clock.hasPending, "the still-timer should not run behind the omnibox")
 
         haptics = []
-        bar.omniboxDidChange(open: false)
+        bar.coveredDidChange(false)
         XCTAssertEqual(haptics, [], "closing the omnibox should not buzz")
         XCTAssertTrue(clock.hasPending, "the timer should resume once the omnibox is gone")
     }
 
     /// You opened the omnibox from a pill; you should not be handed a pill
     /// back when you dismiss it.
-    func testClosingTheOmniboxHandsBackTheWholeBar() {
+    func testUncoveringHandsBackTheWholeBar() {
         let bar = makeController()
         clock.fire()
         clock.fire()
         XCTAssertEqual(bar.phase, .hidden)
 
-        bar.omniboxDidChange(open: true)
+        bar.coveredDidChange(true)
         XCTAssertEqual(bar.phase, .expanded)
-        bar.omniboxDidChange(open: false)
+        bar.coveredDidChange(false)
         XCTAssertEqual(bar.phase, .expanded)
         clock.fire()
         XCTAssertEqual(bar.phase, .pill)

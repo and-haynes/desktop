@@ -37,7 +37,15 @@ final class VideoPopOutTests: XCTestCase {
 
     /// Load a fragment of body HTML and return what the finder chose.
     private func pick(_ body: String) async throws -> VideoPopOut.Result {
+        try await run(VideoPopOut.selectionScript, on: body)
+    }
+
+    /// Load a fragment of body HTML and evaluate one of the shipped scripts
+    /// against it. The configuration is the app's own, so the media policy
+    /// under test is the one that ships.
+    private func run(_ script: String, on body: String) async throws -> VideoPopOut.Result {
         let config = WKWebViewConfiguration()
+        WebEngine.applyMediaPolicy(to: config)
         let webView = WKWebView(frame: Self.viewport, configuration: config)
         let waiter = LoadWaiter()
         // Held for the duration of the test: WKWebView's delegate is weak, and
@@ -60,7 +68,7 @@ final class VideoPopOutTests: XCTestCase {
         // anything; didFinish is after the first layout pass for a static
         // document, but force it rather than rely on that.
         _ = try await webView.evaluateJavaScript("document.body.offsetHeight")
-        let raw = try await webView.evaluateJavaScript(VideoPopOut.selectionScript)
+        let raw = try await webView.evaluateJavaScript(script)
         return VideoPopOut.Result.parse(raw)
     }
 
@@ -156,6 +164,30 @@ final class VideoPopOutTests: XCTestCase {
         XCTAssertEqual(result.id, "large")
     }
 
+    // MARK: Asking for Picture in Picture
+
+    /// The bug this exists to stop coming back: `webkitSetPresentationMode` is
+    /// callable on a device with no Picture in Picture and quietly does
+    /// nothing. Reporting that as success gives you a menu item that appears
+    /// to work and never does. The simulator has no PiP, so here the honest
+    /// answer is `unsupported` — and *not* `requested`.
+    func testPopOutReportsUnsupportedRatherThanPretending() async throws {
+        let result = try await run(
+            VideoPopOut.popOutScript, on: video(id: "only", width: 320, height: 180))
+        XCTAssertNotEqual(
+            result.status, .requested,
+            "the simulator cannot do PiP; claiming the request went in is a lie")
+        XCTAssertEqual(result.status, .unsupported)
+        XCTAssertNotNil(result.message, "an action that did nothing has to say so")
+    }
+
+    /// And it still says "no video" rather than "unsupported" when there is
+    /// genuinely nothing to pop.
+    func testPopOutOnAPageWithNoVideoIsStillNone() async throws {
+        let result = try await run(VideoPopOut.popOutScript, on: "<p>Nothing here.</p>")
+        XCTAssertEqual(result.status, .none)
+    }
+
     // MARK: Parsing what the page said
 
     func testParsingAMalformedAnswerIsAFailureRatherThanACrash() {
@@ -194,6 +226,9 @@ final class VideoPopOutTests: XCTestCase {
         XCTAssertTrue(VideoPopOut.popOutScript.contains("function zenPickVideo()"))
         XCTAssertTrue(VideoPopOut.popOutScript.contains("webkitSetPresentationMode"))
         XCTAssertTrue(VideoPopOut.popOutScript.contains("requestPictureInPicture"))
+        XCTAssertTrue(
+            VideoPopOut.popOutScript.contains("webkitSupportsPresentationMode"),
+            "the request must be gated on real support, not on the method existing")
     }
 
     /// The observer has to name the handler the app actually registers, and it

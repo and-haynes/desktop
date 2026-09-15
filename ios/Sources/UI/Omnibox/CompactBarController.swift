@@ -150,15 +150,24 @@ final class CompactBarController: ObservableObject {
         startCountdown()
     }
 
-    /// The omnibox opened or closed. While it is open the bar is not on
-    /// screen to fall — the overlay covers it — so the countdown is *paused*
-    /// rather than left running: a timer that fires behind the overlay buzzes
-    /// a hide haptic at someone who is mid-word in the search field. Closing
-    /// hands the bar back whole, because finding a pill where you left a
-    /// toolbar is disorienting.
-    func omniboxDidChange(open: Bool) {
+    /// Something is covering the page — the omnibox overlay, Settings, the
+    /// history sheet, the tab drawer.
+    ///
+    /// While one of those is up the bar is not on screen to fall, so the
+    /// countdown is *paused* rather than left running. Two reasons, and the
+    /// second is the one that bites: a timer firing behind an overlay buzzes a
+    /// hide haptic at someone who is mid-word in the search field, and a bar
+    /// that quietly collapsed while you were reading a sheet is gone when you
+    /// come back from it — which reads as the app having lost your place.
+    /// Uncovering hands the bar back whole for the same reason.
+    ///
+    /// SwiftUI's `Menu` is the gap: it reports nothing about being open, so the
+    /// overflow menu cannot pause the timer. Its items still work — a menu is
+    /// its own presentation — but the bar behind it may have collapsed by the
+    /// time it closes.
+    func coveredDidChange(_ covered: Bool) {
         guard isEnabled else { return }
-        if open {
+        if covered {
             clock.cancel()
             set(.expanded, haptic: nil)
         } else {

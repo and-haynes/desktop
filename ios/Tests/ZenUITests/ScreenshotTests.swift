@@ -26,14 +26,28 @@ final class ScreenshotTests: XCTestCase {
     /// Compact mode is a *persisted* setting, so a run that failed partway
     /// through the compact test hands the next launch an app with no visible
     /// chrome to drive — every test after it then fails with "address bar
-    /// missing", which says nothing about the thing it was testing. The
-    /// grabber above the home indicator is the documented way back, so use it.
+    /// missing", which says nothing about the thing it was testing. This
+    /// happened; hence both this and `revealChrome` below.
     private func recoverFromStuckCompactMode() {
         guard !addressBar.waitForExistence(timeout: 6) else { return }
-        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.965)).tap()
-        guard addressBar.waitForExistence(timeout: 4) else { return }
+        guard revealChrome() else { return }
         _ = tapMenuItem(matching: "label CONTAINS[c] 'Compact Mode'")
         settle(1.0)
+    }
+
+    /// Bring a hidden compact bar back via the grabber above the home
+    /// indicator. Several offsets because the grabber's 44pt hit area is a
+    /// small target in normalised coordinates and it moves with the home
+    /// indicator between device sizes — one hard-coded number was wrong on the
+    /// first phone it met.
+    @discardableResult
+    private func revealChrome() -> Bool {
+        if addressBar.exists { return true }
+        for dy in [0.945, 0.965, 0.925] {
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: dy)).tap()
+            if addressBar.waitForExistence(timeout: 2.5) { return true }
+        }
+        return false
     }
 
     // MARK: Capture
@@ -93,6 +107,9 @@ final class ScreenshotTests: XCTestCase {
     /// tree if it does not appear so a failed run is debuggable.
     @discardableResult
     private func openOmnibox() -> XCUIElement? {
+        // In compact mode the bar may have fallen to a pill or gone entirely
+        // since the last step; the grabber is the way back.
+        revealChrome()
         guard addressBar.waitForExistence(timeout: 10) else {
             XCTFail("address bar missing")
             return nil
@@ -161,6 +178,7 @@ final class ScreenshotTests: XCTestCase {
     /// Open the overflow menu and tap the first item whose label matches.
     @discardableResult
     private func tapMenuItem(matching predicate: String) -> Bool {
+        revealChrome()
         guard moreButton.waitForExistence(timeout: 8) else { return false }
         moreButton.tap()
         settle(1.2)
@@ -259,8 +277,11 @@ final class ScreenshotTests: XCTestCase {
         closeSidebar()
 
         // Leave compact mode, or the setting persists into the next launch and
-        // every test after this one starts with no bar to drive.
-        _ = tapMenuItem(matching: "label CONTAINS[c] 'Compact Mode'")
+        // every test after this one starts with no bar to drive. This is why
+        // `tapMenuItem` reveals first: by now the bar has long since fallen.
+        XCTAssertTrue(
+            tapMenuItem(matching: "label CONTAINS[c] 'Compact Mode'"),
+            "could not leave compact mode — the next test will launch with no bar")
     }
 
     /// Scroll the page and catch the pill before the still-timer takes it. The
@@ -271,6 +292,89 @@ final class ScreenshotTests: XCTestCase {
             if pill.waitForExistence(timeout: 1.2) { return true }
         }
         return false
+    }
+
+    // MARK: Video (#008B0)
+
+    /// The fixture page is served from the *host* — `python3 -m http.server`
+    /// in /tmp/zenvideo, which the simulator reaches on localhost. A real mp4
+    /// over real HTTP is the point: `loadHTMLString` would not exercise the
+    /// media pipeline, and a remote site would make this test depend on
+    /// somebody else's uptime.
+    private static let videoFixture = "http://localhost:8777/index.html"
+
+    /// Full screen from the page's *own* button, which is
+    /// `webkitEnterFullscreen()` — the path `isElementFullscreenEnabled`
+    /// governs, and the one every video site's custom controls take.
+    func testCaptureVideoFullScreen() throws {
+        let suffix = UIDevice.current.userInterfaceIdiom == .pad ? "-ipad" : ""
+        settle(3.0)
+        navigate(to: Self.videoFixture)
+
+        let play = app.buttons["Play the clip"]
+        XCTAssertTrue(
+            play.waitForExistence(timeout: 15),
+            "the local video fixture did not load — is the server on 8777 running?")
+        play.tap()
+        settle(2.0)
+
+        let fullScreen = app.buttons["Go full screen"]
+        XCTAssertTrue(fullScreen.waitForExistence(timeout: 5), "fullscreen button missing")
+        fullScreen.tap()
+        settle(3.0)
+        capture("42-video-fullscreen\(suffix)")
+
+        // Out again, so the next test does not start inside a video player.
+        // The controls fade, so tap to bring them back first — and if Done is
+        // still not there, relaunching is the one exit that always works.
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        settle(1.2)
+        let done = app.buttons["Done"].firstMatch
+        if done.waitForExistence(timeout: 3) {
+            done.tap()
+        } else {
+            app.terminate()
+            app.launch()
+        }
+        settle(1.5)
+    }
+
+    /// "Pop Out Video" in the overflow menu, on a page with two videos — the
+    /// finder has to pick the big playing one and not the decoy thumbnail.
+    func testCaptureVideoPictureInPicture() throws {
+        let suffix = UIDevice.current.userInterfaceIdiom == .pad ? "-ipad" : ""
+        settle(3.0)
+        navigate(to: Self.videoFixture)
+
+        let play = app.buttons["Play the clip"]
+        XCTAssertTrue(
+            play.waitForExistence(timeout: 15),
+            "the local video fixture did not load — is the server on 8777 running?")
+        play.tap()
+        settle(2.5)
+
+        XCTAssertTrue(
+            tapMenuItem(matching: "label CONTAINS[c] 'Pop Out Video'"),
+            "Pop Out Video missing from the overflow menu")
+        settle(2.0)
+        capture("43-video-pip\(suffix)")
+
+        // **The simulator has no Picture in Picture** — see `VideoPopOut` for
+        // the WebKit detail — so the floating window cannot be shown here at
+        // all; what this captures is the request being made on a real playing
+        // video, and it asserts the action is reachable and does not take the
+        // app down with it.
+        //
+        // The *outcome* is covered where it can be covered honestly:
+        // `VideoPopOutTests` runs the shipped script against a real DOM and
+        // asserts the simulator gets `unsupported` rather than a pretended
+        // success, and the toast that says so is in
+        // `docs/screenshots/44-popout-no-video.png`. The toast resisted every
+        // XCUITest query I tried while being plainly visible in a screenshot,
+        // so there is no assertion on it here rather than a flaky one.
+        XCTAssertTrue(
+            app.buttons["Address and search"].waitForExistence(timeout: 5),
+            "the app should still be usable after a pop-out attempt")
     }
 
     /// The accent colour tool (#0088F) and the hex entry path.
