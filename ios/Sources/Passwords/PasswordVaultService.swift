@@ -96,12 +96,24 @@ final class PasswordVaultService: ObservableObject {
     /// Store a vault setup. The credentials go to the keychain and are not held
     /// here — re-reading them per operation costs a keychain hit and means no
     /// copy of a master password lives in a published object.
-    func configure(_ configuration: VaultConfiguration, credentials: VaultCredentials) {
+    @discardableResult
+    func configure(_ configuration: VaultConfiguration, credentials: VaultCredentials) -> Bool {
+        guard credentialStore.saveCredentials(credentials) else {
+            // Refuse to record a half-configured vault. Keeping the
+            // configuration while the credentials went nowhere is exactly the
+            // state that shows a connected server and then fails every sync
+            // with "no vault is set up".
+            lastError =
+                "The keychain would not store the vault credentials, so the connection has not "
+                + "been saved. A build made without code signing has no keychain entitlement; "
+                + "see \"Passwords\" in the README."
+            return false
+        }
         self.configuration = configuration
         configurationStore.save(configuration)
-        credentialStore.saveCredentials(credentials)
         provider = nil
         lastError = nil
+        return true
     }
 
     /// Forget the vault entirely: credentials, index, and the key that sealed

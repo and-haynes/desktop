@@ -490,13 +490,10 @@ third-party browser gets — the same thing Firefox for iOS gets — is **system
 Password AutoFill**. Focus a login field in a `WKWebView` and iOS puts a key in
 the bar above the keyboard; whichever app is set as the AutoFill provider
 (iCloud Passwords, 1Password, Bitwarden) is what answers.
-
 ![The Passwords row above the keyboard on a focused password field](docs/screenshots/34-autofill.png)
-
 So the feature is not something to build, it is something **not to break**.
 Every known way of losing that key is something the app does, and none of them
 report an error — the key is simply not there:
-
 | Do not | Why |
 |---|---|
 | Override `inputAccessoryView` on the web view | Replaces the bar iOS puts the key in |
@@ -504,7 +501,6 @@ report an error — the key is simply not there:
 | Inject a user script that rewrites login forms | Renamed or re-parented fields stop iOS recognising the form |
 | Add a script message handler that moves focus | AutoFill needs the field to keep first responder |
 | Use a non-persistent (`.nonPersistent()`) store for browsing | Does not remove the key, but throws away whatever is then saved |
-
 Zen does none of these, and `Tests/ZenTests/AutoFillSuppressionTests.swift`
 pins each one — the two `inputAccessoryView`/`inputAssistantItem` cases by
 comparing method implementation pointers against `WKWebView`, so an override
@@ -512,18 +508,15 @@ added anywhere in `ZenWebView` fails the test. The sign-in sheet
 (`FxASignInWebView`) is the one web view that *does* inject a script and use a
 non-persistent store; that is deliberate and scoped to Mozilla's own sign-in
 page, which is not a page you fill from your vault.
-
 **Settings → Passwords** explains the above and spells out the route to the
 setting, because iOS publishes no URL for the AutoFill pane —
 `UIApplication.openSettingsURLString` opens *Zen's* page, not that one. The
 path is Settings → General → AutoFill & Passwords (on iOS 17 it was
 Settings → Passwords → Password Options).
-
 | | |
 |---|---|
 | ![Settings → Passwords, explaining AutoFill and the provider steps](docs/screenshots/35-passwords-settings.png) | ![The foot of the screen: what Zen stores, and the button to iOS Settings](docs/screenshots/35b-passwords-settings-foot.png) |
 | How it works, and the four steps to choose a provider | What Zen stores — nothing — and the one button iOS allows |
-
 **Passkeys** work, and are not ours either: WebKit implements WebAuthn, so a
 page in Zen can call `navigator.credentials` and iOS puts up its own sheet.
 `WebAuthnAvailabilityTests` asserts the API surface is exposed
@@ -531,48 +524,166 @@ page in Zen can call `navigator.credentials` and iOS puts up its own sheet.
 than asserts `isUserVerifyingPlatformAuthenticatorAvailable()`, which answers
 `false` in a simulator — there is no Secure Enclave and no saved passkey there,
 so asserting it would be asserting a fact about the simulator.
-
 ### Checking AutoFill by hand
-
 The end-to-end check needs a login page on a **secure origin**. This was
 measured: served over `http://127.0.0.1:8090` the same page raises the keyboard
 with *no* assistant bar above it at all, so plain http is not an option — iOS
 offers AutoFill on https only.
-
 `Tests/Fixtures/serve.py` serves `Tests/Fixtures/login.html` over TLS and makes
 its own CA and leaf on first run. The host is `zen.localtest.me`, public DNS
 that answers `127.0.0.1`, so nothing needs editing in `/etc/hosts`, and the
 simulator shares the Mac's resolver and loopback.
-
 ```bash
 python3 Tests/Fixtures/serve.py            # https://zen.localtest.me:8443/login.html
 xcrun simctl keychain booted add-root-cert /tmp/zensync-fixtures/ca.pem
 ```
-
 Then save a login for that site once (Safari in the same simulator will offer
 to, after submitting the form), and run:
-
 ```bash
 xcodebuild test -scheme ZenScreenshots -project Zen.xcodeproj \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   -derivedDataPath /tmp/zenbuild CODE_SIGNING_ALLOWED=NO \
   -only-testing:ZenUITests/ScreenshotTests/testPasswordAutoFillIsOfferedInTheWebView
 ```
-
 The test asserts the bar is `SystemInputAssistantView` carrying a
 `kb-autofill-key` — which is exactly what Safari shows on the same page, and
 the comparison that makes the result mean something.
-
 One catch worth knowing: **the keyboard cannot be screenshotted from inside the
 test.** It lives in its own `UIRemoteKeyboardWindow`, and neither
 `XCUIScreen.main.screenshot()` nor an element screenshot composites it — both
 render the app window and leave a blank strip where the Passwords row is. The
 committed `34-autofill.png` is a framebuffer grab taken while the test holds
 the state:
-
 ```bash
 xcrun simctl io booted screenshot frame.png
 ```
+There are two of these, they are unrelated, and conflating them is how this gets
+confusing.
+**iOS Password AutoFill** works on every branch and needs nothing built. Focus a
+login field in a `WKWebView` and iOS puts a key in the bar above the keyboard;
+whichever app is the system AutoFill provider answers. Zen never sees it. The
+only work is *not breaking it* — no custom `inputAccessoryView`, no emptied
+`inputAssistantItem`, no user scripts that rewrite forms, no stealing first
+responder — which is #008AB's audit, pinned by
+`Tests/ZenTests/AutoFillSuppressionTests.swift`.
+**Zen's own vault** is this branch, and #008AD. Zen talks to 1Password Connect
+or Vaultwarden itself, over the network. It reaches vaults AutoFill cannot, and
+it can put a one-time code into a page, which AutoFill has no way to do. The
+price is that Zen handles plaintext secrets — which is why it is here and not on
+`ios`.
+| ![The panel listing vault logins that match the current page](docs/screenshots/36-passwords-panel.png) | ![The login form filled from the vault](docs/screenshots/37-passwords-fill.png) |
+| Logins matching this page, exact host above same-domain | One tap fills; the page's own events fire, so a controlled input keeps it |
+### The shape of it
+`PasswordVaultProvider` is four verbs — prove the server is there, list logins,
+fetch one login's secrets, write a login back. Everything above it is
+provider-agnostic and tested once.
+| | 1Password Connect | Bitwarden / Vaultwarden |
+| Auth | Server URL + bearer token | Server URL + email + master password |
+| Crypto on our side | None; Connect holds the unlocked vault | PBKDF2 → HKDF → user-key unwrap → AES-256-CBC + HMAC |
+| Secrets in the bulk list | **No** — `reveal(_:)` does a per-item GET | Yes, in `/api/sync` |
+| Can't read | — | Organisation ciphers (org keys are never unwrapped); counted and shown |
+The Bitwarden crypto is ported from the Ghostty iOS app's
+`Sources/Sync/Bitwarden`, adapted rather than copied: `swift-crypto` becomes
+CryptoKit, and AES-CBC and HKDF are Zen's own `Sources/Sync/Crypto` rather than
+a second copy of each. Ghostty's test vectors came with it. Argon2id keeps its
+honest "not available in this build" seam — the homelab's Vaultwarden is
+PBKDF2, and a silently wrong key fails as a 400 that looks like a mistyped
+password, so refusing is the kinder answer.
+### What is kept on the device, and where
+- **Credentials** — keychain, `WhenUnlocked` + `ThisDeviceOnly`. Stricter than
+  sync's `AfterFirstUnlock`, because nothing here runs in the background.
+- **The domain index** — AES-GCM sealed under a *separate* keychain key. A
+  plaintext list of every site you have an account with is a map of your life
+  even with no passwords in it.
+- **Passwords and TOTP secrets** — never written to disk. Not by discipline:
+  `VaultIndexEntry` has no field to put one in, so the stripping is structural.
+  A secret is fetched for the one row you act on and dropped.
+Face ID gates revealing and filling. It **fails open when no biometry is
+enrolled** — a simulator has none, and the alternative is a feature that cannot
+be exercised on the machine it is built on. *Absent* biometry passes; *failed*
+biometry does not.
+### Matching, and why the tests are written from the attacker's side
+Matching is the registrable domain — one label below the public suffix — with
+an exact host ranked above a same-domain match, because the first row is the
+one people tap without reading. The public-suffix table is a curated subset
+rather than the full PSL, and says so in the source.
+`DomainMatchingTests` spends as much room on what must *not* match as on what
+must: `bank.com.evil.net`, `notbank.com`, `bank.co.uk` and
+`evil.net/?next=bank.com` are all asserted against a login stored for
+`bank.com`. It found a real one — a host that *is* a public suffix (`co.uk`)
+claimed itself as a registrable domain, which would have pooled every
+`*.co.uk` login into a single bucket.
+### Filling
+Bitwarden's heuristics, because they are the ones the extensions converged on
+after years of bug reports: the password field is the anchor, the username is
+the nearest *preceding* text input scored on name/id/placeholder rather than
+first-matched, and a form with two password fields is a sign-up — fill the
+first, never the confirmation.
+Values are set through the prototype's native setter with `input` and `change`
+events. A plain `element.value = x` leaves a React-controlled input looking
+filled and submitting empty, which is the single most common "the password
+manager is broken" report.
+`LoginFormFillTests` runs the real scripts in a real `WKWebView` against nine
+fixtures in `Tests/Fixtures/forms`, each named for the case a naive
+implementation gets wrong — a search box above the form, a search box as the
+only candidate *inside* it, zero-sized honeypots, a two-step sign-in with no
+username field, a controlled input that reverts anything set without an event.
+### The one injected script
+`ios` asserts that Zen injects nothing into page content. This branch injects
+exactly one thing — a submit listener, so a credential can be offered to the
+vault — and **nothing at all until a vault is configured**, so anyone who does
+not opt in gets the `ios` behaviour exactly.
+Its passivity is measured rather than claimed: `PasswordsAutoFillTests`
+captures the form's `outerHTML`, every input's attributes and the active
+element before and after the observer runs, and compares them. The handler also
+checks the message's URL against `WKFrameInfo.securityOrigin` — page script
+cannot forge that — and ignores anything not on https.
+### Settings
+![Settings → Passwords with a vault connected](docs/screenshots/38-passwords-settings.png)
+Provider setup, sync status, the Face ID toggle, clear-cache and forget-vault,
+then the AutoFill explanation, which is true whether or not a vault is
+connected. "Test and Save" tests *before* it saves: a stored server that has
+never answered is a settings screen that lies to you.
+### Testing it, and the two things that were measured rather than assumed
+No 1Password Connect server and no Vaultwarden is reachable from the machine
+this is built on, so the provider tests mock `URLProtocol` and every one of
+those files says so in its header.
+`Tests/Fixtures/mock-vaultwarden.py` closes the remaining gap. It speaks the
+three endpoints the client calls and **encrypts its vault the way a real server
+does**, so the app performs a genuine PBKDF2 run, HKDF stretch, user-key unwrap
+and AES-CBC-then-HMAC decryption of every field. Nothing inside the app is
+stubbed, which is what makes `BitwardenLiveMockTests` evidence that the ported
+crypto is right rather than merely self-consistent. It is what the screenshots
+above are taken against.
+python3 Tests/Fixtures/serve.py            # mints the CA, once
+python3 Tests/Fixtures/mock-vaultwarden.py
+Two things that cost real time and are worth writing down:
+- **A leaf certificate valid for more than 398 days is rejected by Apple's TLS
+  policy**, inside the security framework and *before* any
+  `URLSessionDelegate` runs — so "allow a self-signed certificate" cannot
+  override it. The fixture CA used to mint ten-year leaves, which loaded
+  perfectly in a `WKWebView` and failed every `URLSession` request with a bare
+  "A TLS error caused the secure connection to fail". `serve.py` now mints
+  397-day leaves.
+- **A build made with `CODE_SIGNING_ALLOWED=NO` has no entitlements, so every
+  keychain call returns -34018.** This is not specific to the vault — it
+  applies to the Mozilla account's sync keys too. The symptom is a vault that
+  connects, displays its server and account, and then reports "no password
+  vault is set up yet" on the very next sync. `Sources/App/Zen.entitlements`
+  declares the keychain access group, and the keychain tests skip rather than
+  fail when there is no entitlement:
+# Keychain-dependent tests need a signed build; drop CODE_SIGNING_ALLOWED=NO.
+xcodebuild test -scheme Zen -project Zen.xcodeproj \
+  -derivedDataPath /tmp/zenbuild
+### Not done
+- **Argon2id accounts.** The seam is there and refuses clearly; wiring a
+  library is a dependency decision, not a code one.
+- **Choosing which 1Password vault a *new* item lands in.** Connect item ids
+  are only unique within a vault, so the provider packs `vaultId/itemId`, but
+  a create picks a vault rather than asking.
+- **Organisation ciphers**, which need RSA org-key unwrapping.
+- **Two-factor Bitwarden accounts.** The client carries a `twoFactorToken`
+  field; nothing prompts for one.
 
 
 ## Screenshots

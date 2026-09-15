@@ -113,7 +113,16 @@ struct VaultCredentials: Codable, Equatable, Sendable {
 
 protocol VaultCredentialStoring: Sendable {
     func loadCredentials() -> VaultCredentials?
-    func saveCredentials(_ credentials: VaultCredentials)
+    /// Returns whether the write actually happened.
+    ///
+    /// Not `Void`, because the keychain's way of refusing is to return a status
+    /// nobody checks. `errSecMissingEntitlement` (-34018) — which is what a
+    /// build with no entitlements gets for every call — produced a vault that
+    /// connected successfully, displayed its server and account, and then
+    /// reported "no password vault is set up yet" on the very next sync. A
+    /// failure that cannot be observed is a failure that gets misdiagnosed.
+    @discardableResult
+    func saveCredentials(_ credentials: VaultCredentials) -> Bool
     func clearCredentials()
 
     /// The index key, minted on first use. Returns nil only when the keychain
@@ -140,9 +149,10 @@ struct KeychainVaultCredentialStore: VaultCredentialStoring {
         return try? JSONDecoder().decode(VaultCredentials.self, from: data)
     }
 
-    func saveCredentials(_ credentials: VaultCredentials) {
-        guard let data = try? JSONEncoder().encode(credentials) else { return }
-        write(data, account: Self.credentialsAccount)
+    @discardableResult
+    func saveCredentials(_ credentials: VaultCredentials) -> Bool {
+        guard let data = try? JSONEncoder().encode(credentials) else { return false }
+        return write(data, account: Self.credentialsAccount)
     }
 
     func clearCredentials() {
@@ -165,7 +175,7 @@ struct KeychainVaultCredentialStore: VaultCredentialStoring {
             return SecRandomCopyBytes(kSecRandomDefault, Self.indexKeyByteCount, base)
         }
         guard status == errSecSuccess else { return nil }
-        write(key, account: Self.indexKeyAccount)
+        guard write(key, account: Self.indexKeyAccount) else { return nil }
         // Read back rather than trusting the write: if the keychain refused,
         // encrypting an index with a key we cannot retrieve later would lose
         // the cache silently on next launch.
@@ -197,18 +207,37 @@ struct KeychainVaultCredentialStore: VaultCredentialStoring {
         return data
     }
 
-    private func write(_ data: Data, account: String) {
+    @discardableResult
+    private func write(_ data: Data, account: String) -> Bool {
         let attributes: [String: Any] = [
             kSecValueData as String: data,
             kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
         ]
         let query = baseQuery(account: account)
         let status = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
-        if status == errSecItemNotFound {
-            var insert = query
-            insert.merge(attributes) { _, new in new }
-            SecItemAdd(insert as CFDictionary, nil)
-        }
+        if status == errSecSuccess { return true }
+        guard status == errSecItemNotFound else { return false }
+        var insert = query
+        insert.merge(attributes) { _, new in new }
+        return SecItemAdd(insert as CFDictionary, nil) == errSecSuccess
+    }
+
+    /// Whether this process can use the keychain at all.
+    ///
+    /// A build with no entitlements — anything made with
+    /// `CODE_SIGNING_ALLOWED=NO` — gets -34018 from every call, so the tests
+    /// skip rather than fail and the app can say something true.
+    static var isAvailable: Bool {
+        let probe: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: "app.zen.keychain-probe",
+            kSecAttrAccount as String: "probe",
+            kSecValueData as String: Data("probe".utf8),
+        ]
+        SecItemDelete(probe as CFDictionary)
+        let status = SecItemAdd(probe as CFDictionary, nil)
+        SecItemDelete(probe as CFDictionary)
+        return status == errSecSuccess
     }
 
     private func delete(account: String) {
@@ -232,8 +261,10 @@ final class InMemoryVaultCredentialStore: VaultCredentialStoring, @unchecked Sen
         lock.withLock { credentials }
     }
 
-    func saveCredentials(_ credentials: VaultCredentials) {
+    @discardableResult
+    func saveCredentials(_ credentials: VaultCredentials) -> Bool {
         lock.withLock { self.credentials = credentials }
+        return true
     }
 
     func clearCredentials() {

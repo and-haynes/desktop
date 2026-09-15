@@ -110,6 +110,7 @@
 		99151490A55F687475AE4691 /* ImportedPaletteStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3042D6B6BD2A9DBD7049169 /* ImportedPaletteStore.swift */; };
 		99A27F26492BC32939385E59 /* LoadFailure.swift in Sources */ = {isa = PBXBuildFile; fileRef = 850C5604A63AB2C192CAF79A /* LoadFailure.swift */; };
 		99B7982584DBF60E88CE3242 /* ZenGradient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88B7ABF2AE6B67A857ECDDE5 /* ZenGradient.swift */; };
+		9CA8CA48C4B0AA8E7BE39B83 /* VaultCredentialStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08F38A9E603B59D0F676F8BF /* VaultCredentialStoreTests.swift */; };
 		9F2AF197F55C23746FC97AF2 /* LANScanFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 416F737CB73FFC4D1EFCC941 /* LANScanFixtures.swift */; };
 		A36CD89005860DD92A2005A8 /* BarSlotEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A05A16182422126E6EDD0E2 /* BarSlotEditor.swift */; };
 		A52950E464B97B33514E35E5 /* PKCE.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B691F68F07F1F5469400C44 /* PKCE.swift */; };
@@ -147,6 +148,7 @@
 		DFACAF19A7EC91A275E48F43 /* LocalNetworkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F5985143FF548F6D1F62EF9 /* LocalNetworkView.swift */; };
 		E097E01601410B10CFB0504A /* OmniboxOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00702F505256F196432DB86D /* OmniboxOverlay.swift */; };
 		E0E3DC7B5EE872AD19704C25 /* BitwardenVaultProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF98EB500807A52EBEA72F71 /* BitwardenVaultProvider.swift */; };
+		E432A23424C7D28995FFA238 /* BitwardenLiveMockTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 614A8FBF979D46FF15E61457 /* BitwardenLiveMockTests.swift */; };
 		E66D6B0D3739FD864E9BCDAB /* GlanceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 155C7D8391369F0FE52AE2BC /* GlanceView.swift */; };
 		E7F82330EA0D9210C94241F7 /* ColorParsingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 896D79F909A07C86E2E39E1C /* ColorParsingTests.swift */; };
 		E866AE41D7B93458DBD42009 /* LoginFormFill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CB4CB0B8B3A3D2FB2374A01 /* LoginFormFill.swift */; };
@@ -195,6 +197,7 @@
 		02CD0A88CED3B16A17086ED9 /* BrowserState+Sync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BrowserState+Sync.swift"; sourceTree = "<group>"; };
 		0384393307C90C69345E3440 /* ClientsEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClientsEngine.swift; sourceTree = "<group>"; };
 		06CA2FAE5D6C9580B01E013C /* WebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebView.swift; sourceTree = "<group>"; };
+		08F38A9E603B59D0F676F8BF /* VaultCredentialStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultCredentialStoreTests.swift; sourceTree = "<group>"; };
 		0B45A1CC7FF5A2C483F051EE /* LocalServiceStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalServiceStore.swift; sourceTree = "<group>"; };
 		0B8DCFE94556981F90968D3C /* VaultCredentialStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultCredentialStore.swift; sourceTree = "<group>"; };
 		0E0CC2AA18586635CEDAF86D /* SyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncService.swift; sourceTree = "<group>"; };
@@ -248,6 +251,7 @@
 		5B691F68F07F1F5469400C44 /* PKCE.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PKCE.swift; sourceTree = "<group>"; };
 		5BA26AB9169C9A6C2689FFFE /* SyncCryptoTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncCryptoTests.swift; sourceTree = "<group>"; };
 		5C856C6784CFBBAC153B6D5C /* SuggestionEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuggestionEngine.swift; sourceTree = "<group>"; };
+		614A8FBF979D46FF15E61457 /* BitwardenLiveMockTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BitwardenLiveMockTests.swift; sourceTree = "<group>"; };
 		61A91F73EB04E1F6A5D09522 /* PasswordVaultService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordVaultService.swift; sourceTree = "<group>"; };
 		61E6535D6C6DA4C195C697FB /* ZenMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZenMetrics.swift; sourceTree = "<group>"; };
 		61F848AA634ABBCD5B5552B8 /* SecurityBadgeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecurityBadgeTests.swift; sourceTree = "<group>"; };
@@ -308,6 +312,7 @@
 		B1EA773520486C401C1B3FDA /* WebEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebEngine.swift; sourceTree = "<group>"; };
 		B2F4BDE6C19B6759139B71F3 /* Haptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Haptics.swift; sourceTree = "<group>"; };
 		B3DDC7AF839E8CA2D86E73F8 /* BrowserLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserLayout.swift; sourceTree = "<group>"; };
+		B4B2F11C0E0168811A1FA838 /* Zen.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Zen.entitlements; sourceTree = "<group>"; };
 		BC47571B0F6EDCAA48669689 /* BookmarksEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookmarksEngine.swift; sourceTree = "<group>"; };
 		BD6FB4CCEF6E71A55F57D23E /* SyncStorageClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncStorageClient.swift; sourceTree = "<group>"; };
 		BDFF04967B55ED7F97DCAB72 /* EssentialsGrid.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EssentialsGrid.swift; sourceTree = "<group>"; };
@@ -434,6 +439,7 @@
 				2B9ECBBC9BB0FBB16B024CA2 /* ContentArea.swift */,
 				3404D430527EDEFCACF5E757 /* Info.plist */,
 				1D176ECE827382DF9BDDD05E /* RootView.swift */,
+				B4B2F11C0E0168811A1FA838 /* Zen.entitlements */,
 				4E314F1A113B5A944AA437E9 /* ZenApp.swift */,
 			);
 			path = App;
@@ -701,6 +707,7 @@
 				C4EE1F1C848DA15375B71211 /* BarLayoutTests.swift */,
 				626F7FF4DA0415ED88BC1361 /* BarSwipeGestureTests.swift */,
 				CA0F8A579A3675E5FE1C9FEA /* BitwardenCryptoTests.swift */,
+				614A8FBF979D46FF15E61457 /* BitwardenLiveMockTests.swift */,
 				F46B00D79C5C8EEBFF9CDECD /* BitwardenProviderTests.swift */,
 				2B39F3D08AE876742212DAC6 /* BrowserLayoutTests.swift */,
 				2B7DC3083D917DB62298DF0C /* BrowserStateTests.swift */,
@@ -734,6 +741,7 @@
 				8C3C1C2ECA755FA42D37CD44 /* SyncStorageTests.swift */,
 				3E859D1DEF1DF9F9AA9E7584 /* TOTPTests.swift */,
 				4FD8CD4DF4B3F44BB275D8F1 /* URLDetectorTests.swift */,
+				08F38A9E603B59D0F676F8BF /* VaultCredentialStoreTests.swift */,
 				8504E45FB01390B4338E9D84 /* ZenColorTests.swift */,
 				F59C0B0AEBCD61A88DBBE0CA /* ZenSpacesRecordTests.swift */,
 			);
@@ -1072,6 +1080,7 @@
 				51F1FB7AEAD30E024D1731A0 /* BarLayoutTests.swift in Sources */,
 				7AF27E924711B1B48BC0518A /* BarSwipeGestureTests.swift in Sources */,
 				F7AB3960DEEAE304934F6C48 /* BitwardenCryptoTests.swift in Sources */,
+				E432A23424C7D28995FFA238 /* BitwardenLiveMockTests.swift in Sources */,
 				85C1BC4BA63342C20EDB9C78 /* BitwardenProviderTests.swift in Sources */,
 				F377040F7D148CA0B16821DE /* BrowserLayoutTests.swift in Sources */,
 				10DB9AA9F73EA1211E61422B /* BrowserStateTests.swift in Sources */,
@@ -1105,6 +1114,7 @@
 				01B20BFB0927D7C451D40666 /* SyncStorageTests.swift in Sources */,
 				D2049F02320C9293AEE49560 /* TOTPTests.swift in Sources */,
 				F58099A6CC5B8EE3C77186B9 /* URLDetectorTests.swift in Sources */,
+				9CA8CA48C4B0AA8E7BE39B83 /* VaultCredentialStoreTests.swift in Sources */,
 				E9384E64A2209CC5EA11CB15 /* ZenColorTests.swift in Sources */,
 				F278A134AA5D89D8DB34B1CF /* ZenSpacesRecordTests.swift in Sources */,
 			);
@@ -1311,6 +1321,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Sources/App/Zen.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Sources/App/Info.plist;
@@ -1331,6 +1342,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Sources/App/Zen.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Sources/App/Info.plist;

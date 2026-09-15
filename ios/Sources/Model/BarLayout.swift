@@ -635,8 +635,8 @@ struct BarPreset: Identifiable, Sendable {
             layout.overflowSlots = [
                 BarSlotItem(.reloadStop), BarSlotItem(.share), BarSlotItem(.findInPage),
                 BarSlotItem(.desktopSite), BarSlotItem(.splitView), BarSlotItem(.compactToggle),
-                BarSlotItem(.focusMode), BarSlotItem(.layoutCycle), BarSlotItem(.history),
-                BarSlotItem(.localServices), BarSlotItem(.settings),
+                BarSlotItem(.focusMode), BarSlotItem(.layoutCycle), BarSlotItem(.passwords),
+                BarSlotItem(.history), BarSlotItem(.localServices), BarSlotItem(.settings),
             ]
             layout.gestures = [
                 .swipeUp: .sidebar, .swipeDown: .hideBar,

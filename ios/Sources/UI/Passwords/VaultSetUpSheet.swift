@@ -209,7 +209,13 @@ struct VaultSetUpSheet: View {
 
         do {
             let vaults = try await vault.testConnection(configuration, credentials: credentials)
-            vault.configure(configuration, credentials: credentials)
+            guard vault.configure(configuration, credentials: credentials) else {
+                // `configure` has already put the reason in `lastError`; show
+                // it here rather than dismissing onto a screen that would look
+                // connected.
+                failure = vault.lastError
+                return
+            }
             result = "Connected. \(vaults.count) vault\(vaults.count == 1 ? "" : "s") visible."
             await vault.sync()
             dismiss()

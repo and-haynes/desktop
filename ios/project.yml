@@ -38,6 +38,12 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.morton.zen
         PRODUCT_NAME: Zen
         INFOPLIST_FILE: Sources/App/Info.plist
+        # The keychain needs an entitlement even in a simulator: without one
+        # every SecItem call returns -34018 and both the sync keys and the
+        # vault credentials have nowhere to live (#008AD). Note that a build
+        # passing CODE_SIGNING_ALLOWED=NO embeds no entitlements at all, so
+        # the keychain is unavailable in one — see "Passwords" in README.md.
+        CODE_SIGN_ENTITLEMENTS: Sources/App/Zen.entitlements
         # We ship an explicit Info.plist, so Xcode does NOT inject the standard
         # CFBundle* keys — the plist declares them itself or install fails with
         # "Missing bundle ID".

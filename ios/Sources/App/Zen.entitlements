@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Without this, every keychain call returns -34018 ("A required
+	     entitlement isn't present") and the app has nowhere to put a Mozilla
+	     account's sync keys or a vault's master password. The failure is
+	     silent at the Security-framework level, which is why #008AD found it
+	     as "the vault connected and then said no vault is configured". -->
+	<key>keychain-access-groups</key>
+	<array>
+		<string>$(AppIdentifierPrefix)com.morton.zen</string>
+	</array>
+</dict>
+</plist>
