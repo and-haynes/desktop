@@ -96,6 +96,33 @@ struct OmniboxPill: View {
         .frame(height: isSecondaryPane ? ZenMetrics.paneBarHeight : ZenMetrics.omniboxPillHeight)
         .zenSurface(palette, radius: ZenMetrics.rowRadius, elevated: true)
         .opacity(isActivePane ? 1 : 0.82)
+        .simultaneousGesture(sidebarSwipe)
+    }
+
+    // MARK: Swipe to the tab drawer (#0089F)
+
+    /// The bar is the only chrome guaranteed to be under a thumb, which makes
+    /// it the right handle for the tab drawer — the toolbar button is a 34pt
+    /// target at the far left of a 6-inch screen.
+    ///
+    /// `simultaneousGesture` with a non-zero minimum distance: the tap that
+    /// opens the omnibox and the buttons at either end all keep working, and a
+    /// gesture that never travels 12pt is a tap, not a swipe. The direction
+    /// mapping lives in `BarSwipeGesture` so the planned URL-bar customisation
+    /// can reassign it without touching this.
+    private var sidebarSwipe: some Gesture {
+        DragGesture(minimumDistance: 12)
+            .onChanged { _ in Haptics.shared.prepare(.sidebarSnap) }
+            .onEnded { value in
+                let action = BarSwipeGesture.action(
+                    translation: value.translation, velocity: value.velocity,
+                    isSidebarOpen: state.isSidebarVisible)
+                guard action != .none else { return }
+                Haptics.shared.fire(.sidebarSnap)
+                withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+                    state.isSidebarVisible = action == .openSidebar
+                }
+            }
     }
 
     // MARK: Pieces

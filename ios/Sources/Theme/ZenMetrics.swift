@@ -26,6 +26,11 @@ enum ZenMetrics {
     static let faviconSize: CGFloat = 17
     /// Touch target, up from the desktop's mouse-sized rows.
     static let rowHeight: CGFloat = 40
+    /// The pinned new-tab strip along the bottom of the tab list. Upstream's
+    /// new-tab row is list-sized and scrolls away with the list; the thing you
+    /// reach for most should not have to be found, so it is a full-width
+    /// target at the Apple minimum.
+    static let newTabStripHeight: CGFloat = 44
     /// `.pinned-tabs-container-separator { height: 22px }`
     static let separatorHeight: CGFloat = 22
     /// Collapsed sidebar: `--tab-min-width: 48px` + 6px padding each side.

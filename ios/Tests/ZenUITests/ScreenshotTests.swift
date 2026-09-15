@@ -278,6 +278,34 @@ final class ScreenshotTests: XCTestCase {
         settle(1.5)
     }
 
+    /// The new-tab strip (#0089F): full width, pinned below the tab list, and
+    /// it actually makes a tab.
+    func testCaptureNewTabStrip() throws {
+        let suffix = UIDevice.current.userInterfaceIdiom == .pad ? "-ipad" : ""
+        settle(4.0)
+        if UIDevice.current.userInterfaceIdiom != .pad { openSidebar() }
+
+        let strip = app.buttons["newTabStrip"].firstMatch
+        XCTAssertTrue(strip.waitForExistence(timeout: 8), "new-tab strip missing")
+        // Full width: the strip must span the sidebar, not sit in it as a row.
+        XCTAssertGreaterThan(
+            strip.frame.width, 240, "the strip should span the sidebar width")
+        XCTAssertGreaterThanOrEqual(strip.frame.height, 44, "44pt is the minimum target")
+        capture("25-sidebar-newtab-strip\(suffix)")
+
+        // Tapping it opens a new tab, which lands on the start page with the
+        // omnibox up.
+        strip.tap()
+        settle(2.0)
+        let field = app.textFields["omniboxField"].firstMatch
+        XCTAssertTrue(
+            field.waitForExistence(timeout: 8),
+            "the strip must create a tab and open the omnibox on it")
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.08)).tap()
+        settle(1.5)
+        try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-NEWTAB"))
+    }
+
     // MARK: The documented states
 
     func testCaptureAllStates() throws {

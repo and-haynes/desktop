@@ -21,6 +21,7 @@
 		433232B08F94AA5C2B87019F /* AppearanceMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2F7C793BA7D5491ADCBEB92 /* AppearanceMode.swift */; };
 		44A9497BB0B878DC02904355 /* Haptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2F4BDE6C19B6759139B71F3 /* Haptics.swift */; };
 		459B0E8FE6A2898F2BA9B24F /* ZenColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACBD665DE4374F9877BC1681 /* ZenColor.swift */; };
+		4BFDB75AC44DC39DD5AB0EFE /* BarSwipeGesture.swift in Sources */ = {isa = PBXBuildFile; fileRef = C328A5EE18F01699DF47AE6A /* BarSwipeGesture.swift */; };
 		508BFA96B5CF670C7E44DD59 /* ZenApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E314F1A113B5A944AA437E9 /* ZenApp.swift */; };
 		52754347A4EE689C839BF1B5 /* AppearanceModeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CC1263F0FF95AC80F83EDCB /* AppearanceModeTests.swift */; };
 		52D2889E3A1A18B197B46215 /* SearchEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6F50C30E6017F5CE0A3A949 /* SearchEngine.swift */; };
@@ -32,6 +33,7 @@
 		6729665B0438F58791DC807C /* FaviconService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6168CC3146B1806766E7BCE /* FaviconService.swift */; };
 		6CB635ECD2442985E99CE502 /* ScreenshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 439FB91CDAB39BD7F4A0FB00 /* ScreenshotTests.swift */; };
 		70EABBE197A464B62C640799 /* TabRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82193B0812A778DE46C01FCA /* TabRowView.swift */; };
+		7AF27E924711B1B48BC0518A /* BarSwipeGestureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 626F7FF4DA0415ED88BC1361 /* BarSwipeGestureTests.swift */; };
 		7C11E3E08187A3225F84258C /* EssentialsGrid.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDFF04967B55ED7F97DCAB72 /* EssentialsGrid.swift */; };
 		7DC61421F4669B027616E8A2 /* Space.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EE8DC3BDB6C2210F2DF96F0 /* Space.swift */; };
 		84C568107DF129441026978B /* ZenEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 926A0C7C35EF2BBD6BF3F07F /* ZenEnvironment.swift */; };
@@ -99,6 +101,7 @@
 		4FD8CD4DF4B3F44BB275D8F1 /* URLDetectorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLDetectorTests.swift; sourceTree = "<group>"; };
 		5C856C6784CFBBAC153B6D5C /* SuggestionEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuggestionEngine.swift; sourceTree = "<group>"; };
 		61E6535D6C6DA4C195C697FB /* ZenMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZenMetrics.swift; sourceTree = "<group>"; };
+		626F7FF4DA0415ED88BC1361 /* BarSwipeGestureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BarSwipeGestureTests.swift; sourceTree = "<group>"; };
 		7688B6E1EA8ADB19B677A426 /* SpaceEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceEditorView.swift; sourceTree = "<group>"; };
 		782C96F203ECA8E99702C663 /* LoadFailureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadFailureTests.swift; sourceTree = "<group>"; };
 		82193B0812A778DE46C01FCA /* TabRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabRowView.swift; sourceTree = "<group>"; };
@@ -121,6 +124,7 @@
 		B1EA773520486C401C1B3FDA /* WebEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebEngine.swift; sourceTree = "<group>"; };
 		B2F4BDE6C19B6759139B71F3 /* Haptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Haptics.swift; sourceTree = "<group>"; };
 		BDFF04967B55ED7F97DCAB72 /* EssentialsGrid.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EssentialsGrid.swift; sourceTree = "<group>"; };
+		C328A5EE18F01699DF47AE6A /* BarSwipeGesture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BarSwipeGesture.swift; sourceTree = "<group>"; };
 		C5B4C36D8CF492F87328958F /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
 		C5B86DDB786B902B992ABB0C /* FindBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FindBar.swift; sourceTree = "<group>"; };
 		C616F8839759C7CC58339DBB /* ZenUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = ZenUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -220,6 +224,7 @@
 		5E6610BD6F2DB1E8BF8F2A6B /* Omnibox */ = {
 			isa = PBXGroup;
 			children = (
+				C328A5EE18F01699DF47AE6A /* BarSwipeGesture.swift */,
 				00702F505256F196432DB86D /* OmniboxOverlay.swift */,
 				89CF4FD1B002F1922E42F267 /* OmniboxPill.swift */,
 				3E5240A82F9C160738FAA784 /* OmniboxTextField.swift */,
@@ -311,6 +316,7 @@
 			isa = PBXGroup;
 			children = (
 				4CC1263F0FF95AC80F83EDCB /* AppearanceModeTests.swift */,
+				626F7FF4DA0415ED88BC1361 /* BarSwipeGestureTests.swift */,
 				2B7DC3083D917DB62298DF0C /* BrowserStateTests.swift */,
 				896D79F909A07C86E2E39E1C /* ColorParsingTests.swift */,
 				D2971FAB4405F536C1C76DDA /* HapticsTests.swift */,
@@ -488,6 +494,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				433232B08F94AA5C2B87019F /* AppearanceMode.swift in Sources */,
+				4BFDB75AC44DC39DD5AB0EFE /* BarSwipeGesture.swift in Sources */,
 				B9A8D252A256882924FC680C /* BrowserState.swift in Sources */,
 				B8C0AC2A453AF455DD41C648 /* ColorParsing.swift in Sources */,
 				EDCF068803ADEC573CE28C5C /* ContentArea.swift in Sources */,
@@ -545,6 +552,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				52754347A4EE689C839BF1B5 /* AppearanceModeTests.swift in Sources */,
+				7AF27E924711B1B48BC0518A /* BarSwipeGestureTests.swift in Sources */,
 				10DB9AA9F73EA1211E61422B /* BrowserStateTests.swift in Sources */,
 				E7F82330EA0D9210C94241F7 /* ColorParsingTests.swift in Sources */,
 				F4BE296D6EFC1B54C9E01515 /* HapticsTests.swift in Sources */,

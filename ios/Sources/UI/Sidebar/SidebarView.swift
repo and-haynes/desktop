@@ -34,6 +34,8 @@ struct SidebarView: View {
                 .offset(x: swipe)
                 .gesture(spaceSwipe)
 
+            newTabStrip
+
             SpaceSwitcherStrip(
                 state: state, editingSpace: $editingSpace, isCreatingSpace: $isCreatingSpace)
         }
@@ -63,8 +65,6 @@ struct SidebarView: View {
                 ForEach(state.normalTabs) { tab in
                     TabRowView(tab: tab, isActive: tab.id == state.activeTabID, state: state)
                 }
-
-                newTabButton
             }
             .padding(.horizontal, ZenMetrics.sidebarPadding)
             .padding(.bottom, 12)
@@ -103,27 +103,43 @@ struct SidebarView: View {
         .opacity(state.pinnedTabs.isEmpty && state.normalTabs.isEmpty ? 0 : 1)
     }
 
-    private var newTabButton: some View {
+    /// Upstream's new-tab row sits at the end of the tab list and scrolls away
+    /// with it. On a phone the control you reach for most should never have to
+    /// be found, so it is pinned below the list as a full-width strip at the
+    /// 44pt minimum — and it stays put in every layout, because it is outside
+    /// the scroll view rather than the last thing in it.
+    private var newTabStrip: some View {
         Button {
             Haptics.shared.fire(.tabOpen)
             state.newTab()
             if UIDevice.current.userInterfaceIdiom == .phone { state.isSidebarVisible = false }
             state.isOmniboxOpen = true
         } label: {
-            HStack(spacing: ZenMetrics.rowIconGap) {
+            HStack(spacing: 7) {
                 Image(systemName: "plus")
-                    .font(.system(size: 12, weight: .semibold))
-                    .frame(width: ZenMetrics.faviconSize, height: ZenMetrics.faviconSize)
+                    .font(.system(size: 13, weight: .semibold))
                 Text("New Tab")
-                    .font(.system(size: 14))
-                Spacer(minLength: 0)
+                    .font(.system(size: 14, weight: .medium))
             }
-            .foregroundStyle(palette.text.withAlpha(0.55).color)
-            .padding(.horizontal, ZenMetrics.rowInlinePadding)
-            .frame(height: ZenMetrics.rowHeight)
+            .foregroundStyle(palette.text.withAlpha(0.8).color)
+            .frame(maxWidth: .infinity)
+            .frame(height: ZenMetrics.newTabStripHeight)
+            .background {
+                RoundedRectangle(cornerRadius: ZenMetrics.rowRadius, style: .continuous)
+                    .fill(palette.toolbarElementHoverBG.color)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: ZenMetrics.rowRadius, style: .continuous)
+                    .strokeBorder(palette.border.color, lineWidth: 0.5)
+            }
             .contentShape(Rectangle())
         }
-        .buttonStyle(ZenPressStyle())
+        // A whole-width target should compress a little less than a tab row, or
+        // the press reads as the panel moving rather than the button.
+        .buttonStyle(ZenPressStyle(pressedScale: 0.985))
+        .accessibilityIdentifier("newTabStrip")
+        .padding(.horizontal, ZenMetrics.sidebarPadding)
+        .padding(.top, 6)
     }
 
     // MARK: Space swipe (ZenSpacesSwipe)
