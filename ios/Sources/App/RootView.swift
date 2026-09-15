@@ -565,7 +565,9 @@ struct RootView: View {
         }
         pool.pool.focusBlocklist = await ContentBlocker.focusRuleList()
         withAnimation(.spring(response: 0.34, dampingFraction: 0.9)) {
-            state.enterFocusMode()
+            // `enterFocusMode` returns the new space; nothing here wants it,
+            // and `@discardableResult` does not survive the closure.
+            _ = state.enterFocusMode()
         }
     }
 

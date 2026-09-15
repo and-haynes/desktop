@@ -9,6 +9,10 @@
 import Foundation
 import WebKit
 
+/// `WKContentRuleListStore.default()` is main-actor isolated (and `cached` is
+/// shared mutable state), so the whole enum is pinned to the main actor rather
+/// than reaching across from a nonisolated context.
+@MainActor
 enum ContentBlocker {
     /// Bumping this invalidates WebKit's compiled cache. Change it whenever the
     /// JSON changes, or an old install keeps running the old rules forever.
