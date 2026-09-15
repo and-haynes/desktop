@@ -28,6 +28,8 @@ struct ZenSettings: Codable, Equatable, Sendable {
     /// seconds. Upstream's nearest equivalent is
     /// `zen.view.compact.toolbar-hide-after-hover.duration`.
     var compactHideDelay: Double = 1.8
+    /// How much the phone talks back. Default Normal; see `Haptics`.
+    var hapticLevel: HapticLevel = .normal
 
     init() {}
 
@@ -39,7 +41,7 @@ struct ZenSettings: Codable, Equatable, Sendable {
     // so an older file just picks up the defaults for whatever it predates.
     private enum CodingKeys: String, CodingKey {
         case searchEngine, compactModeEnabled, compactHidesSidebar, compactHidesToolbar
-        case preferDesktopSite, sidebarPinnedOnPad, appearance, compactHideDelay
+        case preferDesktopSite, sidebarPinnedOnPad, appearance, compactHideDelay, hapticLevel
     }
 
     init(from decoder: Decoder) throws {
@@ -69,6 +71,8 @@ struct ZenSettings: Codable, Equatable, Sendable {
         compactHideDelay =
             try c.decodeIfPresent(Double.self, forKey: .compactHideDelay)
             ?? fallback.compactHideDelay
+        hapticLevel =
+            try c.decodeIfPresent(HapticLevel.self, forKey: .hapticLevel) ?? fallback.hapticLevel
     }
 }
 

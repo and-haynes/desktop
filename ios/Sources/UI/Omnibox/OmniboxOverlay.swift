@@ -41,6 +41,7 @@ struct OmniboxOverlay: View {
             .padding(.horizontal, 12)
         }
         .onAppear {
+            Haptics.shared.prepare([.urlCommit, .suggestionPick, .omniboxClose])
             engine.update(query: state.omniboxText, state: state)
             withAnimation(.spring(response: 0.28, dampingFraction: 0.9)) { appeared = true }
             // The field must not steal focus before the sheet has settled, or
@@ -108,11 +109,14 @@ struct OmniboxOverlay: View {
         case .topHit:
             commit(state.omniboxText)
         case .history(let url):
+            Haptics.shared.fire(.suggestionPick)
             navigate(to: url)
         case .searchTerm:
+            Haptics.shared.fire(.suggestionPick)
             navigate(to: state.settings.searchEngine.searchURL(for: suggestion.title))
         case .action(let action):
-            close()
+            Haptics.shared.fire(.suggestionPick)
+            close(silent: true)
             perform(action)
         }
     }
@@ -123,6 +127,7 @@ struct OmniboxOverlay: View {
             close()
             return
         }
+        Haptics.shared.fire(.urlCommit)
         navigate(to: URLDetector.resolve(trimmed, engine: state.settings.searchEngine))
     }
 
@@ -138,10 +143,14 @@ struct OmniboxOverlay: View {
         } else {
             state.newTab(url: url)
         }
-        close()
+        close(silent: true)
     }
 
-    private func close() {
+    /// `silent` where the close is the tail of something that already spoke —
+    /// a commit or a picked suggestion. Two taps back to back for one action
+    /// reads as a stutter, not as feedback.
+    private func close(silent: Bool = false) {
+        if !silent { Haptics.shared.fire(.omniboxClose) }
         state.omniboxTargetTabID = nil
         isFieldFocused = false
         engine.clear()
@@ -156,15 +165,22 @@ struct OmniboxOverlay: View {
         switch action {
         case .toggleCompactMode: state.settings.compactModeEnabled.toggle()
         case .newSplitView, .unsplitView:
+            Haptics.shared.fire(state.isSplitActive ? .splitExit : .splitEnter)
             withAnimation(.spring(response: 0.3, dampingFraction: 1)) { state.toggleSplit() }
         case .newSpace: state.isSettingsPresented = true
         case .copyCurrentURL: UIPasteboard.general.url = state.activeTab?.url
         case .nextSpace: withAnimation { state.cycleSpace(by: 1) }
         case .previousSpace: withAnimation { state.cycleSpace(by: -1) }
         case .closeTab:
-            if let tabID = state.activeTabID { state.closeTab(tabID) }
+            if let tabID = state.activeTabID {
+                Haptics.shared.fire(.tabClose)
+                state.closeTab(tabID)
+            }
         case .duplicateTab:
-            if let tab = state.activeTab { state.newTab(url: tab.url) }
+            if let tab = state.activeTab {
+                Haptics.shared.fire(.tabOpen)
+                state.newTab(url: tab.url)
+            }
         case .reloadTab: NotificationCenter.default.post(name: .zenReloadActiveTab, object: nil)
         case .findInPage: state.isFindBarVisible = true
         case .toggleDesktopSite: state.settings.preferDesktopSite.toggle()

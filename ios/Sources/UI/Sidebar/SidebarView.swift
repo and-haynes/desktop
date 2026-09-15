@@ -84,6 +84,7 @@ struct SidebarView: View {
 
             if !state.normalTabs.isEmpty {
                 Button {
+                    Haptics.shared.fire(.tabClose)
                     withAnimation(.easeInOut(duration: 0.2)) { state.clearNormalTabs() }
                 } label: {
                     HStack(spacing: 3) {
@@ -104,6 +105,7 @@ struct SidebarView: View {
 
     private var newTabButton: some View {
         Button {
+            Haptics.shared.fire(.tabOpen)
             state.newTab()
             if UIDevice.current.userInterfaceIdiom == .phone { state.isSidebarVisible = false }
             state.isOmniboxOpen = true
@@ -131,6 +133,7 @@ struct SidebarView: View {
             .updating($swipe) { value, offset, _ in
                 // Only horizontal pulls; a vertical drag belongs to the list.
                 guard abs(value.translation.width) > abs(value.translation.height) else { return }
+                Haptics.shared.prepare([.spaceSwitchTick, .spaceSettle])
                 let raw = value.translation.width
                 // Upstream applies a force multiplier that resists as you near
                 // the edge of the travel; same idea, simpler curve.
@@ -142,8 +145,15 @@ struct SidebarView: View {
                 else { return }
                 // Pulling right reveals the space to the left.
                 let delta = value.translation.width < 0 ? 1 : -1
+                // Tick as the space changes, then settle once the spring has
+                // had time to carry the strip home.
+                Haptics.shared.fire(.spaceSwitchTick)
                 withAnimation(.spring(response: 0.34, dampingFraction: 1)) {
                     state.cycleSpace(by: delta)
+                }
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(240))
+                    Haptics.shared.fire(.spaceSettle)
                 }
             }
     }

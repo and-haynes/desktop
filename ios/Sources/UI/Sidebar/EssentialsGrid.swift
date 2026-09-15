@@ -29,6 +29,7 @@ struct EssentialsGrid: View {
                 ForEach(essentials) { tab in
                     EssentialTile(tab: tab, isActive: tab.id == state.activeTabID, state: state)
                         .onDrag {
+                            Haptics.shared.fire(.dragPickup)
                             draggingID = tab.id
                             return NSItemProvider(object: tab.id.uuidString as NSString)
                         }
@@ -69,6 +70,7 @@ struct EssentialTile: View {
 
     var body: some View {
         Button {
+            Haptics.shared.fire(.essentialTap)
             state.select(tab.id)
             if UIDevice.current.userInterfaceIdiom == .phone { state.isSidebarVisible = false }
         } label: {
@@ -123,12 +125,15 @@ struct EssentialDropDelegate: DropDelegate {
         guard let draggingID, draggingID != target.id else { return }
         let essentials = state.essentials
         guard let destination = essentials.firstIndex(where: { $0.id == target.id }) else { return }
+        // Each tile the drag passes over ticks, the way a picker wheel does.
+        Haptics.shared.fire(.tabSelect)
         withAnimation(.easeInOut(duration: 0.18)) {
             state.moveTab(draggingID, toOffset: destination, kind: .essential, spaceID: nil)
         }
     }
 
     func performDrop(info: DropInfo) -> Bool {
+        Haptics.shared.fire(.dragDrop)
         draggingID = nil
         return true
     }

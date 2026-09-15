@@ -23,7 +23,14 @@ final class BrowserState: ObservableObject {
     @Published private(set) var activeSpaceID: UUID?
     @Published private(set) var activeTabIDBySpace: [UUID: UUID] = [:]
     @Published var settings = ZenSettings() {
-        didSet { if settings != oldValue { scheduleSave() } }
+        didSet {
+            guard settings != oldValue else { return }
+            // The haptics service is a singleton the views reach directly, so
+            // the user's choice has to be pushed to it rather than read from
+            // here.
+            Haptics.shared.level = settings.hapticLevel
+            scheduleSave()
+        }
     }
 
     // MARK: Transient UI state
@@ -71,6 +78,9 @@ final class BrowserState: ObservableObject {
         } else {
             seedFirstRun()
         }
+        // Seed the service from whatever was restored (or seeded) so the very
+        // first gesture already obeys the setting.
+        Haptics.shared.level = settings.hapticLevel
     }
 
     private func apply(_ snapshot: SessionSnapshot) {

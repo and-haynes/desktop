@@ -18,6 +18,8 @@ struct TabRowView: View {
     /// Swipe-to-close offset.
     @GestureState private var dragOffset: CGFloat = 0
     @State private var isClosing = false
+    /// Latches so the threshold tap fires once per crossing, not once a frame.
+    @State private var hasCrossedThreshold = false
 
     /// How far you have to pull before the row commits to closing.
     private let closeThreshold: CGFloat = 96
@@ -30,6 +32,11 @@ struct TabRowView: View {
                 .gesture(swipeToClose)
         }
         .frame(height: ZenMetrics.rowHeight)
+        .onAppear { Haptics.shared.prepare([.tabSelect, .swipeCloseThreshold]) }
+        // `.contextMenu` brings its own system tap on commit, and adding a
+        // competing long-press gesture here stole the menu outright. The
+        // `longPressMenu` event is used where we own the gesture — the link
+        // menu in the page.
         .contextMenu { TabContextMenu(tab: tab, state: state) }
     }
 
@@ -37,6 +44,7 @@ struct TabRowView: View {
 
     private var row: some View {
         Button {
+            Haptics.shared.fire(.tabSelect)
             state.select(tab.id)
             if UIDevice.current.userInterfaceIdiom == .phone { state.isSidebarVisible = false }
         } label: {
@@ -73,6 +81,9 @@ struct TabRowView: View {
     /// upstream's `.tab-reset-pin-button`, which restores the pinned URL.
     private var closeButton: some View {
         Button {
+            // A pinned tab is restored, not destroyed; that is a success, and
+            // it should not feel like a deletion.
+            Haptics.shared.fire(tab.kind.resetsOnClose ? .tabRestore : .tabClose)
             withAnimation(.easeOut(duration: 0.18)) { _ = state.closeTab(tab.id) }
         } label: {
             Image(systemName: tab.kind.resetsOnClose ? "arrow.counterclockwise" : "xmark")
@@ -110,9 +121,21 @@ struct TabRowView: View {
                     ? -closeThreshold + (raw + closeThreshold) * 0.25
                     : raw
             }
+            .onChanged { value in
+                Haptics.shared.prepare(.swipeCloseThreshold)
+                // The tap at the threshold is the whole point of the gesture:
+                // it tells you the row will go if you let go now, which is
+                // otherwise only visible under your own thumb.
+                let crossed = value.translation.width <= -closeThreshold
+                guard crossed != hasCrossedThreshold else { return }
+                hasCrossedThreshold = crossed
+                if crossed { Haptics.shared.fire(.swipeCloseThreshold) }
+            }
             .onEnded { value in
+                hasCrossedThreshold = false
                 guard value.translation.width <= -closeThreshold, !isClosing else { return }
                 isClosing = true
+                Haptics.shared.fire(tab.kind.resetsOnClose ? .tabRestore : .tabClose)
                 withAnimation(.easeOut(duration: 0.2)) { _ = state.closeTab(tab.id) }
             }
     }
@@ -125,6 +148,7 @@ struct TabContextMenu: View {
 
     var body: some View {
         Button {
+            Haptics.shared.fire(.pinToggle)
             state.toggleEssential(tab.id)
         } label: {
             Label(
@@ -134,18 +158,21 @@ struct TabContextMenu: View {
         .disabled(tab.kind != .essential && state.essentials.count >= ZenMetrics.maxEssentials)
 
         Button {
+            Haptics.shared.fire(.pinToggle)
             state.togglePinned(tab.id)
         } label: {
             Label(tab.kind == .pinned ? "Unpin Tab" : "Pin Tab", systemImage: "pin")
         }
 
         Button {
+            Haptics.shared.fire(.splitEnter)
             state.split(with: tab.id)
         } label: {
             Label("Open in Split View", systemImage: "rectangle.split.2x1")
         }
 
         Button {
+            Haptics.shared.fire(.glanceOpen)
             state.openGlance(url: tab.url)
         } label: {
             Label("Open in Glance", systemImage: "rectangle.on.rectangle.angled")
@@ -163,6 +190,7 @@ struct TabContextMenu: View {
         // removed from Essentials first.
         if tab.kind != .essential {
             Button(role: .destructive) {
+                Haptics.shared.fire(tab.kind.resetsOnClose ? .tabRestore : .tabClose)
                 state.closeTab(tab.id)
             } label: {
                 Label(

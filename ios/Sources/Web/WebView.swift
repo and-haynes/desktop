@@ -152,6 +152,9 @@ struct WebView: UIViewRepresentable {
                     zen.scrollView.setContentOffset(CGPoint(x: 0, y: offset), animated: false)
                 }
             }
+            // Barely there: an acknowledgement that the wait is over, not an
+            // announcement. Suppressed outright while the page is scrolling.
+            Haptics.shared.fire(.pageLoaded)
             fetchFavicon(webView)
         }
 
@@ -179,6 +182,7 @@ struct WebView: UIViewRepresentable {
                 (error as NSError).userInfo[NSURLErrorFailingURLErrorKey] as? URL
                 ?? webView.url ?? tab.url
             guard let failure = LoadFailure.classify(error, url: failedURL) else { return }
+            Haptics.shared.fire(.loadError)
             state.updateTab(tabID) { tab in
                 tab.loadFailure = failure
                 if tab.title.isEmpty { tab.title = URLDetector.prettyHost(failedURL) }
@@ -237,6 +241,9 @@ struct WebView: UIViewRepresentable {
                 completionHandler(nil)
                 return
             }
+            // This one we own: WebKit asks us for the menu before it plays any
+            // system feedback, so the tap lands with the long-press.
+            Haptics.shared.fire(.longPressMenu)
             let config = UIContextMenuConfiguration(identifier: nil, previewProvider: nil) {
                 [weak self] _ in
                 guard let self else { return nil }
@@ -245,17 +252,20 @@ struct WebView: UIViewRepresentable {
                         title: "Open in Glance",
                         image: UIImage(systemName: "rectangle.on.rectangle.angled")
                     ) { _ in
+                        Haptics.shared.fire(.glanceOpen)
                         self.state.openGlance(url: url)
                     },
                     UIAction(
                         title: "Open in New Tab", image: UIImage(systemName: "plus.square.on.square")
                     ) { _ in
+                        Haptics.shared.fire(.tabOpen)
                         self.state.newTab(url: url)
                     },
                     UIAction(
                         title: "Open in Split", image: UIImage(systemName: "rectangle.split.2x1")
                     ) { _ in
                         if let tab = self.state.newTab(url: url, select: false) {
+                            Haptics.shared.fire(.splitEnter)
                             self.state.split(with: tab.id)
                         }
                     },

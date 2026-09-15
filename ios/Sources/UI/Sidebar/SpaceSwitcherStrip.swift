@@ -58,8 +58,14 @@ struct SpaceSwitcherStrip: View {
         // row of themes rather than a row of grey icons.
         let chipAccent = space.accent(isDark: palette.isDark)
         return Button {
+            guard !isActive else { return }
+            Haptics.shared.fire(.spaceSwitchTick)
             withAnimation(.spring(response: 0.34, dampingFraction: 1)) {
                 state.switchSpace(to: space.id)
+            }
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(240))
+                Haptics.shared.fire(.spaceSettle)
             }
         } label: {
             SpaceIconView(space: space, size: isActive ? 15 : 13)

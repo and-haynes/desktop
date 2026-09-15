@@ -18,6 +18,7 @@
 		2CC21EEBF42D7505D2710A03 /* SpaceEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7688B6E1EA8ADB19B677A426 /* SpaceEditorView.swift */; };
 		37048826351CB638FDF4835F /* ErrorPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 153BE572C4E43DBC0331D37A /* ErrorPageView.swift */; };
 		433232B08F94AA5C2B87019F /* AppearanceMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2F7C793BA7D5491ADCBEB92 /* AppearanceMode.swift */; };
+		44A9497BB0B878DC02904355 /* Haptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2F4BDE6C19B6759139B71F3 /* Haptics.swift */; };
 		459B0E8FE6A2898F2BA9B24F /* ZenColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACBD665DE4374F9877BC1681 /* ZenColor.swift */; };
 		508BFA96B5CF670C7E44DD59 /* ZenApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E314F1A113B5A944AA437E9 /* ZenApp.swift */; };
 		52754347A4EE689C839BF1B5 /* AppearanceModeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CC1263F0FF95AC80F83EDCB /* AppearanceModeTests.swift */; };
@@ -56,6 +57,7 @@
 		E9384E64A2209CC5EA11CB15 /* ZenColorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8504E45FB01390B4338E9D84 /* ZenColorTests.swift */; };
 		EDCF068803ADEC573CE28C5C /* ContentArea.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B9ECBBC9BB0FBB16B024CA2 /* ContentArea.swift */; };
 		F3638E19ECD10178B6D512D5 /* WebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06CA2FAE5D6C9580B01E013C /* WebView.swift */; };
+		F4BE296D6EFC1B54C9E01515 /* HapticsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2971FAB4405F536C1C76DDA /* HapticsTests.swift */; };
 		F58099A6CC5B8EE3C77186B9 /* URLDetectorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FD8CD4DF4B3F44BB275D8F1 /* URLDetectorTests.swift */; };
 		F864FDA07CE3E804116B4B92 /* FindBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5B86DDB786B902B992ABB0C /* FindBar.swift */; };
 		F87A3F320E95CFB5DBECCA5E /* SessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFF3EA739DDD841F4DF4C81E /* SessionStore.swift */; };
@@ -115,6 +117,7 @@
 		ABA7F8DD18D946F9589A2F55 /* SettingsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsSheet.swift; sourceTree = "<group>"; };
 		ACBD665DE4374F9877BC1681 /* ZenColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZenColor.swift; sourceTree = "<group>"; };
 		B1EA773520486C401C1B3FDA /* WebEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebEngine.swift; sourceTree = "<group>"; };
+		B2F4BDE6C19B6759139B71F3 /* Haptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Haptics.swift; sourceTree = "<group>"; };
 		BDFF04967B55ED7F97DCAB72 /* EssentialsGrid.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EssentialsGrid.swift; sourceTree = "<group>"; };
 		C5B4C36D8CF492F87328958F /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
 		C5B86DDB786B902B992ABB0C /* FindBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FindBar.swift; sourceTree = "<group>"; };
@@ -122,6 +125,7 @@
 		C98CBB864CCA46E7EE6DDAAE /* RecentColorsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentColorsStore.swift; sourceTree = "<group>"; };
 		CEEEA5047438DAA8F1415FDC /* SessionStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStoreTests.swift; sourceTree = "<group>"; };
 		CFF3EA739DDD841F4DF4C81E /* SessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStore.swift; sourceTree = "<group>"; };
+		D2971FAB4405F536C1C76DDA /* HapticsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticsTests.swift; sourceTree = "<group>"; };
 		D6168CC3146B1806766E7BCE /* FaviconService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaviconService.swift; sourceTree = "<group>"; };
 		DE219513AAD0EB357271B17B /* Zen.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Zen.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		DFDCADCF735EAA705F326D9F /* NewTabPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewTabPage.swift; sourceTree = "<group>"; };
@@ -203,6 +207,14 @@
 			path = App;
 			sourceTree = "<group>";
 		};
+		5B44D0662B945F372ED500D6 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				B2F4BDE6C19B6759139B71F3 /* Haptics.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
 		5E6610BD6F2DB1E8BF8F2A6B /* Omnibox */ = {
 			isa = PBXGroup;
 			children = (
@@ -221,6 +233,7 @@
 				E225C0279598F5EFF6A9EC01 /* Model */,
 				29F17F81A7C57A0CE1021280 /* Persistence */,
 				DA11BE72A2E822A3254CABA4 /* Security */,
+				5B44D0662B945F372ED500D6 /* Services */,
 				C519609CB52548468548354C /* Theme */,
 				DF1E6435AE5C26DF93FB889C /* UI */,
 				69A0C587529E21725974439C /* Web */,
@@ -298,6 +311,7 @@
 				4CC1263F0FF95AC80F83EDCB /* AppearanceModeTests.swift */,
 				2B7DC3083D917DB62298DF0C /* BrowserStateTests.swift */,
 				896D79F909A07C86E2E39E1C /* ColorParsingTests.swift */,
+				D2971FAB4405F536C1C76DDA /* HapticsTests.swift */,
 				FF464950DD8915C034DD2E64 /* LANHostTests.swift */,
 				782C96F203ECA8E99702C663 /* LoadFailureTests.swift */,
 				CEEEA5047438DAA8F1415FDC /* SessionStoreTests.swift */,
@@ -479,6 +493,7 @@
 				6729665B0438F58791DC807C /* FaviconService.swift in Sources */,
 				F864FDA07CE3E804116B4B92 /* FindBar.swift in Sources */,
 				E66D6B0D3739FD864E9BCDAB /* GlanceView.swift in Sources */,
+				44A9497BB0B878DC02904355 /* Haptics.swift in Sources */,
 				1E996B476DF60B64F4DF70C2 /* HistorySheet.swift in Sources */,
 				0D6058BEE7D077BBC0C92DEE /* HistoryStore.swift in Sources */,
 				142E6F824884B6B4AFEFD672 /* JSONFileStore.swift in Sources */,
@@ -529,6 +544,7 @@
 				52754347A4EE689C839BF1B5 /* AppearanceModeTests.swift in Sources */,
 				10DB9AA9F73EA1211E61422B /* BrowserStateTests.swift in Sources */,
 				E7F82330EA0D9210C94241F7 /* ColorParsingTests.swift in Sources */,
+				F4BE296D6EFC1B54C9E01515 /* HapticsTests.swift in Sources */,
 				C3C3C63F3F71C8DC7F36F0AB /* LANHostTests.swift in Sources */,
 				1F4326C74B645F3296BDFDEB /* LoadFailureTests.swift in Sources */,
 				8524DB2323656F48E3577C84 /* SessionStoreTests.swift in Sources */,

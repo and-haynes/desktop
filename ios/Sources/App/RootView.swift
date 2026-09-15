@@ -35,6 +35,14 @@ struct RootView: View {
         let pool = WebViewPool()
     }
 
+    /// Generators warmed as the scene becomes active. A cold generator lands
+    /// its tap tens of milliseconds late, which reads as a glitch rather than
+    /// as feedback; these are the events most likely to be the first one felt.
+    private static let warmEvents: [HapticEvent] = [
+        .tabSelect, .tabOpen, .tabClose, .swipeCloseThreshold, .omniboxOpen, .urlCommit,
+        .sidebarSnap, .spaceSwitchTick,
+    ]
+
     private var palette: ZenPalette { state.palette(systemDark: systemScheme == .dark) }
     private var isPad: Bool { sizeClass == .regular }
 
@@ -61,6 +69,7 @@ struct RootView: View {
         // still override via `shouldBeDarkMode`.
         .preferredColorScheme(state.preferredColorScheme(systemDark: systemScheme == .dark))
         .onAppear {
+            Haptics.shared.prepare(Self.warmEvents)
             pool.pool.state = state
             // A restored session has icons for nothing it has not yet loaded;
             // fetch them so the sidebar is not a column of monograms.
@@ -86,14 +95,21 @@ struct RootView: View {
             hideChrome()
         }
         .onReceive(NotificationCenter.default.publisher(for: .zenPageScrollBegan)) { _ in
+            // Nothing may buzz during a scroll — see `Haptics.isScrolling`.
+            Haptics.shared.isScrolling = true
             revealChromeWhileScrolling()
         }
         .onReceive(NotificationCenter.default.publisher(for: .zenPageScrollEnded)) { _ in
+            Haptics.shared.isScrolling = false
             scheduleCompactHide()
         }
         .onChange(of: scenePhase) { _, phase in
             // Flush the session on the way out; a jetsam gives no warning.
             if phase != .active { state.saveNow() }
+            // A haptic fired from a background task is a phantom buzz in
+            // someone's pocket.
+            Haptics.shared.isForeground = phase == .active
+            if phase == .active { Haptics.shared.prepare(Self.warmEvents) }
         }
         .sheet(isPresented: $state.isHistorySheetPresented) {
             HistorySheet(state: state, history: state.history, bookmarks: state.bookmarks)
@@ -274,10 +290,14 @@ struct RootView: View {
                     .onTapGesture { revealChrome() }
                     .gesture(
                         DragGesture(minimumDistance: 8)
+                            .onChanged { _ in Haptics.shared.prepare(.grabberDrag) }
                             .onEnded { value in
                                 // Pull up to reveal; a downward flick is the
                                 // user reaching for the home gesture.
-                                if value.translation.height < -8 { revealChrome() }
+                                if value.translation.height < -8 {
+                                    Haptics.shared.fire(.grabberDrag)
+                                    revealChrome()
+                                }
                             }
                     )
                     .accessibilityLabel("Show toolbar")
@@ -293,6 +313,7 @@ struct RootView: View {
     private func revealChrome() {
         compactHideTask?.cancel()
         compactHideTask = nil
+        Haptics.shared.fire(.compactBarShow)
         withAnimation(
             .spring(response: ZenMetrics.compactAnimationDuration * 2, dampingFraction: 1)
         ) {
@@ -333,6 +354,7 @@ struct RootView: View {
         compactHideTask?.cancel()
         compactHideTask = nil
         guard state.compactRevealed else { return }
+        Haptics.shared.fire(.compactBarHide)
         withAnimation(.easeInOut(duration: ZenTokens.hiddenToolbarTransition)) {
             state.compactRevealed = false
         }
@@ -340,13 +362,16 @@ struct RootView: View {
 
     private var drawerEdgeSwipe: some Gesture {
         DragGesture(minimumDistance: 20)
+            .onChanged { _ in Haptics.shared.prepare(.sidebarSnap) }
             .onEnded { value in
                 guard abs(value.translation.width) > abs(value.translation.height) else { return }
                 if value.startLocation.x < 24 && value.translation.width > 40 {
+                    Haptics.shared.fire(.sidebarSnap)
                     withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) {
                         state.isSidebarVisible = true
                     }
                 } else if state.isSidebarVisible && value.translation.width < -40 {
+                    Haptics.shared.fire(.sidebarSnap)
                     withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) {
                         state.isSidebarVisible = false
                     }
@@ -398,11 +423,16 @@ struct RootView: View {
         .accessibilityHidden(true)
     }
 
+    /// Every shortcut here changes what is on screen, and a hardware keyboard
+    /// gives no other confirmation that the chord was caught.
     private func shortcutButton(
         _ key: KeyEquivalent, modifiers: EventModifiers, action: @escaping () -> Void
     ) -> some View {
-        Button("", action: action)
-            .keyboardShortcut(key, modifiers: modifiers)
+        Button("") {
+            Haptics.shared.fire(.shortcut)
+            action()
+        }
+        .keyboardShortcut(key, modifiers: modifiers)
     }
 }
 

@@ -35,6 +35,7 @@ struct GlanceView: View {
             }
         }
         .onAppear {
+            Haptics.shared.fire(.glanceOpen)
             // Spring with `bounce: 0`, as ZenGlanceManager uses.
             withAnimation(.spring(response: ZenMetrics.glanceAnimationDuration, dampingFraction: 1))
             {
@@ -115,6 +116,7 @@ struct GlanceView: View {
     private var dragToDismiss: some Gesture {
         DragGesture(minimumDistance: 16)
             .updating($dragY) { value, offset, _ in
+                Haptics.shared.prepare(.glanceClose)
                 // Downward only, with resistance, so the card cannot be flung
                 // off the top of the screen.
                 offset = value.translation.height > 0
@@ -127,6 +129,7 @@ struct GlanceView: View {
     }
 
     private func close() {
+        Haptics.shared.fire(.glanceClose)
         withAnimation(.easeOut(duration: ZenMetrics.glanceAnimationDuration * 0.7)) {
             appeared = false
         }
@@ -139,6 +142,7 @@ struct GlanceView: View {
 
     /// `fullyOpenGlance()` — the card graduates into a first-class tab.
     private func expand() {
+        Haptics.shared.fire(.glanceExpand)
         withAnimation(.spring(response: 0.3, dampingFraction: 0.9)) {
             state.expandGlance()
         }
@@ -150,6 +154,7 @@ struct GlanceView: View {
         let parentID = state.activeTabID
         state.expandGlance()
         guard let parentID, parentID != glanceID else { return }
+        Haptics.shared.fire(.splitEnter)
         withAnimation(.spring(response: 0.3, dampingFraction: 1)) {
             state.select(parentID)
             state.split(with: glanceID)

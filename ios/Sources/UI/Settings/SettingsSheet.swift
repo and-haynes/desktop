@@ -30,6 +30,27 @@ struct SettingsSheet: View {
                             + "where the theme is strongly tinted, as Zen does.")
                 }
 
+                Section {
+                    Picker("Haptics", selection: $state.settings.hapticLevel) {
+                        ForEach(HapticLevel.allCases) { level in
+                            Text(level.displayName).tag(level)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .accessibilityIdentifier("hapticsPicker")
+                    .onChange(of: state.settings.hapticLevel) { _, level in
+                        // Answer the choice in its own language: the tap you
+                        // just picked, played at once.
+                        Haptics.shared.level = level
+                        Haptics.shared.fire(.tabSelect)
+                    }
+                } header: {
+                    Text("Haptics")
+                } footer: {
+                    Text(state.settings.hapticLevel.detail)
+                }
+
                 Section("Search") {
                     Picker("Search engine", selection: $state.settings.searchEngine) {
                         ForEach(SearchEngine.allCases) { engine in

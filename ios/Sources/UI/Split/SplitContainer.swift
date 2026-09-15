@@ -94,7 +94,11 @@ struct SplitContainer<Pane: View>: View {
                         lineWidth: ZenMetrics.splitActiveOutline)
             }
             .contentShape(Rectangle())
-            .onTapGesture { state.select(id) }
+            .onTapGesture {
+                guard id != state.activeTabID else { return }
+                Haptics.shared.fire(.tabSelect)
+                state.select(id)
+            }
     }
 
     private var activeOutlineColor: Color {
@@ -124,11 +128,18 @@ struct SplitContainer<Pane: View>: View {
             .gesture(
                 DragGesture(minimumDistance: 1)
                     .updating($dragDelta) { value, delta, _ in
+                        Haptics.shared.prepare(.dividerSnap)
                         delta = horizontal ? value.translation.width : value.translation.height
                     }
                     .onEnded { value in
                         let moved = horizontal ? value.translation.width : value.translation.height
-                        state.splitFraction = clampedFraction(dragDelta: moved, total: total)
+                        let settled = clampedFraction(dragDelta: moved, total: total)
+                        // Tick only where the clamp actually caught it — the
+                        // 7% minimum is invisible until you hit it.
+                        if settled != state.splitFraction + Double(moved / max(total, 1)) {
+                            Haptics.shared.fire(.dividerSnap)
+                        }
+                        state.splitFraction = settled
                     }
             )
             .accessibilityLabel("Resize split")

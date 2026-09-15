@@ -46,6 +46,7 @@ struct OmniboxPill: View {
             }
 
             Button {
+                Haptics.shared.fire(.omniboxOpen)
                 // Selecting first makes the tapped pane the active one, so the
                 // suggestions and the commit both land where you looked.
                 if let tabID, tabID != state.activeTabID { state.select(tabID) }
@@ -72,6 +73,7 @@ struct OmniboxPill: View {
 
             if isSecondaryPane {
                 Button {
+                    Haptics.shared.fire(.splitExit)
                     withAnimation(.spring(response: 0.3, dampingFraction: 1)) {
                         state.splitSecondaryTabID = nil
                     }
@@ -117,6 +119,7 @@ struct OmniboxPill: View {
 
     private var sidebarButton: some View {
         Button {
+            Haptics.shared.fire(.sidebarSnap)
             withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
                 state.isSidebarVisible.toggle()
             }
@@ -133,6 +136,7 @@ struct OmniboxPill: View {
     private func bookmarkButton(_ tab: Tab) -> some View {
         let saved = state.bookmarks.isBookmarked(tab.url)
         return Button {
+            Haptics.shared.fire(saved ? .bookmarkRemove : .bookmarkAdd)
             state.bookmarks.toggle(
                 url: tab.url, title: tab.displayTitle, spaceID: state.activeSpaceID)
         } label: {
@@ -164,6 +168,7 @@ struct OmniboxPill: View {
             Divider()
 
             Button {
+                Haptics.shared.fire(state.isSplitActive ? .splitExit : .splitEnter)
                 withAnimation(.spring(response: 0.3, dampingFraction: 1)) { state.toggleSplit() }
             } label: {
                 Label(
@@ -172,6 +177,8 @@ struct OmniboxPill: View {
             }
 
             Button {
+                Haptics.shared.fire(
+                    state.settings.compactModeEnabled ? .compactBarShow : .compactBarHide)
                 state.settings.compactModeEnabled.toggle()
             } label: {
                 Label(
