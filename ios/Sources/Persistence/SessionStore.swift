@@ -39,6 +39,9 @@ struct ZenSettings: Codable, Equatable, Sendable {
     /// Which edge the vertical tab sidebar lives on. Zen desktop lets it move
     /// to the right; this mirrors that choice.
     var sidebarEdge: SidebarEdge = .leading
+    /// How much of the screen the page gets. Cycled from the overflow menu or
+    /// Cmd-Shift-F; persisted alongside compact mode.
+    var layout: BrowserLayout = .card
 
     init() {}
 
@@ -51,7 +54,7 @@ struct ZenSettings: Codable, Equatable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case searchEngine, compactModeEnabled, compactHidesSidebar, compactHidesToolbar
         case preferDesktopSite, sidebarPinnedOnPad, appearance, compactHideDelay, hapticLevel
-        case showStatusBar, sidebarEdge
+        case showStatusBar, sidebarEdge, layout
     }
 
     init(from decoder: Decoder) throws {
@@ -87,6 +90,7 @@ struct ZenSettings: Codable, Equatable, Sendable {
             try c.decodeIfPresent(Bool.self, forKey: .showStatusBar) ?? fallback.showStatusBar
         sidebarEdge =
             try c.decodeIfPresent(SidebarEdge.self, forKey: .sidebarEdge) ?? fallback.sidebarEdge
+        layout = try c.decodeIfPresent(BrowserLayout.self, forKey: .layout) ?? fallback.layout
     }
 }
 

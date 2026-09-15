@@ -11,9 +11,13 @@ struct ContentArea: View {
     @ObservedObject var state: BrowserState
     let space: Space
     let pool: WebViewPool
-    /// Scroll-view top inset for the page, so a site's own fixed header starts
-    /// below the Dynamic Island where the web view runs under it (#008A9).
+    /// Scroll-view insets for the page. Non-zero when the layout lets the page
+    /// run under the status bar or behind a floating bar — which is also what
+    /// keeps a site's own fixed header below the Dynamic Island (#008A9).
     var topContentInset: CGFloat = 0
+    var bottomContentInset: CGFloat = 0
+    /// Card layout rounds and clips the page; the other two do not.
+    var rounded: Bool = true
     @Environment(\.zenPalette) private var palette
 
     var body: some View {
@@ -30,7 +34,8 @@ struct ContentArea: View {
                 pane(tab.id)
                     .clipShape(
                         RoundedRectangle(
-                            cornerRadius: ZenMetrics.contentRadius, style: .continuous))
+                            cornerRadius: rounded ? ZenMetrics.contentRadius : 0,
+                            style: .continuous))
             } else {
                 NewTabPage(state: state, space: space)
             }
@@ -47,7 +52,8 @@ struct ContentArea: View {
                 } else {
                     WebView(
                         tab: tab, space: space, state: state, pool: pool,
-                        topContentInset: topContentInset
+                        topContentInset: topContentInset,
+                        bottomContentInset: bottomContentInset
                     )
                     .background(palette.mainBrowserBackground.color)
                     // Over the top rather than instead of: the web view stays

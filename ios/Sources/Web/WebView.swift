@@ -11,10 +11,11 @@ struct WebView: UIViewRepresentable {
     @ObservedObject var state: BrowserState
     let pool: WebViewPool
     /// Applied to the scroll view directly. `contentInsetAdjustmentBehavior`
-    /// stays `.never`, so this is the only thing moving the page — which is
-    /// what keeps scroll-to-top landing in the right place where the page runs
-    /// under the top safe area.
+    /// stays `.never`, so these are the only thing moving the page — which is
+    /// what keeps scroll-to-top landing in the right place when the layout lets
+    /// the page run under the status bar.
     var topContentInset: CGFloat = 0
+    var bottomContentInset: CGFloat = 0
 
     func makeCoordinator() -> Coordinator {
         Coordinator(state: state, pool: pool)
@@ -58,12 +59,15 @@ struct WebView: UIViewRepresentable {
     /// the page scrolled into the inset, so nudge the offset to match when we
     /// were already pinned there.
     private func applyInsets(to view: ZenWebView) {
-        let insets = UIEdgeInsets(top: topContentInset, left: 0, bottom: 0, right: 0)
+        let insets = UIEdgeInsets(
+            top: topContentInset, left: 0, bottom: bottomContentInset, right: 0)
         guard view.scrollView.contentInset != insets else { return }
         let wasAtTop = view.scrollView.contentOffset.y <= -view.scrollView.contentInset.top + 1
         view.scrollView.contentInset = insets
-        // Keep the scroll indicators out from under the island too.
+        // Keep the scroll indicators out from under the status bar and the bar.
         view.scrollView.verticalScrollIndicatorInsets = insets
+        // The strip the top inset opens up is painted in the page's own
+        // colour, not a black slab (#008A9).
         view.syncUnderPageBackground()
         if wasAtTop {
             view.scrollView.setContentOffset(CGPoint(x: 0, y: -insets.top), animated: false)

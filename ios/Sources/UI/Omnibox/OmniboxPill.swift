@@ -17,6 +17,8 @@ struct OmniboxPill: View {
     /// A secondary pane's bar is slimmer and drops the controls that belong to
     /// the window rather than the pane.
     var isSecondaryPane: Bool = false
+    /// Full-screen layout floats the bar over the page.
+    var isFloating: Bool = false
     @Environment(\.zenPalette) private var palette
     let onShare: () -> Void
 
@@ -97,7 +99,7 @@ struct OmniboxPill: View {
         }
         .padding(.horizontal, 6)
         .frame(height: isSecondaryPane ? ZenMetrics.paneBarHeight : ZenMetrics.omniboxPillHeight)
-        .zenSurface(palette, radius: ZenMetrics.rowRadius, elevated: true)
+        .modifier(PillBackground(palette: palette, isFloating: isFloating))
         .opacity(isActivePane ? 1 : 0.82)
         .simultaneousGesture(sidebarSwipe)
     }
@@ -129,6 +131,29 @@ struct OmniboxPill: View {
                     state.isSidebarVisible = action == .openSidebar
                 }
             }
+    }
+
+    /// Solid chrome when the bar sits in the layout; a bare outline when it
+    /// floats over the page.
+    private struct PillBackground: ViewModifier {
+        let palette: ZenPalette
+        let isFloating: Bool
+
+        func body(content: Content) -> some View {
+            if isFloating {
+                content
+                    .overlay {
+                        RoundedRectangle(cornerRadius: ZenMetrics.rowRadius, style: .continuous)
+                            .strokeBorder(palette.text.withAlpha(0.28).color, lineWidth: 0.5)
+                    }
+                    // The page behind can be any colour, so the glyphs get
+                    // their own shadow rather than relying on a backdrop.
+                    .shadow(color: .black.opacity(0.45), radius: 4, y: 1)
+                    .shadow(color: .black.opacity(0.25), radius: 12, y: 4)
+            } else {
+                content.zenSurface(palette, radius: ZenMetrics.rowRadius, elevated: true)
+            }
+        }
     }
 
     // MARK: Pieces
@@ -223,6 +248,16 @@ struct OmniboxPill: View {
                     systemImage: "rectangle.compress.vertical")
             }
 
+            // Shows where you are and moves you on — the cycle is short enough
+            // that a submenu of three would be more taps, not fewer.
+            Button {
+                NotificationCenter.default.post(name: .zenCycleLayout, object: nil)
+            } label: {
+                Label(
+                    "Layout: \(state.settings.layout.displayName)",
+                    systemImage: state.settings.layout.symbol)
+            }
+
             Divider()
 
             Button { state.isHistorySheetPresented = true } label: {
@@ -261,4 +296,6 @@ extension Notification.Name {
     /// overflow menu and the page's context menu; RootView observes it, for the
     /// same reason as `zenReloadActiveTab` — the web view lives in the pool.
     static let zenPopOutVideo = Notification.Name("zen.popOutVideo")
+    /// Advance the layout cycle. RootView owns the transition animation.
+    static let zenCycleLayout = Notification.Name("zen.cycleLayout")
 }

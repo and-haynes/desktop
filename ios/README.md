@@ -94,10 +94,17 @@ network and takes minutes, where the unit tests take under a second.
 | 4 | Search engine choice | Done | DuckDuckGo (default), Google, Bing, Startpage, Ecosia. Startpage has no public autocomplete endpoint and borrows DuckDuckGo's. |
 | 4 | Desktop/mobile user agent | Done | Global setting; applied per web view at creation. |
 | — | **Haptics** (#00897) | Done | One service, one semantic-event table, four levels (Off / Subtle / Normal / Rich, default Normal). Impacts, selection ticks and notifications for ~30 moments, plus Core Haptics patterns for three. Never during a scroll, never backgrounded, never twice for one action. Tested through a recording backend. |
+<<<<<<< HEAD
 | — | **Video and pop-out** (#008B0) | Done | Inline playback, element full screen, AirPlay and Picture in Picture are all enabled in one place (`WebEngine.applyMediaPolicy`), and a page decides for itself when to start playing — `mediaTypesRequiringUserActionForPlayback` was `.audio`, which reads as the polite setting and in fact breaks muted autoplay. `UIBackgroundModes: audio` plus an `AVAudioSession` in `.playback`/`.moviePlayback` keep media going when backgrounded or locked; the session is claimed on the first page that plays and released by the last, never at launch. **Pop out video** in the overflow and page context menus picks the page's most relevant `<video>` — playing first, then largest visible — and asks for PiP. Cross-origin `<iframe>` embeds are out of reach; YouTube's mobile site is same-origin and works. **The iOS Simulator has no Picture in Picture at all** (`document.pictureInPictureEnabled` is false), so the request is gated on `webkitSupportsPresentationMode` rather than on the method existing — otherwise it reports success for a call that silently does nothing — and the floating window itself can only be verified on hardware. |
 | — | **Hidden status bar** (#00899, #008A9) | Done | Off by default with a Settings toggle. It takes away the clock, the signal and the battery — and nothing else. The Dynamic Island is hardware, iOS still reports a top safe-area inset for it, and the content card still starts below that inset; the setting is not an input to the layout at all (`PageTopInsets`). |
 | 5 | **Compact mode** (#008AF) | Done | Keeps Zen's two independent toggles (hide sidebar / hide toolbar), persisted. Three bar states rather than two: the full bar falls to a **pill** — favicon and domain, nothing else — once the page has been still for the hide delay (3 s by default), and then to nothing. Scrolling brings back the pill and only the pill; a **tap** on the pill is the one thing that expands the full bar. Swiping up from either opens the tab drawer, alongside the existing swipe right. |
 | 5 | Reveal | Done | A drag-handle grabber above the home indicator (36×6pt pill, 44pt hit area): tap or pull up to reveal, tap the page or scroll to hide. Upstream reveals on *hover* within 10px of an edge; the touch translation of that sat on top of the iOS home gesture and lost, so it is an explicit target instead. |
+=======
+| — | **Hidden status bar** (#00899) | Done | Off by default with a Settings toggle. The page then runs to the very top edge; the Dynamic Island is hardware and sits over it. |
+| 5 | **Compact mode** | Done | Keeps Zen's two independent toggles (hide sidebar / hide toolbar), persisted. |
+| 5 | Reveal | Done | A drag-handle grabber above the home indicator (36×6pt pill, 44pt hit area): tap or pull up to reveal, tap the page or scroll to hide. Upstream reveals on *hover* within 10px of an edge; the touch translation of that sat on top of the iOS home gesture and lost, so it is an explicit target instead. Visible in full-screen layout too. |
+| — | **Layout cycle** | Done | Three states cycled from the overflow menu or ⇧⌘F, persisted: **card** (Zen's inset frame), **edge to edge** (page to the very top, bar in flow), **full screen** (page everywhere, bar floating with no backing material). The web view's scroll insets and scroll-to-top follow the state. |
+>>>>>>> 87c9061 (experimental: three-state browser layout cycle (#00887))
 | 6 | **Split view** — two panes | Done | Side by side when wide (iPad, landscape iPhone), stacked when tall. Draggable divider with the same 7%-of-parent minimum. Focused pane gets the 2px accent outline. |
 | 6 | 3–4 panes, grid/hsep layouts | **TODO** | Upstream's `MAX_TABS = 4` with a nested split tree. The model holds one secondary pane; extending it means replacing `splitSecondaryTabID` with a node tree. |
 | 7 | **Glance** | Done | Long-press a link → "Open in Glance", or from a tab row's context menu. Card over a dimmed page with close / expand-to-tab / split-out. |
@@ -111,7 +118,7 @@ network and takes minutes, where the unit tests take under a second.
 | 10 | **Colour tool** | Done | A real accent picker: a Canvas hue/saturation wheel with a separate brightness track, HSB and RGB sliders with live numeric readouts, and hex / RGB-triplet entry validated with specific errors. Recent colours and the space's own gradient stops are one-tap targets; the system `ColorPicker` is offered as a secondary route for the eyedropper. Every path writes the same `ZenColor`, so the zen-theme.css derivations are unchanged. |
 | 10 | **Appearance** | Done | Follow System / Light / Dark, matching Zen's `zen.view.window.scheme`. An explicit choice overrides a space's `shouldBeDarkMode()` contrast heuristic; Follow System lets it apply. |
 | 10 | Film grain | Partial | A generated noise tile at `.overlay` blend. Upstream ships `grain-bg.png` at `mix-blend-mode: hard-light`, which SwiftUI has no equivalent for. |
-| 11 | **Keyboard shortcuts** | Done | ⌘T, ⌘W, ⌘L, ⌃Tab / ⌃⇧Tab, ⇧⌘S, ⇧⌘E, plus ⌘F and ⌃⇧← / ⌃⇧→. Each fires a selection tick, because a hardware keyboard gives no other confirmation the chord was caught. |
+| 11 | **Keyboard shortcuts** | Done | ⌘T, ⌘W, ⌘L, ⌃Tab / ⌃⇧Tab, ⇧⌘S, ⇧⌘E, plus ⌘F, ⇧⌘F (layout) and ⌃⇧← / ⌃⇧→. Each fires a selection tick, because a hardware keyboard gives no other confirmation the chord was caught. |
 | 12 | **Share sheet** | Done | From the omnibox overflow menu. |
 | 12 | **Find in page** | Partial | Uses WKWebView's `find(_:configuration:)`. `WKFindResult` reports only found/not-found, so there is no "3 of 12" counter. |
 | 13 | **Firefox Sync** — Mozilla account | Done | OAuth + PKCE with scoped-keys delivery: an ephemeral P-256 key goes up as `keys_jwk`, the returned `keys_jwe` comes back down as the oldsync key. Mozilla's server accepts the request and serves the sign-in form; **no sign-in has been completed** — see *Sync: first run*. |
@@ -394,6 +401,7 @@ assertion there went through our own encryption *and* our own decryption.
 | Status bar always present | Hidden by default | In a browser the page is the app, and on a phone there is nowhere else for 60pt of clock to go. |
 | Sidebar reached from a toolbar button | …or by swiping the URL bar | The button is a 34pt target at the far left of a six-inch screen — the one place a thumb holding the phone cannot reach. |
 | New-tab row at the end of the tab list | A pinned full-width strip | The control you reach for most should not have to be scrolled to. |
+| Chrome always frames the content | A three-state layout cycle | A phone screen is small enough that the frame is a real cost; ⇧⌘F or the overflow menu cycles card → edge to edge → full screen. |
 | — | Address bar selects all on focus | SwiftUI's `TextField` cannot select its contents, so the address bar is a small `UITextField` wrapper. Without it, tapping the bar and typing *appends* to the current URL. |
 | urlbar inline at the top | Floating pill at the *bottom* on iPhone | A phone is held one-handed; the top of a modern iPhone is not thumb-reachable. |
 | Close shortcut default `switch` | Pinned/essential close = `reset-unload-switch` | Swiping a row away has to visibly do something. Essentials still cannot be destroyed, only demoted. |
@@ -534,7 +542,12 @@ prompt fails every connection afterwards with no visible cause.
 |---|---|
 | ![The accent colour picker](docs/screenshots/14-colour-picker.png) | ![Hex entry applied](docs/screenshots/15-colour-hex.png) |
 | Wheel, brightness track, HSB/RGB sliders, recents | Typed hex, validated and applied |
+### The layout cycle
 
+| | | |
+|---|---|---|
+| ![Card layout](docs/screenshots/07-layout-card.png) | ![Edge to edge layout](docs/screenshots/08-layout-edge.png) | ![Full screen layout](docs/screenshots/09-layout-full.png) |
+| **Card** — the page inset, gradient framing it | **Edge to edge** — page to the top, bar in flow | **Full screen** — bar floating, no backing material |
 
 ## Licence
 

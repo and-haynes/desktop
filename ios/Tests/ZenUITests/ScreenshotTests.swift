@@ -194,12 +194,31 @@ final class ScreenshotTests: XCTestCase {
         return true
     }
 
-    /// Compact mode: the bar is gone and only the grabber remains (#00887).
-    func testCaptureCompactGrabber() throws {
-        let suffix = UIDevice.current.userInterfaceIdiom == .pad ? "-ipad" : ""
+    /// The three-state layout cycle and the compact-mode grabber (#00887).
+    func testCaptureLayoutStates() throws {
+        let isPad = UIDevice.current.userInterfaceIdiom == .pad
+        let suffix = isPad ? "-ipad" : ""
         settle(4.0)
+
+        // Start from a known page rather than whatever the session restored.
         navigate(to: "zen-browser.app")
 
+        // a. card — the default, content inset with the gradient framing it.
+        capture("07-layout-card\(suffix)")
+
+        // b. edgeToEdge — content to the very top, bar still in the flow.
+        XCTAssertTrue(
+            tapMenuItem(matching: "label BEGINSWITH 'Layout:'"), "layout menu item missing")
+        capture("08-layout-edge\(suffix)")
+
+        // c. fullScreen — content everywhere, bar floating with no material.
+        XCTAssertTrue(tapMenuItem(matching: "label BEGINSWITH 'Layout:'"))
+        capture("09-layout-full\(suffix)")
+
+        // Back to card so the compact shot is not confounded by the layout.
+        XCTAssertTrue(tapMenuItem(matching: "label BEGINSWITH 'Layout:'"))
+
+        // Compact mode: the bar goes away and only the grabber remains.
         XCTAssertTrue(
             tapMenuItem(matching: "label CONTAINS[c] 'Compact Mode'"),
             "compact mode menu item missing")
@@ -208,8 +227,8 @@ final class ScreenshotTests: XCTestCase {
         settle(9.0)
         capture("10-compact-grabber\(suffix)")
 
-        // Prove the grabber reveals the bar, then leave compact mode so the
-        // session does not carry it into the next run.
+        // Prove the grabber actually reveals the bar, then leave compact mode
+        // so the session does not persist it into the next run.
         let grabber = app.otherElements["Show toolbar"].firstMatch
         let grabberButton = app.buttons["Show toolbar"].firstMatch
         if grabber.waitForExistence(timeout: 3) {
@@ -217,11 +236,14 @@ final class ScreenshotTests: XCTestCase {
         } else if grabberButton.waitForExistence(timeout: 3) {
             grabberButton.tap()
         } else {
+            // Fall back to the pill's own position just above the home indicator.
             app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.955)).tap()
         }
         settle(1.5)
         capture("10b-compact-revealed\(suffix)")
         _ = tapMenuItem(matching: "label CONTAINS[c] 'Compact Mode'")
+
+        try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-LAYOUT"))
     }
 
 

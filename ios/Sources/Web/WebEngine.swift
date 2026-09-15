@@ -148,7 +148,10 @@ final class WebViewPool {
         view.isOpaque = false
         view.backgroundColor = .clear
         view.scrollView.backgroundColor = .clear
+        // We drive the insets ourselves from the layout state; letting UIKit
+        // also adjust them would double-count the status bar.
         view.scrollView.contentInsetAdjustmentBehavior = .never
+        view.scrollView.scrollsToTop = true
         view.pendingScrollY = tab.scrollY
         views[tab.id] = view
         state?.markLoaded(tab.id, true)

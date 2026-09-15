@@ -141,6 +141,7 @@ struct SettingsSheet: View {
                     shortcut("Toggle split view", "⇧⌘S")
                     shortcut("Toggle sidebar", "⇧⌘E")
                     shortcut("Find in page", "⌘F")
+                    shortcut("Cycle layout", "⇧⌘F")
                     shortcut("Next / previous space", "⌃⇧→ / ⌃⇧←")
                 }
 
