@@ -89,6 +89,8 @@ that Zen has never had:
 | **#0089B** | Scheme prefill | Typing `10.`, `192.` or `172.` fills in `https://` as ordinary editable text. Narrowly scoped: whole field only, typed not pasted, and never again in the same edit once you delete it. |
 | **#0088F** | Named colours & code lookup | A searchable CSS/X11 + curated swatch library in the colour tool, plus a code search over a palette JSON you import yourself. No licensed colour system is bundled — see below. |
 | **#00890** | Sepia | A third palette base (paper `#F4ECD8` over ink `#5B4636`) run through zen-theme.css's own `color-mix` chain, plus an off-by-default page tint. |
+| **#00896** | Customisable bar | One persisted `BarLayout` describes the whole URL bar — where it sits, how big it is, what is inside the pill, which buttons it carries, what its gestures do and when it hides. Four presets, ones you save, and JSON import/export. |
+| **#0089C** | LAN scanner & Local | Settings scans the subnet this device is on, finds what is listening, reads page titles and certificate fingerprints, and keeps the ones you pick under aliases the address bar understands. |
 
 Everything else in this README is shared with `ios`.
 
@@ -184,6 +186,11 @@ cookies outright, scoped to third-party loads so first-party logins survive.
 | — | **Named colours** (#0088F) | Done | CSS/X11 plus a curated set, ranked exact → prefix → substring; a pasted hex flips it into a value lookup. |
 | — | **Code lookup** (#0088F) | Done | Searches a palette JSON you import through the Files picker. Nothing licensed is bundled. |
 | — | **Sepia** (#00890) | Done | A third `ZenSurfaceBase` — paper over ink — through the same `color-mix` chain, so the accent still drives every token. Optional off-by-default page tint, as an overlay rather than a root `filter:` so `position: fixed` keeps working. |
+| — | **Customisable bar** (#00896) | Done | Position (floating / bottom / top), height, corner radius, margins, offset, pill or full width; fill, custom colour, blur strength, border, shadow, URL text size, accent source, haptics; favicon, security badge, label style, progress style, find button; left / right / overflow slots filled by drag-and-drop from an action library, each with an optional long-press action; six assignable gestures; three auto-hide rules with landscape overrides; four presets plus your own; JSON import and export. |
+| — | **Bar progress** (#00896) | Done | `estimatedProgress`, `isLoading`, `canGoBack` and `canGoForward` observed off the web view rather than polled, so back / forward / reload-stop and the progress indicator are live per pane. |
+| — | **LAN scanner** (#0089C) | Done | Two-phase sweep of the device's own subnet (capped at /22), Bonjour and reverse DNS alongside, `<title>` and leaf-certificate capture on web ports. Progress, cancel, custom ports, opt-in 1–1024. |
+| — | **Local services** (#0089C) | Done | Imported services with editable aliases, notes and last-seen, grouped by host. A third segment beside History and Bookmarks, its own sheet from the bar, omnibox suggestions, and a bare alias that navigates. |
+| — | **Trust certificates** (#0089C) | Done | One button approves the certificates the imported HTTPS services are currently serving, and shows exactly what it approved. A host that later serves a different one still re-prompts. |
 | 12 | **Reader mode** | **TODO** | WebKit exposes no reader/readability API to third-party apps. Implementing it means injecting a Readability port and rendering the result ourselves. |
 
 ### Also not done
@@ -230,6 +237,8 @@ ios/
                            Engines/   — spaces, bookmarks, tabs, history,
                                         clients, and the shadow they diff against
                            SyncService — one sync, start to finish
+                           LANScanner / LANScanController — subnets, TCP
+                           probes, HTTP fingerprinting and the scan itself
     UI/                    Sidebar/, Omnibox/, Glance/, Split/, History/,
                            Settings/, plus NewTabPage and FindBar
   Tests/ZenTests/          TESTCOUNT unit tests
@@ -460,6 +469,8 @@ assertion there went through our own encryption *and* our own decryption.
 | Two schemes, light and dark | A third: Sepia | Paper and ink instead of grey, derived by the same chain rather than washed over the light palette. |
 | The urlbar always has a surface | The floating bar's backing is a choice | No backing at all is the best look on the pages it works on, and invisible on the rest. |
 | Firefox's URL fixup | Two narrow rules of our own | A bare word offers both readings; a private-network octet gains a scheme. Both are about a homelab, which is what this browser is mostly pointed at. |
+| The toolbar is the toolbar | The bar is a document | Position, size, shape, fill, contents, buttons and gestures are one `BarLayout` you can edit, save, export and hand to another install. A phone has one bar and you look at it all day. |
+| Bookmarks and history | …and Local | On a home network the list you use most is neither: it is the boxes in the house, which no search engine can help you find. So the browser finds them itself. |
 | Chrome always frames the content | A three-state layout cycle | A phone screen is small enough that the frame is a real cost; ⇧⌘F or the overflow menu cycles card → edge to edge → full screen. |
 | — | Address bar selects all on focus | SwiftUI's `TextField` cannot select its contents, so the address bar is a small `UITextField` wrapper. Without it, tapping the bar and typing *appends* to the current URL. |
 | urlbar inline at the top | Floating pill at the *bottom* on iPhone | A phone is held one-handed; the top of a modern iPhone is not thumb-reachable. |
@@ -667,6 +678,124 @@ The certificate shot is from a real self-signed HTTPS server on `localhost`
 `openssl x509 -fingerprint -sha256` and matched. It is captured out of band —
 see the note in `Tests/ZenUITests/ScreenshotTests.swift` for why XCUITest
 cannot drive an app that is deliberately blocked on a challenge handler.
+### Customize the bar (#00896)
+
+![The Customize bar editor, with the live preview at the top](docs/screenshots/21-customize-editor.png)
+
+Quiche Browser on iOS is the reference, and the thing worth copying is not the
+list of options — it is that **the preview is the real control**. It sits at the
+top of the editor, it is the actual `OmniboxPill` drawn but not wired up, and
+every section below changes what you are already looking at. A hand-drawn mock
+would agree with the bar right up until it stopped.
+
+Everything is one persisted, versioned `BarLayout`:
+
+| | |
+|---|---|
+| **Position & shape** | Floating (default), bottom docked or top docked; height as S/M/L or a slider; corner radius, side margin, offset from the edge; pill or full width. |
+| **Fill & look** | The Liquid Glass / Matte / Transparent choice, or a custom colour with its own opacity; blur strength; border and shadow on or off; URL text size; the accent from the space or fixed; haptics from the bar. |
+| **Pill contents** | Favicon, security badge, domain / full URL / page title, progress as a line under the bar or a fill across it, and a find button. |
+| **Buttons** | Left, right and overflow slots, filled by dragging from a library of 22 actions. Four per side, twelve in the overflow. Each button takes an optional second action on a long press. |
+| **Gestures** | Swipe left, right, up and down, long press and double tap, each assignable from the same library. |
+| **Auto-hide** | Never, on scroll, or follow compact mode — with separate landscape overrides for position and rule. |
+
+Four presets ship — **Zen** (the bar as it has always been), **Safari-like**,
+**Quiche-like** and **Minimal** — and "Save current as preset" keeps your own.
+Export writes plain JSON; import reads it back.
+
+| | |
+|---|---|
+| ![The bar docked at the top of the screen](docs/screenshots/22-bar-top-docked.png) | ![The Quiche-like preset: a tall floating pill with a favicon and the full URL](docs/screenshots/23-bar-quiche-preset.png) |
+| **Top docked** — the page gives up the top edge, and the reveal grabber moves with it | **Quiche-like** — tall, round, favicon, full URL, reload in the bar, progress filling the surface |
+| ![The bar put away by a downward swipe, only the grabber left](docs/screenshots/21c-bar-hidden.png) | ![Split view, both panes carrying the same bar layout](docs/screenshots/21d-split-pane-bars.png) |
+| **Hidden** — swipe down puts the bar away; the grabber brings it back | **Split view** — each pane's bar follows the same layout |
+
+Three decisions worth stating:
+
+- **Decoding never throws.** Every field goes through a `lenient` accessor, so a
+  session file written by an older build picks up defaults for what it predates,
+  and one written by a *newer* build keeps everything this build understands
+  rather than losing the lot. An unknown `position`, or a slot action that does
+  not exist here yet, is dropped on its own. `ZenSettings` learned half of this
+  lesson when a missing key would have wiped everyone's tabs; this is the rest of
+  it.
+- **The undo stack replaces Cancel.** A sheet you have to commit or discard makes
+  experimenting expensive, and the whole point of a live preview is that
+  experimenting should be cheap. Slider drags coalesce into one entry, or sixty
+  frames of a drag would fill the stack with near-identical layouts.
+- **Erase is not customisable.** In Focus mode the erase button is always on the
+  bar, because that is the promise the mode makes (#00888). Everything else can
+  be taken away.
+
+**No reader affordance.** The brief asked for one; WebKit exposes no reader or
+readability API to third-party apps, so a Reader button would be a control that
+does nothing. The find affordance is real and is in the contents section; reader
+stays in the "not done" list below until there is something to put behind it.
+
+### Local network (#0089C)
+
+![A scan in progress, with the network, the port options and the progress bar](docs/screenshots/25-lan-scan.png)
+
+A homelab is a browser's most-visited set of sites, and the one set no search
+engine can help with: the addresses are private, the names only resolve inside
+the house, and half of them are a port number you have to remember. So
+**Settings › Local network** finds them.
+
+**The scan is two-phase, and that is the whole design.** The naive version — a
+/24 against 23 ports — is 5,800 connects, and a *dead* address never answers, so
+every one of them costs the full timeout. At 64 in flight that is a minute and a
+half. But "refused" and "silent" are different answers: a host that is there
+sends a RST immediately even on a port it is not serving. So one pass over the
+subnet on ports 80, 443 and 22 finds the hosts, and only those get the full port
+list — twenty hosts instead of two hundred and fifty.
+
+The cost of that trade is stated in the UI rather than hidden: **a device that
+silently drops everything will not show up.** Bonjour runs alongside and can add
+hosts the first pass missed.
+
+- **Ports.** The homelab's actual shape rather than nmap's top-1000: 22, 80, 443,
+  445, 631, 1883, 2222, 3000, 3389, 5000, 5432, 5900, 8000, 8006, 8080, 8096,
+  8123, 8384, 8443, 9000, 9090, 9443, 32400 — the hypervisor, the media servers,
+  the automation hub, the metrics stack, the admin panels. Plus whatever you
+  type, plus an opt-in 1–1024 sweep with a warning attached, because a full
+  low-port sweep looks exactly like a port scan to anything watching.
+- **Names.** `NWBrowser` over the twelve Bonjour types in the Info.plist, each
+  resolved to an address by one throwaway connection, and reverse DNS for the
+  rest.
+- **Titles and certificates.** One `GET /` on each web port, 3s timeout. The
+  session accepts a self-signed certificate **for that request only** — nothing
+  is written to the trust store — and captures the leaf's SHA-256, subject and
+  expiry on the way past. That fingerprint is the number you compare against the
+  box itself.
+
+> iOS has never exposed `SecCertificateCopyValues`, so the expiry is read out of
+> the DER by hand — a walk down exactly the path `notAfter` sits on, returning
+> nil the moment anything is not the shape expected. It is tested against a
+> certificate OpenSSL actually emitted, not a fixture built to match the parser.
+
+| | |
+|---|---|
+| ![The imported services, grouped by host](docs/screenshots/26-local-services.png) | ![Local as a third segment beside History and Bookmarks](docs/screenshots/27-local-section.png) |
+| What you kept: alias, address, last seen | Local sits beside History and Bookmarks, because it is the same kind of thing |
+
+Import what you want; each one gets an alias seeded from the page title, the
+Bonjour name or the service kind, editable inline. Then **the alias is something
+you can type**: `proxmox` on its own in the address bar goes straight there.
+Exact, whole-string and case-insensitive only — anything looser and typing `mail`
+would stop searching for mail, which is the mistake the single-word rule already
+refuses to make in the other direction. Partial matches show up as suggestions
+instead.
+
+Re-scanning updates last-seen and **flags a changed certificate rather than
+quietly accepting it** — a different certificate on a host you trusted is the one
+finding worth interrupting for, which is the same line #00889 draws from the
+other direction.
+
+**Trust certificates** is its own button, never a side effect of importing. It
+approves what the imported HTTPS services are currently serving, and then shows
+you exactly what it approved — host, subject and fingerprint. A button that
+silently approves things is not a button anybody should press.
+
 ### The layout cycle
 
 | | | |

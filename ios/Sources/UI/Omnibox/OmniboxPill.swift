@@ -39,6 +39,18 @@ struct OmniboxPill: View {
 
     var layout: BarLayout { layoutOverride ?? state.settings.barLayout }
 
+    /// Double-tap bookkeeping for the address area — see `addressTapped()`.
+    @State private var lastAddressTap = Date.distantPast
+    @State private var pendingAddressTap: Task<Void, Never>?
+    /// When the bar's own swipe last passed its minimum distance.
+    ///
+    /// `simultaneousGesture` *composes* rather than arbitrates: the swipe and
+    /// the address button both recognise the same touch, so swiping down to
+    /// hide the bar also opened the omnibox over the top of it. The swipe sets
+    /// this the moment it passes 12pt — which is the definition of "this was
+    /// not a tap" — and the button checks it.
+    @State private var lastBarDrag = Date.distantPast
+
     private var tab: Tab? {
         if let tabID { return state.tab(id: tabID) }
         return state.activeTab
@@ -92,7 +104,7 @@ struct OmniboxPill: View {
         .modifier(
             BarGestures(
                 state: state, layout: layout, context: context, enabled: !isPreview,
-                overflow: { AnyView(overflowItems) }))
+                lastDrag: $lastBarDrag, overflow: { AnyView(overflowItems) }))
     }
 
     // MARK: Slots
@@ -253,19 +265,58 @@ struct OmniboxPill: View {
         .frame(maxWidth: .infinity, minHeight: 36)
         .contentShape(Rectangle())
 
-        if let doubleTap = layout.gestures[.doubleTap], doubleTap != .none, !isPreview {
-            // Declared before the single tap so SwiftUI resolves the two-tap
-            // case first; a plain Button would fire twice instead.
-            content
-                .onTapGesture(count: 2) { run(doubleTap) }
-                .onTapGesture { openOmnibox() }
-                .accessibilityAddTraits(.isButton)
-                .accessibilityLabel("Address and search")
-        } else {
-            Button { openOmnibox() } label: { content }
-                .buttonStyle(ZenPressStyle(pressedScale: 0.99))
-                .disabled(isPreview)
-                .accessibilityLabel("Address and search")
+        // Always a Button, even with a double tap assigned.
+        //
+        // The obvious alternative — `.onTapGesture(count: 2)` then
+        // `.onTapGesture` — was wrong in a way only the simulator showed: a
+        // *swipe* on the bar fired the single tap as well as the swipe, so
+        // "swipe down to hide the bar" hid the bar and opened the omnibox over
+        // the top of it. A `Button` cancels its tap the moment the finger
+        // travels, which is exactly the arbitration needed here; the second tap
+        // is counted by hand below instead.
+        //
+        // A `Button` already publishes as a single accessibility element, so no
+        // `accessibilityElement(children:)` is needed — and adding one stops it
+        // publishing as a button at all, which is how the duplicate-element
+        // problem got traded for an invisible one.
+        Button { addressTapped() } label: { content }
+            .buttonStyle(ZenPressStyle(pressedScale: 0.99))
+            .disabled(isPreview)
+            .accessibilityLabel("Address and search")
+            .accessibilityIdentifier("addressBar")
+    }
+
+    /// How long a second tap has to arrive to count as a double tap. The same
+    /// window a system double tap uses, and the same delay `.onTapGesture(count:
+    /// 2)` would have imposed — except that here it only applies when a double
+    /// tap is actually assigned, so setting it to Nothing gets the instant
+    /// omnibox back.
+    private static let doubleTapWindow: TimeInterval = 0.26
+
+    /// How long after a recognised swipe a tap is ignored. Long enough to cover
+    /// the touch-up that ends the swipe, short enough that the next deliberate
+    /// tap is never eaten.
+    private static let swipeSuppression: TimeInterval = 0.4
+
+    private func addressTapped() {
+        // The touch that just ended was a swipe; the bar has already acted on
+        // it. See `lastBarDrag`.
+        guard Date().timeIntervalSince(lastBarDrag) > Self.swipeSuppression else { return }
+        guard let doubleTap = layout.gestures[.doubleTap], doubleTap != .none, !isPreview else {
+            openOmnibox()
+            return
+        }
+        pendingAddressTap?.cancel()
+        if Date().timeIntervalSince(lastAddressTap) < Self.doubleTapWindow {
+            lastAddressTap = .distantPast
+            run(doubleTap)
+            return
+        }
+        lastAddressTap = Date()
+        pendingAddressTap = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(Self.doubleTapWindow))
+            guard !Task.isCancelled else { return }
+            openOmnibox()
         }
     }
 
@@ -452,6 +503,9 @@ private struct BarGestures<Menu: View>: ViewModifier {
     let layout: BarLayout
     let context: BarActionContext
     let enabled: Bool
+    /// Stamped when the drag passes its minimum distance, so the address
+    /// button can tell a swipe from a tap.
+    @Binding var lastDrag: Date
     let overflow: () -> Menu
 
     func body(content: Content) -> some View {
@@ -480,6 +534,9 @@ private struct BarGestures<Menu: View>: ViewModifier {
     private var swipe: some Gesture {
         DragGesture(minimumDistance: 12)
             .onChanged { _ in
+                // Only reached once the touch has travelled 12pt, which is
+                // exactly the "this is not a tap" signal the button needs.
+                lastDrag = Date()
                 if layout.haptics { Haptics.shared.prepare(.sidebarSnap) }
             }
             .onEnded { value in

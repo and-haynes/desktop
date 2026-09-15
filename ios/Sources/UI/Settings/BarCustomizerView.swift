@@ -203,11 +203,19 @@ struct BarCustomizerView: View {
             VStack(spacing: 2) {
                 Text(name)
                     .font(.system(size: 13, weight: .semibold))
+                    .lineLimit(1)
                 Text(detail)
                     .font(.system(size: 10))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
+                    // The detail lines are sentences; without a cap the chip
+                    // grows to the width of the longest one and the row stops
+                    // showing more than two presets at a time.
+                    .frame(maxWidth: 150)
             }
+            // A Form row will happily squeeze a horizontal ScrollView's content
+            // until the labels truncate; fixedSize is what stops it.
+            .fixedSize(horizontal: true, vertical: false)
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
             .frame(minWidth: 96)
@@ -250,7 +258,7 @@ struct BarCustomizerView: View {
             .accessibilityIdentifier("barPositionPicker")
 
             HStack {
-                Text("Height")
+                Text("Size")
                 Spacer()
                 ForEach(BarHeightStep.allCases) { step in
                     Button(step.displayName) {
@@ -262,7 +270,9 @@ struct BarCustomizerView: View {
                     .tint(current.heightStep == step ? palette.accent.color : .secondary)
                 }
             }
-            slider("Height", value: bind(\.height), range: BarLayout.minHeight...BarLayout.maxHeight, unit: "pt")
+            slider(
+                "Height", value: bind(\.height),
+                range: BarLayout.minHeight...BarLayout.maxHeight, unit: "pt")
             slider(
                 "Corner radius", value: bind(\.cornerRadius),
                 range: 0...BarLayout.maxCornerRadius, unit: "pt")

@@ -665,14 +665,16 @@ struct BarPreset: Identifiable, Sendable {
                 showsFavicon: true, showsSecurityBadge: true, label: .fullURL,
                 progress: .fill, showsFindButton: true)
             layout.leftSlots = [BarSlotItem(.sidebar, longPress: .spaceSwitcher)]
+            // Three glyphs plus a favicon, a badge and a find button is as much
+            // as fits beside a *full* URL before the URL stops being readable —
+            // so the new-tab button lives in the overflow here.
             layout.rightSlots = [
                 BarSlotItem(.reloadStop, longPress: .desktopSite),
-                BarSlotItem(.newTab, longPress: .closeTab),
                 BarSlotItem(.overflowMenu),
             ]
             layout.overflowSlots = [
-                BarSlotItem(.share), BarSlotItem(.bookmark), BarSlotItem(.copyURL),
-                BarSlotItem(.findInPage), BarSlotItem(.splitView), BarSlotItem(.glance),
+                BarSlotItem(.newTab), BarSlotItem(.share), BarSlotItem(.bookmark),
+                BarSlotItem(.copyURL), BarSlotItem(.splitView), BarSlotItem(.glance),
                 BarSlotItem(.layoutCycle), BarSlotItem(.compactToggle), BarSlotItem(.focusMode),
                 BarSlotItem(.history), BarSlotItem(.localServices), BarSlotItem(.settings),
             ]

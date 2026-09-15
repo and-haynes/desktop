@@ -12,7 +12,7 @@ import XCTest
 
 final class ScreenshotTests: XCTestCase {
 
-    private var app: XCUIApplication!
+    var app: XCUIApplication!
 
     override func setUpWithError() throws {
         // Keep going after a soft failure: a state we cannot reach should not
@@ -52,11 +52,11 @@ final class ScreenshotTests: XCTestCase {
 
     // MARK: Capture
 
-    private var outputDirectory: URL {
+    var outputDirectory: URL {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
     }
 
-    private func capture(_ name: String) {
+    func capture(_ name: String) {
         let screenshot = XCUIScreen.main.screenshot()
         let url = outputDirectory.appendingPathComponent("\(name).png")
         try? screenshot.pngRepresentation.write(to: url)
@@ -69,7 +69,7 @@ final class ScreenshotTests: XCTestCase {
 
     /// Pages need a moment to paint; there is no "page loaded" signal to wait on
     /// from outside the app.
-    private func settle(_ seconds: TimeInterval = 2.5) {
+    func settle(_ seconds: TimeInterval = 2.5) {
         Thread.sleep(forTimeInterval: seconds)
     }
 
@@ -129,7 +129,7 @@ final class ScreenshotTests: XCTestCase {
         return nil
     }
 
-    private func navigate(to text: String) {
+    func navigate(to text: String) {
         guard let field = openOmnibox() else { return }
         field.typeText(text + "\n")
         settle(4.0)
@@ -170,14 +170,14 @@ final class ScreenshotTests: XCTestCase {
 
     // MARK: Menu helpers
 
-    private var moreButton: XCUIElement {
+    var moreButton: XCUIElement {
         let identified = app.buttons["moreMenu"]
         return identified.exists ? identified : app.buttons["More"]
     }
 
     /// Open the overflow menu and tap the first item whose label matches.
     @discardableResult
-    private func tapMenuItem(matching predicate: String) -> Bool {
+    func tapMenuItem(matching predicate: String) -> Bool {
         revealChrome()
         guard moreButton.waitForExistence(timeout: 8) else { return false }
         moreButton.tap()
@@ -562,7 +562,7 @@ final class ScreenshotTests: XCTestCase {
         return flipped
     }
 
-    private func openSettings() -> Bool {
+    func openSettings() -> Bool {
         guard tapMenuItem(matching: "label CONTAINS[c] 'Settings'") else { return false }
         settle(1.5)
         return true
@@ -570,7 +570,7 @@ final class ScreenshotTests: XCTestCase {
 
     /// Done, or a pull-down if the toolbar button is not reachable — a sheet
     /// left up swallows every step after it.
-    private func dismissSheet() {
+    func dismissSheet() {
         let done = app.buttons["Done"].firstMatch
         if done.waitForExistence(timeout: 4), done.isHittable {
             done.tap()
@@ -951,7 +951,7 @@ final class ScreenshotTests: XCTestCase {
         goTo.tap()
         settle(4.0)
         XCTAssertTrue(
-            app.buttons["Address and search"].waitForExistence(timeout: 8),
+            addressBar.waitForExistence(timeout: 8),
             "the omnibox should have closed onto the tab")
         try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-SINGLEWORD"))
     }
@@ -1281,5 +1281,270 @@ final class ScreenshotTests: XCTestCase {
         // Leave a breadcrumb so the extraction script can tell a completed run
         // from a crashed one.
         try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE"))
+    }
+}
+
+// MARK: - Customize bar (#00896) and Local network (#0089C)
+
+extension ScreenshotTests {
+
+    /// Reach a Settings row by its accessibility identifier, scrolling for it.
+    /// Settings is long enough now that nothing below Haptics is on screen.
+    private func openSettingsRow(_ identifier: String) -> Bool {
+        guard openSettings() else { return false }
+        let row = app.buttons[identifier].firstMatch
+        let cell = app.cells[identifier].firstMatch
+        for _ in 0..<8 {
+            if row.exists && row.isHittable {
+                row.tap()
+                settle(1.6)
+                return true
+            }
+            if cell.exists && cell.isHittable {
+                cell.tap()
+                settle(1.6)
+                return true
+            }
+            app.swipeUp()
+            settle(0.5)
+        }
+        dismissSheet()
+        return false
+    }
+
+    /// The bar customiser: the live preview, the preset row, and the slot
+    /// editor with its library.
+    func testCaptureBarCustomizer() throws {
+        let suffix = UIDevice.current.userInterfaceIdiom == .pad ? "-ipad" : ""
+        settle(4.0)
+        navigate(to: "zen-browser.app")
+
+        XCTAssertTrue(openSettingsRow("customizeBarRow"), "Customize bar row missing")
+        // The preview is a plain container, so which XCUIElementType it
+        // publishes as depends on what is inside it; match on the identifier
+        // rather than guessing the type.
+        let preview = app.descendants(matching: .any)["barPreview"].firstMatch
+        XCTAssertTrue(
+            preview.waitForExistence(timeout: 10), "the editor must open on its live preview")
+        capture("21-customize-editor\(suffix)")
+
+        // The preview must actually follow a change. Top is the most visible
+        // one there is: the bar moves to the other end of the screen.
+        let position = app.segmentedControls["barPositionPicker"].firstMatch
+        XCTAssertTrue(position.waitForExistence(timeout: 6), "position picker missing")
+        position.buttons["Top"].tap()
+        settle(1.5)
+        capture("21b-customize-top\(suffix)")
+
+        // …and the real bar behind the sheet followed it too.
+        dismissSheet()
+        settle(2.0)
+        capture("22-bar-top-docked\(suffix)")
+
+        // Put it back through the preset row, which is the other half of the
+        // contract: a preset is a whole layout, not a set of tweaks.
+        XCTAssertTrue(openSettingsRow("customizeBarRow"))
+        let quiche = app.buttons["barPreset-Quiche-like"].firstMatch
+        XCTAssertTrue(quiche.waitForExistence(timeout: 8), "Quiche-like preset missing")
+        quiche.tap()
+        settle(1.5)
+        dismissSheet()
+        settle(2.5)
+        capture("23-bar-quiche-preset\(suffix)")
+
+        // Back to Zen so the next test starts from the documented default.
+        XCTAssertTrue(openSettingsRow("customizeBarRow"))
+        let zen = app.buttons["barPreset-Zen"].firstMatch
+        if zen.waitForExistence(timeout: 6) { zen.tap() }
+        settle(1.0)
+        dismissSheet()
+        try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-BAR"))
+    }
+
+    /// A real scan of the network the simulator's host is on. Slow by nature —
+    /// see the two-phase note in LANScanner — so the waits are generous.
+    func testCaptureLocalNetworkScan() throws {
+        let suffix = UIDevice.current.userInterfaceIdiom == .pad ? "-ipad" : ""
+        settle(4.0)
+
+        XCTAssertTrue(openSettingsRow("localNetworkRow"), "Local network row missing")
+        let scan = app.buttons["scanButton"].firstMatch
+        XCTAssertTrue(scan.waitForExistence(timeout: 8), "scan button missing")
+        scan.tap()
+        settle(4.0)
+        capture("25-lan-scan\(suffix)")
+
+        // Wait for it to finish: the button coming back is the signal.
+        let finished = NSPredicate(format: "exists == true")
+        expectation(for: finished, evaluatedWith: scan, handler: nil)
+        waitForExpectations(timeout: 180)
+        settle(2.0)
+        capture("25b-lan-scan-results\(suffix)")
+
+        // Keep whatever it found.
+        let selectAll = app.buttons["Select all"].firstMatch
+        if selectAll.waitForExistence(timeout: 5) {
+            selectAll.tap()
+            settle(1.0)
+        }
+        let importButton = app.buttons["importSelectedButton"].firstMatch
+        for _ in 0..<8 {
+            if importButton.exists && importButton.isHittable { break }
+            app.swipeUp()
+            settle(0.5)
+        }
+        if importButton.waitForExistence(timeout: 5) {
+            importButton.tap()
+            settle(2.0)
+        }
+
+        // Trust what it can, and show what it trusted.
+        let trust = app.buttons["trustCertificatesButton"].firstMatch
+        for _ in 0..<8 {
+            if trust.exists && trust.isHittable { break }
+            app.swipeUp()
+            settle(0.5)
+        }
+        if trust.exists && trust.isHittable && trust.isEnabled {
+            trust.tap()
+            settle(2.0)
+            capture("26b-trust-report\(suffix)")
+            let done = app.buttons["Done"].firstMatch
+            if done.exists { done.tap() }
+            settle(1.0)
+        }
+
+        // The kept list.
+        let services = app.buttons["localServicesRow"].firstMatch
+        let servicesCell = app.cells["localServicesRow"].firstMatch
+        for _ in 0..<8 {
+            if services.isHittable || servicesCell.isHittable { break }
+            app.swipeUp()
+            settle(0.5)
+        }
+        if services.isHittable {
+            services.tap()
+        } else if servicesCell.isHittable {
+            servicesCell.tap()
+        }
+        settle(2.0)
+        capture("26-local-services\(suffix)")
+        dismissSheet()
+        settle(1.5)
+
+        try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-LANSCAN"))
+    }
+
+    /// Local as a section beside History and Bookmarks, reached from the
+    /// overflow menu — which is where the same list is surfaced in the chrome.
+    func testCaptureLocalSection() throws {
+        let suffix = UIDevice.current.userInterfaceIdiom == .pad ? "-ipad" : ""
+        settle(4.0)
+        XCTAssertTrue(
+            tapMenuItem(matching: "label CONTAINS[c] 'History'"), "History menu item missing")
+        settle(1.5)
+        let picker = app.segmentedControls["historySectionPicker"].firstMatch
+        XCTAssertTrue(picker.waitForExistence(timeout: 8), "the section picker must exist")
+        XCTAssertTrue(picker.buttons["Local"].exists, "Local must sit beside History and Bookmarks")
+        picker.buttons["Local"].tap()
+        settle(1.5)
+        capture("27-local-section\(suffix)")
+        dismissSheet()
+        try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-LOCALSECTION"))
+    }
+}
+
+// MARK: - Behaviour the screenshots cannot show
+
+extension ScreenshotTests {
+
+    /// A bare alias in the address bar navigates instead of searching
+    /// (#0089C). Depends on a scan having been imported — skips rather than
+    /// fails on a fresh container, since it is a verification, not a gate.
+    func testALocalAliasNavigatesFromTheOmnibox() throws {
+        settle(4.0)
+        XCTAssertTrue(tapMenuItem(matching: "label CONTAINS[c] 'History'"))
+        settle(1.2)
+        let picker = app.segmentedControls["historySectionPicker"].firstMatch
+        try XCTSkipUnless(picker.waitForExistence(timeout: 8), "no history sheet")
+        picker.buttons["Local"].tap()
+        settle(1.2)
+        let firstService = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH 'localService-'")).firstMatch
+        try XCTSkipUnless(
+            firstService.waitForExistence(timeout: 5),
+            "nothing imported — run testCaptureLocalNetworkScan first")
+        let alias = String(firstService.identifier.dropFirst("localService-".count))
+        dismissSheet()
+        settle(1.2)
+
+        guard let field = openOmnibox() else { return XCTFail("omnibox missing") }
+        field.typeText(alias)
+        settle(2.0)
+        // The top row must be the service, not a web search for its name.
+        let top = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS[c] 'Local ·'")).firstMatch
+        XCTAssertTrue(
+            top.waitForExistence(timeout: 6),
+            "an exact alias must offer the service, not a search")
+        field.typeText("\n")
+        settle(4.0)
+        XCTAssertTrue(addressBar.waitForExistence(timeout: 8), "the omnibox should have closed")
+        try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-ALIAS"))
+    }
+
+    /// The bar's own gestures and the hide/reveal cycle (#00896): swipe up for
+    /// the tabs, swipe down to put the bar away, and the grabber to bring it
+    /// back.
+    func testBarGesturesHideAndReveal() throws {
+        settle(4.0)
+        navigate(to: "example.com")
+
+        let bar = addressBar
+        XCTAssertTrue(bar.waitForExistence(timeout: 10), "no bar")
+
+        // Swipe up on the bar opens the tab drawer.
+        bar.swipeUp()
+        settle(1.5)
+        let newTab = app.buttons["newTabStrip"].firstMatch
+        XCTAssertTrue(newTab.waitForExistence(timeout: 6), "swipe up must reach the tab list")
+        // Close it again from the scrim.
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: 0.45)).tap()
+        settle(1.5)
+
+        // Swipe down puts the bar away, and the grabber brings it back.
+        addressBar.swipeDown()
+        settle(1.5)
+        XCTAssertFalse(addressBar.exists, "swipe down must hide the bar")
+        capture("21c-bar-hidden")
+
+        let grabber = app.otherElements["Show toolbar"].firstMatch
+        let grabberButton = app.buttons["Show toolbar"].firstMatch
+        if grabber.waitForExistence(timeout: 4) {
+            grabber.tap()
+        } else if grabberButton.waitForExistence(timeout: 4) {
+            grabberButton.tap()
+        } else {
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.955)).tap()
+        }
+        settle(1.5)
+        XCTAssertTrue(
+            addressBar.waitForExistence(timeout: 6), "the grabber must bring the bar back")
+        try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-GESTURES"))
+    }
+
+    /// The per-pane bars in split view follow the same layout (#00896).
+    func testSplitPaneBarsFollowTheLayout() throws {
+        settle(4.0)
+        navigate(to: "example.com")
+        XCTAssertTrue(tapMenuItem(matching: "label CONTAINS[c] 'Split View'"), "no split item")
+        settle(3.0)
+        XCTAssertTrue(
+            app.buttons["Close split pane"].waitForExistence(timeout: 8),
+            "the secondary pane must get its own bar")
+        capture("21d-split-pane-bars")
+        _ = tapMenuItem(matching: "label CONTAINS[c] 'Exit Split View'")
+        settle(2.0)
+        try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-SPLITBARS"))
     }
 }

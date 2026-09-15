@@ -115,35 +115,51 @@ struct IPv4Subnet: Equatable, Sendable {
 // MARK: - The Wi-Fi interface
 
 enum NetworkInterface {
-    /// The device's own IPv4 address and netmask on the Wi-Fi interface.
+    /// Interfaces that are never the home network: VPN tunnels, AirDrop's
+    /// peer-to-peer links, and the internal service links macOS keeps up.
+    /// Scanning any of them is either pointless or somebody else's network.
+    private static let ignoredPrefixes = ["utun", "awdl", "llw", "anpi", "ipsec", "ap1"]
+
+    /// The device's own IPv4 address and netmask on the network worth scanning.
     ///
-    /// `en0` is Wi-Fi on a real iPhone and the Mac's own LAN interface in the
-    /// simulator, which is exactly what makes a simulator scan of the real
-    /// network work. Falls back to any non-loopback IPv4 interface, because a
-    /// tethered or VPN'd device still has a network worth looking at.
+    /// `en0` is Wi-Fi on a real iPhone, so it is preferred outright. In the
+    /// *simulator* there is no en0 with an address — the host Mac's LAN sits on
+    /// whichever `enN` the hardware landed on — so the fallback matters as much
+    /// as the preference does, and it is deliberately fussy: a private address
+    /// on a real, non-tunnel interface, or nothing.
     static func wifiIPv4() -> (address: String, netmask: String)? {
         var head: UnsafeMutablePointer<ifaddrs>?
         guard getifaddrs(&head) == 0, let first = head else { return nil }
         defer { freeifaddrs(head) }
 
-        var fallback: (String, String)?
+        var privateFallback: (String, String)?
+        var anyFallback: (String, String)?
         var pointer: UnsafeMutablePointer<ifaddrs>? = first
         while let current = pointer {
             defer { pointer = current.pointee.ifa_next }
+            let flags = current.pointee.ifa_flags
             guard let addr = current.pointee.ifa_addr,
                 addr.pointee.sa_family == UInt8(AF_INET),
-                current.pointee.ifa_flags & UInt32(IFF_UP) != 0,
-                current.pointee.ifa_flags & UInt32(IFF_LOOPBACK) == 0,
+                flags & UInt32(IFF_UP) != 0,
+                flags & UInt32(IFF_LOOPBACK) == 0,
+                // A point-to-point link has no subnet to sweep.
+                flags & UInt32(IFF_POINTOPOINT) == 0,
                 let mask = current.pointee.ifa_netmask
             else { continue }
 
             let name = String(cString: current.pointee.ifa_name)
+            guard !ignoredPrefixes.contains(where: { name.hasPrefix($0) }) else { continue }
             guard let address = presentation(of: addr), let netmask = presentation(of: mask)
             else { continue }
+
             if name == "en0" { return (address, netmask) }
-            if fallback == nil { fallback = (address, netmask) }
+            if LANHost.isLocalNetwork(address) {
+                if privateFallback == nil { privateFallback = (address, netmask) }
+            } else if anyFallback == nil {
+                anyFallback = (address, netmask)
+            }
         }
-        return fallback
+        return privateFallback ?? anyFallback
     }
 
     private static func presentation(of addr: UnsafeMutablePointer<sockaddr>) -> String? {
