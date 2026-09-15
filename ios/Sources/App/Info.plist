@@ -20,6 +20,14 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<!-- Video and audio keep playing when the app is backgrounded or the
+	     phone is locked, and Picture in Picture needs it too (#008B0). The
+	     audio session itself is only claimed once a page actually starts
+	     playing something — see MediaSession. -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UILaunchScreen</key>

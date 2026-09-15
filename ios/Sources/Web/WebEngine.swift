@@ -54,17 +54,60 @@ enum WebEngine {
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 "
         + "(KHTML, like Gecko) Version/17.0 Safari/605.1.15 Zen/0.1"
 
+    @MainActor
     static func configuration(for space: Space, desktop: Bool) -> WKWebViewConfiguration {
         let config = WKWebViewConfiguration()
         config.websiteDataStore = dataStore(for: space)
-        config.allowsInlineMediaPlayback = true
-        config.mediaTypesRequiringUserActionForPlayback = .audio
         config.defaultWebpagePreferences.preferredContentMode = desktop ? .desktop : .mobile
         config.applicationNameForUserAgent = "Zen/0.1"
         config.suppressesIncrementalRendering = false
         // Long-press link targets come from WKUIDelegate's
         // contextMenuConfigurationForElement, so no script injection is needed.
+        applyMediaPolicy(to: config)
         return config
+    }
+
+    /// Video, in one place (#008B0).
+    ///
+    /// WebKit's defaults are conservative because the framework cannot know
+    /// whether it is embedded in a browser or in a bank's login screen. A
+    /// browser is exactly the case where the site's own judgement should win:
+    /// every one of these is something Safari does and a page has every right
+    /// to expect.
+    ///
+    /// The one that is not obvious is
+    /// `mediaTypesRequiringUserActionForPlayback`. It was `.audio`, which
+    /// sounds like the polite setting and is in fact the broken one: it makes
+    /// *muted autoplay* — the silent looping clip that is half the modern web's
+    /// page furniture — require a tap that will never come, so those elements
+    /// sit black forever. Empty means "the page decides", and a page that
+    /// wanted to blast audio at you already could by playing on first touch.
+    @MainActor
+    static func applyMediaPolicy(to config: WKWebViewConfiguration) {
+        // Play in the page, not in a hijacked full-screen player.
+        config.allowsInlineMediaPlayback = true
+        // The PiP button in the native controls, and the API behind
+        // `requestPictureInPicture()`.
+        config.allowsPictureInPictureMediaPlayback = true
+        // The page's own call. See above.
+        config.mediaTypesRequiringUserActionForPlayback = []
+        // `element.requestFullscreen()` — how YouTube and Vimeo's own controls
+        // go full screen, as opposed to the native player.
+        config.preferences.isElementFullscreenEnabled = true
+        config.allowsAirPlayForMediaPlayback = true
+
+        // The page's half of the audio session (see `MediaSession`). Registered
+        // here rather than per-view so there is one place that can be wrong,
+        // and `.atDocumentEnd` because the listeners need a `document` to
+        // attach to. `forMainFrameOnly: false` so a same-origin iframe — which
+        // is how plenty of sites embed their own player — reports too.
+        let controller = config.userContentController
+        controller.removeScriptMessageHandler(forName: MediaSession.messageHandlerName)
+        controller.add(MediaSession.shared, name: MediaSession.messageHandlerName)
+        controller.addUserScript(
+            WKUserScript(
+                source: VideoPopOut.mediaObserverScript,
+                injectionTime: .atDocumentEnd, forMainFrameOnly: false))
     }
 }
 
@@ -111,6 +154,10 @@ final class WebViewPool {
     /// for having stashed the scroll offset first.
     func unload(_ tabID: UUID) {
         guard let view = views.removeValue(forKey: tabID) else { return }
+        // A view that goes away mid-playback never gets to say it stopped, and
+        // an unreleased claim would hold the audio session open for a page
+        // that no longer exists (#008B0).
+        MediaSession.shared.pageWentAway(MediaSession.pageIdentity(for: view))
         view.stopLoading()
         view.navigationDelegate = nil
         view.uiDelegate = nil
@@ -197,6 +244,23 @@ final class ZenWebView: WKWebView {
             // gradient through", which is what clear does.
             self.pageBackgroundColor = (parsed?.isTransparent ?? true) ? nil : parsed?.uiColor
             self.syncUnderPageBackground()
+        }
+    }
+
+    /// Put the page's most relevant video into Picture in Picture (#008B0).
+    /// The choosing happens in the page — see `VideoPopOut` for why, and for
+    /// which video wins.
+    func popOutVideo(_ completion: @escaping (VideoPopOut.Result) -> Void) {
+        evaluateJavaScript(VideoPopOut.popOutScript) { result, error in
+            guard error == nil else {
+                // A page that refuses to run scripts at all (a PDF, an error
+                // page) has no video either, so say the same thing.
+                completion(
+                    VideoPopOut.Result(
+                        status: .none, index: -1, id: "", playing: false, candidates: 0))
+                return
+            }
+            completion(VideoPopOut.Result.parse(result))
         }
     }
 

@@ -114,6 +114,7 @@ struct RootView: View {
         }
         .onChange(of: state.spaces) { _, _ in sync.noteLocalChange() }
         .modifier(CompactBarBridge(state: state, controller: compactBar))
+        .zenToast($state.toast)
         .onChange(of: scenePhase) { _, phase in
             // Flush the session on the way out; a jetsam gives no warning.
             if phase != .active { state.saveNow() }
@@ -479,6 +480,9 @@ private struct RootNotifications: ViewModifier {
             .onReceive(NotificationCenter.default.publisher(for: .zenHideRevealedChrome)) { _ in
                 compactBar.pageTapped()
             }
+            .onReceive(NotificationCenter.default.publisher(for: .zenPopOutVideo)) { _ in
+                popOutVideo()
+            }
             .onReceive(NotificationCenter.default.publisher(for: .zenPageScrollBegan)) { _ in
                 // Nothing may buzz during a scroll — see `Haptics.isScrolling`.
                 Haptics.shared.isScrolling = true
@@ -488,6 +492,22 @@ private struct RootNotifications: ViewModifier {
                 Haptics.shared.isScrolling = false
                 compactBar.scrollDidEnd()
             }
+    }
+
+    /// Ask the active page to pop its video out (#008B0). Only the root can:
+    /// the menus that offer the action cannot reach the web view pool.
+    private func popOutVideo() {
+        guard let tabID = state.activeTabID, let view = pool.existing(for: tabID) else {
+            state.toast = ZenToastMessage("No page to pop out.", symbol: "pip.exit")
+            return
+        }
+        Haptics.shared.fire(.layoutChange)
+        view.popOutVideo { result in
+            // Success says so by itself — the video visibly leaves the page.
+            guard let message = result.message else { return }
+            Haptics.shared.fire(.loadError)
+            state.toast = ZenToastMessage(message, symbol: "pip.exit")
+        }
     }
 
     private func reloadActiveTab() {

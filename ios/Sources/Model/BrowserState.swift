@@ -54,6 +54,9 @@ final class BrowserState: ObservableObject {
     @Published var splitSecondaryTabID: UUID?
     /// 0...1 — the fraction of the width the primary pane gets.
     @Published var splitFraction: Double = 0.5
+    /// A one-line transient message over the page (#008B0). Replaced rather
+    /// than queued — the newest message describes what you just did.
+    @Published var toast: ZenToastMessage?
     @Published var isHistorySheetPresented: Bool = false
     @Published var isSettingsPresented: Bool = false
     @Published var findInPageQuery: String = ""

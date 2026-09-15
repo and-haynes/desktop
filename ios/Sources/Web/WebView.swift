@@ -255,50 +255,75 @@ struct WebView: UIViewRepresentable {
 
         // MARK: Long-press link menu
 
-        /// Add "Open in Glance" to WebKit's own link context menu.
+        /// Add "Open in Glance" to WebKit's own link context menu, and "Pop Out
+        /// Video" when the page has a video to pop (#008B0).
+        ///
+        /// The video item is decided by *asking the page*, which is why this
+        /// answers asynchronously: offering "Pop Out Video" on a page with no
+        /// video would be a menu item that can only disappoint. WebKit calls
+        /// this for links and images — a long press on bare text or on the
+        /// video element itself gets WebKit's own menu instead, which we cannot
+        /// add to. The overflow menu is the path that always works.
         func webView(
             _ webView: WKWebView,
             contextMenuConfigurationForElement elementInfo: WKContextMenuElementInfo,
             completionHandler: @escaping (UIContextMenuConfiguration?) -> Void
         ) {
-            guard let url = elementInfo.linkURL else {
-                completionHandler(nil)
-                return
+            let url = elementInfo.linkURL
+            webView.evaluateJavaScript(VideoPopOut.selectionScript) { [weak self] result, _ in
+                let hasVideo = VideoPopOut.Result.parse(result).status != .none
+                guard let self, url != nil || hasVideo else {
+                    completionHandler(nil)
+                    return
+                }
+                // This one we own: WebKit asks us for the menu before it plays
+                // any system feedback, so the tap lands with the long-press.
+                Haptics.shared.fire(.longPressMenu)
+                let config = UIContextMenuConfiguration(identifier: nil, previewProvider: nil) {
+                    [weak self] _ in
+                    guard let self else { return nil }
+                    var actions = url.map { self.linkActions(for: $0) } ?? []
+                    if hasVideo { actions.append(self.popOutAction()) }
+                    return UIMenu(children: actions)
+                }
+                completionHandler(config)
             }
-            // This one we own: WebKit asks us for the menu before it plays any
-            // system feedback, so the tap lands with the long-press.
-            Haptics.shared.fire(.longPressMenu)
-            let config = UIContextMenuConfiguration(identifier: nil, previewProvider: nil) {
-                [weak self] _ in
-                guard let self else { return nil }
-                return UIMenu(children: [
-                    UIAction(
-                        title: "Open in Glance",
-                        image: UIImage(systemName: "rectangle.on.rectangle.angled")
-                    ) { _ in
-                        Haptics.shared.fire(.glanceOpen)
-                        self.state.openGlance(url: url)
-                    },
-                    UIAction(
-                        title: "Open in New Tab", image: UIImage(systemName: "plus.square.on.square")
-                    ) { _ in
-                        Haptics.shared.fire(.tabOpen)
-                        self.state.newTab(url: url)
-                    },
-                    UIAction(
-                        title: "Open in Split", image: UIImage(systemName: "rectangle.split.2x1")
-                    ) { _ in
-                        if let tab = self.state.newTab(url: url, select: false) {
-                            Haptics.shared.fire(.splitEnter)
-                            self.state.split(with: tab.id)
-                        }
-                    },
-                    UIAction(title: "Copy Link", image: UIImage(systemName: "doc.on.doc")) { _ in
-                        UIPasteboard.general.url = url
-                    },
-                ])
+        }
+
+        private func linkActions(for url: URL) -> [UIAction] {
+            [
+                UIAction(
+                    title: "Open in Glance",
+                    image: UIImage(systemName: "rectangle.on.rectangle.angled")
+                ) { [weak self] _ in
+                    Haptics.shared.fire(.glanceOpen)
+                    self?.state.openGlance(url: url)
+                },
+                UIAction(
+                    title: "Open in New Tab", image: UIImage(systemName: "plus.square.on.square")
+                ) { [weak self] _ in
+                    Haptics.shared.fire(.tabOpen)
+                    self?.state.newTab(url: url)
+                },
+                UIAction(
+                    title: "Open in Split", image: UIImage(systemName: "rectangle.split.2x1")
+                ) { [weak self] _ in
+                    guard let self, let tab = self.state.newTab(url: url, select: false) else {
+                        return
+                    }
+                    Haptics.shared.fire(.splitEnter)
+                    self.state.split(with: tab.id)
+                },
+                UIAction(title: "Copy Link", image: UIImage(systemName: "doc.on.doc")) { _ in
+                    UIPasteboard.general.url = url
+                },
+            ]
+        }
+
+        private func popOutAction() -> UIAction {
+            UIAction(title: "Pop Out Video", image: UIImage(systemName: "pip.enter")) { _ in
+                NotificationCenter.default.post(name: .zenPopOutVideo, object: nil)
             }
-            completionHandler(config)
         }
 
         // MARK: Scroll offset, for session restore

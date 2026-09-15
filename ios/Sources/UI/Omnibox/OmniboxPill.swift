@@ -198,6 +198,10 @@ struct OmniboxPill: View {
                 Label("Request Desktop Site", systemImage: "desktopcomputer")
             }
 
+            Button {
+                NotificationCenter.default.post(name: .zenPopOutVideo, object: nil)
+            } label: { Label("Pop Out Video", systemImage: "pip.enter") }
+
             Divider()
 
             Button {
@@ -253,4 +257,8 @@ extension Notification.Name {
     static let zenPageScrollBegan = Notification.Name("zen.pageScrollBegan")
     /// Scrolling settled. Starts the hide countdown.
     static let zenPageScrollEnded = Notification.Name("zen.pageScrollEnded")
+    /// Put the page's video into Picture in Picture (#008B0). Posted by the
+    /// overflow menu and the page's context menu; RootView observes it, for the
+    /// same reason as `zenReloadActiveTab` — the web view lives in the pool.
+    static let zenPopOutVideo = Notification.Name("zen.popOutVideo")
 }
