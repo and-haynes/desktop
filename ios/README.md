@@ -76,7 +76,9 @@ network and takes minutes, where the unit tests take under a second.
 | 1 | Space swipe to switch | Done | Horizontal drag on the sidebar translates the list live, then springs, as `ZenSpacesSwipe` does. |
 | 1 | Space switcher strip | Done | Along the sidebar bottom, each chip previewing its own accent. |
 | 2 | **Vertical tab sidebar** | Done | Slide-in drawer on iPhone (edge swipe or toolbar button), persistent on iPad. |
-| 2 | Swipe to close a tab row | Done | Pull left past the threshold. |
+| 2 | Swipe to close a tab row | Done | Pull left past the threshold, with a haptic at the threshold itself. |
+| 2 | Swipe the URL bar to the sidebar | Done | Right or up on the bar opens the drawer, left or down closes it (#0089F). The direction → action map is a table, so the planned URL-bar customisation can reassign it. |
+| 2 | New Tab strip | Done | Full-width, 44pt, pinned below the tab list rather than scrolling away inside it (#0089F). |
 | 2 | Reorder by drag | Partial | Essentials reorder by drag. Pinned and normal rows reorder through the model (`moveTab`) but have no drag gesture wired up yet. |
 | 2 | Unloaded tabs | Done | An LRU pool keeps at most six live `WKWebView`s; the rest keep URL, title, favicon and scroll offset and reload on selection. Unloaded rows render dimmed and desaturated. |
 | 3 | **Essentials** — global pinned grid | Done | Four across, favicon-only tiles, shared across every space, capped at 12 as upstream is. |
@@ -85,10 +87,13 @@ network and takes minutes, where the unit tests take under a second.
 | 4 | **Omnibox** — floating bottom pill | Done | At the bottom on iPhone for thumb reach; upstream's is inline at the top. |
 | 4 | Centered floating search box | Done | 62px, 12px radius, the large soft shadow, 252px result list. |
 | 4 | Suggestions | Done | History (frecency-ranked), engine autocomplete, and a subset of Zen's urlbar global actions. |
-| 4 | URL vs search detection | Done | Covered by tests, including `localhost`, bare IPs, `IP:port`, `.lan`, and refusing `javascript:`. A *bare* single word (`meitner`) is still a search — it is indistinguishable from `swift`; add a port, a slash or a scheme to navigate. |
+| 4 | URL vs search detection | Done | Covered by tests, including `localhost`, bare IPs, `IP:port`, `.lan`, and refusing `javascript:`. |
+| 4 | Single-word input | Done | A *bare* word (`meitner`) still searches — it is indistinguishable from `swift` — but the omnibox offers the other reading explicitly as the second row, "Go to http://meitner". Once the host is in history the default flips: the top hit navigates and *searching* becomes the second row. |
 | — | **Load failures** | Done | A real error page with host, port, reason, error code, Retry, scheme flip, common-port suggestions and a Local Network hint. 10s timeout with a watchdog for addresses that neither answer nor fail. |
 | 4 | Search engine choice | Done | DuckDuckGo (default), Google, Bing, Startpage, Ecosia. Startpage has no public autocomplete endpoint and borrows DuckDuckGo's. |
 | 4 | Desktop/mobile user agent | Done | Global setting; applied per web view at creation. |
+| — | **Haptics** (#00897) | Done | One service, one semantic-event table, four levels (Off / Subtle / Normal / Rich, default Normal). Impacts, selection ticks and notifications for ~30 moments, plus Core Haptics patterns for three. Never during a scroll, never backgrounded, never twice for one action. Tested through a recording backend. |
+| — | **Hidden status bar** (#00899) | Done | Off by default with a Settings toggle. The page then runs to the very top edge; the Dynamic Island is hardware and sits over it. |
 | 5 | **Compact mode** | Done | Keeps Zen's two independent toggles (hide sidebar / hide toolbar), persisted. |
 | 5 | Reveal | Done | A drag-handle grabber above the home indicator (36×6pt pill, 44pt hit area): tap or pull up to reveal, tap the page or scroll to hide. Upstream reveals on *hover* within 10px of an edge; the touch translation of that sat on top of the iOS home gesture and lost, so it is an explicit target instead. |
 | 6 | **Split view** — two panes | Done | Side by side when wide (iPad, landscape iPhone), stacked when tall. Draggable divider with the same 7%-of-parent minimum. Focused pane gets the 2px accent outline. |
@@ -104,7 +109,7 @@ network and takes minutes, where the unit tests take under a second.
 | 10 | **Colour tool** | Done | A real accent picker: a Canvas hue/saturation wheel with a separate brightness track, HSB and RGB sliders with live numeric readouts, and hex / RGB-triplet entry validated with specific errors. Recent colours and the space's own gradient stops are one-tap targets; the system `ColorPicker` is offered as a secondary route for the eyedropper. Every path writes the same `ZenColor`, so the zen-theme.css derivations are unchanged. |
 | 10 | **Appearance** | Done | Follow System / Light / Dark, matching Zen's `zen.view.window.scheme`. An explicit choice overrides a space's `shouldBeDarkMode()` contrast heuristic; Follow System lets it apply. |
 | 10 | Film grain | Partial | A generated noise tile at `.overlay` blend. Upstream ships `grain-bg.png` at `mix-blend-mode: hard-light`, which SwiftUI has no equivalent for. |
-| 11 | **Keyboard shortcuts** | Done | ⌘T, ⌘W, ⌘L, ⌃Tab / ⌃⇧Tab, ⇧⌘S, ⇧⌘E, plus ⌘F and ⌃⇧← / ⌃⇧→. |
+| 11 | **Keyboard shortcuts** | Done | ⌘T, ⌘W, ⌘L, ⌃Tab / ⌃⇧Tab, ⇧⌘S, ⇧⌘E, plus ⌘F and ⌃⇧← / ⌃⇧→. Each fires a selection tick, because a hardware keyboard gives no other confirmation the chord was caught. |
 | 12 | **Share sheet** | Done | From the omnibox overflow menu. |
 | 12 | **Find in page** | Partial | Uses WKWebView's `find(_:configuration:)`. `WKFindResult` reports only found/not-found, so there is no "3 of 12" counter. |
 | 12 | **Reader mode** | **TODO** | WebKit exposes no reader/readability API to third-party apps. Implementing it means injecting a Readability port and rendering the result ourselves. |
@@ -137,9 +142,11 @@ ios/
     Model/                 Space, Tab, SearchEngine + URLDetector, BrowserState
     Persistence/           JSONFileStore (atomic), SessionStore, History/Bookmarks
     Web/                   WebEngine (per-space data stores, LRU pool), WebView
+    Services/              Haptics — the semantic event table and the
+                           UIKit / Core Haptics backend behind it
     UI/                    Sidebar/, Omnibox/, Glance/, Split/, History/,
                            Settings/, plus NewTabPage and FindBar
-  Tests/ZenTests/          94 unit tests
+  Tests/ZenTests/          210 unit tests
   Tests/ZenUITests/        the screenshot driver
 ```
 
@@ -171,6 +178,10 @@ own `WKWebsiteDataStore(forIdentifier:)` (iOS 17+) is strictly stronger.
 
 | Upstream | Here | Why |
 |---|---|---|
+| Hover states everywhere | A haptic vocabulary | A finger produces no hover, so there is nothing to answer a touch that lands where the eye is not looking. The tap *is* the hover state. |
+| Status bar always present | Hidden by default | In a browser the page is the app, and on a phone there is nowhere else for 60pt of clock to go. |
+| Sidebar reached from a toolbar button | …or by swiping the URL bar | The button is a 34pt target at the far left of a six-inch screen — the one place a thumb holding the phone cannot reach. |
+| New-tab row at the end of the tab list | A pinned full-width strip | The control you reach for most should not have to be scrolled to. |
 | — | Address bar selects all on focus | SwiftUI's `TextField` cannot select its contents, so the address bar is a small `UITextField` wrapper. Without it, tapping the bar and typing *appends* to the current URL. |
 | urlbar inline at the top | Floating pill at the *bottom* on iPhone | A phone is held one-handed; the top of a modern iPhone is not thumb-reachable. |
 | Close shortcut default `switch` | Pinned/essential close = `reset-unload-switch` | Swiping a row away has to visibly do something. Essentials still cannot be destroyed, only demoted. |
@@ -204,6 +215,13 @@ text, Retry, the other scheme, and — when the default port was refused — the
 ports homelab services actually sit on (8006 for Proxmox, 8080, 8443, …).
 LAN addresses also get the Local Network permission hint, because a declined
 prompt fails every connection afterwards with no visible cause.
+
+### The status bar, and the new-tab strip
+
+| | |
+|---|---|
+| ![The page running to the top edge with the status bar hidden](docs/screenshots/24-status-bar-hidden.png) | ![The full-width New Tab strip pinned below the tab list](docs/screenshots/25-sidebar-newtab-strip.png) |
+| Hidden by default, so the page runs to the very top edge | New Tab as a pinned full-width strip, not a row that scrolls away |
 
 ### The colour tool
 
