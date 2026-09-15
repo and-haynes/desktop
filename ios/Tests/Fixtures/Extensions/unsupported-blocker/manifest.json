@@ -1,0 +1,23 @@
+{
+  "manifest_version": 2,
+  "name": "Legacy Request Blocker",
+  "version": "0.4.1",
+  "description": "A Firefox-shaped content blocker: blocking webRequest, a sidebar, and containers. None of it works on WebKit.",
+  "applications": { "gecko": { "id": "legacy-blocker@example.invalid", "strict_min_version": "91.0" } },
+  "permissions": [
+    "webRequest",
+    "webRequestBlocking",
+    "contextualIdentities",
+    "browsingData",
+    "storage",
+    "<all_urls>"
+  ],
+  "background": { "scripts": ["background.js"], "persistent": true },
+  "sidebar_action": {
+    "default_title": "Blocked requests",
+    "default_panel": "sidebar.html"
+  },
+  "content_scripts": [
+    { "matches": ["<all_urls>"], "js": ["content.js"] }
+  ]
+}

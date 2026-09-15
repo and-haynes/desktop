@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "Zen Badge",
+  "version": "1.0.0",
+  "description": "Inserts a visible badge into every page, so a content script can be proved to have run.",
+  "browser_specific_settings": { "gecko": { "id": "zen-badge@morton.lan" } },
+  "permissions": ["storage", "activeTab"],
+  "host_permissions": ["<all_urls>"],
+  "action": {
+    "default_title": "Zen Badge",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
+  ],
+  "background": { "service_worker": "background.js" },
+  "options_ui": { "page": "options.html", "open_in_tab": true }
+}

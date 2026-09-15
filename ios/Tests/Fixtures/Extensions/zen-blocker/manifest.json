@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "Zen Blocker",
+  "version": "1.0.0",
+  "description": "Blocks one clearly-marked resource with declarativeNetRequest, so blocking can be seen on a page.",
+  "browser_specific_settings": { "gecko": { "id": "zen-blocker@morton.lan" } },
+  "permissions": ["declarativeNetRequest", "declarativeNetRequestFeedback"],
+  "host_permissions": ["<all_urls>"],
+  "action": { "default_title": "Zen Blocker" },
+  "declarative_net_request": {
+    "rule_resources": [
+      { "id": "zen-rules", "enabled": true, "path": "rules.json" }
+    ]
+  },
+  "background": { "service_worker": "background.js" }
+}

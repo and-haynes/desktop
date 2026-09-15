@@ -37,6 +37,18 @@ targets:
     sources:
       - path: Sources
       - path: Resources
+      # The two fixture extensions ship inside the app as well as inside the
+      # test bundle, so that "install the built-in extensions" in Settings and
+      # the unit tests load the same bytes — one copy in the repository, two
+      # consumers (#008B8). Folder references, not groups: both directories
+      # contain a `manifest.json`, and a flattened resource group would let one
+      # quietly overwrite the other.
+      - path: Tests/Fixtures/Extensions/zen-badge
+        type: folder
+        buildPhase: resources
+      - path: Tests/Fixtures/Extensions/zen-blocker
+        type: folder
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.morton.zen
