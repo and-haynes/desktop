@@ -17,6 +17,8 @@ struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var shareItem: URL?
+    /// Countdown that puts the compact bar away after scrolling stops.
+    @State private var compactHideTask: Task<Void, Never>?
 
     @MainActor
     init(state: BrowserState? = nil) {
@@ -75,6 +77,12 @@ struct RootView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .zenHideRevealedChrome)) { _ in
             hideChrome()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .zenPageScrollBegan)) { _ in
+            revealChromeWhileScrolling()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .zenPageScrollEnded)) { _ in
+            scheduleCompactHide()
         }
         .onChange(of: scenePhase) { _, phase in
             // Flush the session on the way out; a jetsam gives no warning.
@@ -273,7 +281,11 @@ struct RootView: View {
         }
     }
 
+    /// The grabber's deliberate reveal: no countdown, it stays until the page
+    /// is tapped or scrolled.
     private func revealChrome() {
+        compactHideTask?.cancel()
+        compactHideTask = nil
         withAnimation(
             .spring(response: ZenMetrics.compactAnimationDuration * 2, dampingFraction: 1)
         ) {
@@ -281,9 +293,38 @@ struct RootView: View {
         }
     }
 
+    /// Scrolling brings the bar back for as long as you keep scrolling. Each
+    /// scroll event restarts the countdown, so a long flick does not flicker.
+    private func revealChromeWhileScrolling() {
+        guard state.settings.compactModeEnabled else { return }
+        compactHideTask?.cancel()
+        compactHideTask = nil
+        guard !state.compactRevealed else { return }
+        withAnimation(.easeOut(duration: ZenTokens.hiddenToolbarTransition)) {
+            state.compactRevealed = true
+        }
+    }
+
+    /// Start the fade-out countdown. Cancelled by any further scrolling, so
+    /// the bar only goes when the page has actually settled.
+    private func scheduleCompactHide() {
+        guard state.settings.compactModeEnabled, state.compactRevealed else { return }
+        compactHideTask?.cancel()
+        let delay = max(0.2, state.settings.compactHideDelay)
+        compactHideTask = Task {
+            try? await Task.sleep(for: .seconds(delay))
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeInOut(duration: ZenTokens.hiddenToolbarTransition)) {
+                state.compactRevealed = false
+            }
+        }
+    }
+
     /// The reveal is momentary: tapping the page or scrolling puts it back.
     /// There is no auto-hide timer — a deliberate reveal should not time out.
     private func hideChrome() {
+        compactHideTask?.cancel()
+        compactHideTask = nil
         guard state.compactRevealed else { return }
         withAnimation(.easeInOut(duration: ZenTokens.hiddenToolbarTransition)) {
             state.compactRevealed = false

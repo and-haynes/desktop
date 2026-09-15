@@ -45,12 +45,25 @@ struct SettingsSheet: View {
                         .disabled(!state.settings.compactModeEnabled)
                     Toggle("Hide toolbar", isOn: $state.settings.compactHidesToolbar)
                         .disabled(!state.settings.compactModeEnabled)
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack {
+                            Text("Hide after scrolling")
+                            Spacer()
+                            Text(String(format: "%.1fs", state.settings.compactHideDelay))
+                                .foregroundStyle(.secondary)
+                                .monospacedDigit()
+                        }
+                        Slider(value: $state.settings.compactHideDelay, in: 0.5...5, step: 0.1)
+                    }
+                    .disabled(!state.settings.compactModeEnabled)
                 } header: {
                     Text("Compact mode")
                 } footer: {
                     Text(
                         "Zen keeps hiding the sidebar and hiding the toolbar as separate "
-                            + "settings. Swipe in from the screen edge to bring the chrome back.")
+                            + "settings. The bar returns while you scroll and fades again "
+                            + "shortly after; the grabber above the home indicator brings it "
+                            + "back deliberately.")
                 }
 
                 if UIDevice.current.userInterfaceIdiom == .pad {

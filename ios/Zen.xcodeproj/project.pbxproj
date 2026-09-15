@@ -21,6 +21,7 @@
 		52754347A4EE689C839BF1B5 /* AppearanceModeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CC1263F0FF95AC80F83EDCB /* AppearanceModeTests.swift */; };
 		52D2889E3A1A18B197B46215 /* SearchEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6F50C30E6017F5CE0A3A949 /* SearchEngine.swift */; };
 		577B82B19A735DEC410CC6DE /* SuggestionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C856C6784CFBBAC153B6D5C /* SuggestionEngine.swift */; };
+		61874C43C279ED772781240F /* SplitAndCompactTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0D144C896B0D8E6CAC17372 /* SplitAndCompactTests.swift */; };
 		6278805F07788A3C8902BD3E /* ZenGradientView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 869895F2D79E90B9042D92DF /* ZenGradientView.swift */; };
 		63FFA95C54695028BABB5ED9 /* Tab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F09F9DBA3529788D7567C97 /* Tab.swift */; };
 		64628C990EAAB96A13FA4A93 /* OmniboxPill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89CF4FD1B002F1922E42F267 /* OmniboxPill.swift */; };
@@ -121,6 +122,7 @@
 		E81C605FB286B4ADB15EF427 /* ZenColorPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZenColorPicker.swift; sourceTree = "<group>"; };
 		EB377F3610015C51D9D15F94 /* SplitContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplitContainer.swift; sourceTree = "<group>"; };
 		F051304257CF26659B59FCA4 /* ZenPalette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZenPalette.swift; sourceTree = "<group>"; };
+		F0D144C896B0D8E6CAC17372 /* SplitAndCompactTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplitAndCompactTests.swift; sourceTree = "<group>"; };
 		F389C4484730FF9A1064D894 /* SpaceSwitcherStrip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceSwitcherStrip.swift; sourceTree = "<group>"; };
 		FE1AF5E02B5EB27129E3FECE /* HistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryStore.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -285,6 +287,7 @@
 				2B7DC3083D917DB62298DF0C /* BrowserStateTests.swift */,
 				896D79F909A07C86E2E39E1C /* ColorParsingTests.swift */,
 				CEEEA5047438DAA8F1415FDC /* SessionStoreTests.swift */,
+				F0D144C896B0D8E6CAC17372 /* SplitAndCompactTests.swift */,
 				4FD8CD4DF4B3F44BB275D8F1 /* URLDetectorTests.swift */,
 				8504E45FB01390B4338E9D84 /* ZenColorTests.swift */,
 			);
@@ -501,6 +504,7 @@
 				10DB9AA9F73EA1211E61422B /* BrowserStateTests.swift in Sources */,
 				E7F82330EA0D9210C94241F7 /* ColorParsingTests.swift in Sources */,
 				8524DB2323656F48E3577C84 /* SessionStoreTests.swift in Sources */,
+				61874C43C279ED772781240F /* SplitAndCompactTests.swift in Sources */,
 				F58099A6CC5B8EE3C77186B9 /* URLDetectorTests.swift in Sources */,
 				E9384E64A2209CC5EA11CB15 /* ZenColorTests.swift in Sources */,
 			);

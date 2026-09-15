@@ -192,19 +192,30 @@ struct WebView: UIViewRepresentable {
 
         // MARK: Scroll offset, for session restore
 
+        // Compact mode shows the bar *while* you are scrolling and hides it
+        // again shortly after you stop, so the common case needs no gesture at
+        // all. The grabber stays as the deliberate reveal.
         func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
-            // Scrolling puts the compact chrome away again — the reveal is
-            // meant to be momentary, and RootView owns the animation.
-            guard state.compactRevealed else { return }
-            NotificationCenter.default.post(name: .zenHideRevealedChrome, object: nil)
+            NotificationCenter.default.post(name: .zenPageScrollBegan, object: nil)
+        }
+
+        func scrollViewDidScroll(_ scrollView: UIScrollView) {
+            // Keeps the bar alive through a long flick: RootView restarts its
+            // countdown on each of these, and they stop when the scroll does.
+            guard scrollView.isDragging || scrollView.isDecelerating else { return }
+            NotificationCenter.default.post(name: .zenPageScrollBegan, object: nil)
         }
 
         func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate: Bool) {
             recordScroll(scrollView)
+            if !willDecelerate {
+                NotificationCenter.default.post(name: .zenPageScrollEnded, object: nil)
+            }
         }
 
         func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
             recordScroll(scrollView)
+            NotificationCenter.default.post(name: .zenPageScrollEnded, object: nil)
         }
 
         private func recordScroll(_ scrollView: UIScrollView) {

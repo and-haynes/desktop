@@ -24,6 +24,10 @@ struct ZenSettings: Codable, Equatable, Sendable {
     var sidebarPinnedOnPad: Bool = true
     /// Follow system / Light / Dark, as `zen.view.window.scheme`.
     var appearance: AppearanceMode = .system
+    /// How long the compact-mode bar lingers after scrolling stops, in
+    /// seconds. Upstream's nearest equivalent is
+    /// `zen.view.compact.toolbar-hide-after-hover.duration`.
+    var compactHideDelay: Double = 1.8
 
     init() {}
 
@@ -35,7 +39,7 @@ struct ZenSettings: Codable, Equatable, Sendable {
     // so an older file just picks up the defaults for whatever it predates.
     private enum CodingKeys: String, CodingKey {
         case searchEngine, compactModeEnabled, compactHidesSidebar, compactHidesToolbar
-        case preferDesktopSite, sidebarPinnedOnPad, appearance
+        case preferDesktopSite, sidebarPinnedOnPad, appearance, compactHideDelay
     }
 
     init(from decoder: Decoder) throws {
@@ -62,6 +66,9 @@ struct ZenSettings: Codable, Equatable, Sendable {
         appearance =
             try c.decodeIfPresent(AppearanceMode.self, forKey: .appearance)
             ?? fallback.appearance
+        compactHideDelay =
+            try c.decodeIfPresent(Double.self, forKey: .compactHideDelay)
+            ?? fallback.compactHideDelay
     }
 }
 

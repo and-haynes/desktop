@@ -10,18 +10,47 @@ import SwiftUI
 
 struct OmniboxPill: View {
     @ObservedObject var state: BrowserState
+    /// Which tab this bar represents. nil means "whatever is active", which is
+    /// the ordinary single-pane case; split view gives each pane its own bar
+    /// bound to that pane's tab.
+    var tabID: UUID?
+    /// A secondary pane's bar is slimmer and drops the controls that belong to
+    /// the window rather than the pane.
+    var isSecondaryPane: Bool = false
     @Environment(\.zenPalette) private var palette
     let onShare: () -> Void
 
-    private var tab: Tab? { state.activeTab }
+    private var tab: Tab? {
+        if let tabID { return state.tab(id: tabID) }
+        return state.activeTab
+    }
+
+    /// Which pane the user is actually working in.
+    private var isActivePane: Bool {
+        tabID == nil || tabID == state.activeTabID
+    }
 
     var body: some View {
         HStack(spacing: 6) {
-            sidebarButton
+            if isSecondaryPane {
+                // The pane indicator doubles as the focus affordance: filled
+                // when this is the pane you are in, hollow when it is not.
+                Image(systemName: isActivePane ? "circle.fill" : "circle")
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundStyle(
+                        isActivePane ? palette.accent.color : palette.text.withAlpha(0.3).color)
+                    .frame(width: 22, height: 36)
+                    .accessibilityLabel(isActivePane ? "Active pane" : "Inactive pane")
+            } else {
+                sidebarButton
+            }
 
             Button {
-                state.omniboxText = tab.map(Self.editableText) ?? ""
-                state.isOmniboxOpen = true
+                // Selecting first makes the tapped pane the active one, so the
+                // suggestions and the commit both land where you looked.
+                if let tabID, tabID != state.activeTabID { state.select(tabID) }
+                state.openOmnibox(
+                    for: tabID, prefill: tab.map(Self.editableText) ?? "")
             } label: {
                 HStack(spacing: 7) {
                     Image(systemName: lockSymbol)
@@ -41,14 +70,30 @@ struct OmniboxPill: View {
             .buttonStyle(ZenPressStyle(pressedScale: 0.99))
             .accessibilityLabel("Address and search")
 
-            if let tab, !tab.isNewTabPage {
-                bookmarkButton(tab)
+            if isSecondaryPane {
+                Button {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 1)) {
+                        state.splitSecondaryTabID = nil
+                    }
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(palette.text.withAlpha(0.7).color)
+                        .frame(width: 28, height: 36)
+                }
+                .buttonStyle(ZenPressStyle())
+                .accessibilityLabel("Close split pane")
+            } else {
+                if let tab, !tab.isNewTabPage {
+                    bookmarkButton(tab)
+                }
+                menuButton
             }
-            menuButton
         }
         .padding(.horizontal, 6)
-        .frame(height: ZenMetrics.omniboxPillHeight)
+        .frame(height: isSecondaryPane ? ZenMetrics.paneBarHeight : ZenMetrics.omniboxPillHeight)
         .zenSurface(palette, radius: ZenMetrics.rowRadius, elevated: true)
+        .opacity(isActivePane ? 1 : 0.82)
     }
 
     // MARK: Pieces
@@ -163,4 +208,9 @@ extension Notification.Name {
     /// Put a revealed compact toolbar away again — posted when the page is
     /// scrolled. RootView owns the animation.
     static let zenHideRevealedChrome = Notification.Name("zen.hideRevealedChrome")
+    /// The page started scrolling. In compact mode this brings the bar back —
+    /// reaching for the grabber mid-scroll is exactly when you least want to.
+    static let zenPageScrollBegan = Notification.Name("zen.pageScrollBegan")
+    /// Scrolling settled. Starts the hide countdown.
+    static let zenPageScrollEnded = Notification.Name("zen.pageScrollEnded")
 }
