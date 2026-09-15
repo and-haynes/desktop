@@ -66,6 +66,9 @@ final class BrowserState: ObservableObject {
 
     let history: HistoryStore
     let bookmarks: BookmarkStore
+    /// Page zoom remembered per site (#008B7). Its own store rather than a
+    /// corner of the session file — it is written on a gesture people repeat.
+    let pageZoom: PageZoomStore
     private let session: SessionStore
 
     // MARK: Lifecycle
@@ -74,11 +77,13 @@ final class BrowserState: ObservableObject {
         session: SessionStore = SessionStore(),
         history: HistoryStore? = nil,
         bookmarks: BookmarkStore? = nil,
+        pageZoom: PageZoomStore? = nil,
         restore: Bool = true
     ) {
         self.session = session
         self.history = history ?? HistoryStore()
         self.bookmarks = bookmarks ?? BookmarkStore()
+        self.pageZoom = pageZoom ?? PageZoomStore()
         if restore, let snapshot = session.load(), !snapshot.spaces.isEmpty {
             apply(snapshot)
         } else {

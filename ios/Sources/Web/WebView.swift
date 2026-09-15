@@ -52,6 +52,10 @@ struct WebView: UIViewRepresentable {
         view.uiDelegate = context.coordinator
         view.scrollView.delegate = context.coordinator
         applyInsets(to: view)
+        // Page zoom is a property of the *site*, so it is re-resolved whenever
+        // the tab this view is showing changes (#008B7).
+        view.applyPageZoom(
+            state.pageZoom.zoom(for: tab.url, default: state.settings.defaultPageZoom))
     }
 
     /// Changing `contentInset` while the user is at the very top would leave
@@ -147,6 +151,12 @@ struct WebView: UIViewRepresentable {
             // Something arrived, so the watchdog's job is done.
             cancelWatchdog()
             (webView as? ZenWebView)?.refreshPageBackgroundColor()
+            // A redirect or an in-page navigation can land on a different site
+            // than the model knows about yet, so the zoom follows the *view's*
+            // URL here rather than the tab's (#008B7).
+            webView.applyPageZoom(
+                state.pageZoom.zoom(
+                    for: webView.url, default: state.settings.defaultPageZoom))
             guard let tabID else { return }
             state.updateTab(tabID) { $0.loadFailure = nil }
         }

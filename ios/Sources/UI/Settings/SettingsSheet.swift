@@ -15,6 +15,7 @@ struct SettingsSheet: View {
         NavigationStack {
             Form {
                 appearanceSection
+                textSizeSection
 
                 Section {
                     Picker("Haptics", selection: $state.settings.hapticLevel) {
@@ -140,6 +141,7 @@ struct SettingsSheet: View {
                     shortcut("Next / previous tab", "⌃Tab / ⌃⇧Tab")
                     shortcut("Toggle split view", "⇧⌘S")
                     shortcut("Toggle sidebar", "⇧⌘E")
+                    shortcut("Text size", "⌘+ / ⌘− / ⌘0")
                     shortcut("Find in page", "⌘F")
                     shortcut("Next / previous space", "⌃⇧→ / ⌃⇧←")
                 }
@@ -213,6 +215,43 @@ struct SettingsSheet: View {
                     + "where the theme is strongly tinted, as Zen does. The status "
                     + "bar is hidden by default so the page gets the whole screen; "
                     + "the Dynamic Island is hardware and stays either way.")
+        }
+    }
+
+    /// The global page-zoom default, and the way back from every site that
+    /// has been told otherwise (#008B7). A segmented row rather than a slider:
+    /// the ladder is discrete, and a slider would invite 103 %.
+    @ViewBuilder
+    private var textSizeSection: some View {
+        Section {
+            Picker("Default text size", selection: $state.settings.defaultPageZoom) {
+                ForEach(PageZoom.steps, id: \.self) { step in
+                    Text(PageZoom.percentLabel(step)).tag(step)
+                }
+            }
+            .accessibilityIdentifier("defaultPageZoomPicker")
+
+            Button(role: .destructive) {
+                state.pageZoom.resetAll()
+            } label: {
+                HStack {
+                    Text("Reset text size on all sites")
+                    Spacer()
+                    Text("\(state.pageZoom.zoomBySite.count)")
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+            }
+            .disabled(state.pageZoom.zoomBySite.isEmpty)
+            .accessibilityIdentifier("resetAllPageZoom")
+        } header: {
+            Text("Text size")
+        } footer: {
+            Text(
+                "The size a site is shown at is remembered per site, so a page "
+                    + "you always find too small is too small once. Smaller and "
+                    + "Larger are in the More menu on the bar, and on ⌘− / ⌘+ "
+                    + "with a keyboard; ⌘0 puts a site back to this default.")
         }
     }
 

@@ -39,6 +39,9 @@ struct ZenSettings: Codable, Equatable, Sendable {
     /// Which edge the vertical tab sidebar lives on. Zen desktop lets it move
     /// to the right; this mirrors that choice.
     var sidebarEdge: SidebarEdge = .leading
+    /// Page zoom for a site that has no opinion of its own (#008B7). 1.0 is
+    /// 100 %; `PageZoom` owns the ladder and the clamping.
+    var defaultPageZoom: Double = PageZoom.standard
 
     init() {}
 
@@ -52,6 +55,7 @@ struct ZenSettings: Codable, Equatable, Sendable {
         case searchEngine, compactModeEnabled, compactHidesSidebar, compactHidesToolbar
         case preferDesktopSite, sidebarPinnedOnPad, appearance, compactHideDelay, hapticLevel
         case showStatusBar, sidebarEdge
+        case defaultPageZoom
     }
 
     init(from decoder: Decoder) throws {
@@ -87,6 +91,9 @@ struct ZenSettings: Codable, Equatable, Sendable {
             try c.decodeIfPresent(Bool.self, forKey: .showStatusBar) ?? fallback.showStatusBar
         sidebarEdge =
             try c.decodeIfPresent(SidebarEdge.self, forKey: .sidebarEdge) ?? fallback.sidebarEdge
+        defaultPageZoom = PageZoom.clamp(
+            try c.decodeIfPresent(Double.self, forKey: .defaultPageZoom)
+                ?? fallback.defaultPageZoom)
     }
 }
 

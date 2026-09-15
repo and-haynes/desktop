@@ -184,6 +184,10 @@ struct OmniboxPill: View {
 
     private var menuButton: some View {
         Menu {
+            // Not a menu row: text size is a *control*, two buttons on one
+            // row, and a plain Button/Label can only draw one glyph (#008B7).
+            TextSizeMenuSection(state: state, zoom: state.pageZoom, tabID: tabID)
+
             Button {
                 NotificationCenter.default.post(name: .zenReloadActiveTab, object: nil)
             } label: { Label("Reload", systemImage: "arrow.clockwise") }

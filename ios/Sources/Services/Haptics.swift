@@ -197,6 +197,9 @@ enum HapticEvent: String, CaseIterable, Equatable, Sendable {
     case compactBarHide
     case grabberDrag
     case layoutChange
+    /// One rung of the page-zoom ladder (#008B7). A discrete change with a
+    /// visible result, so it ticks like a picker rather than thumping.
+    case textSizeStep
 
     // Glance / split
     case glanceOpen
@@ -256,6 +259,7 @@ enum HapticEvent: String, CaseIterable, Equatable, Sendable {
         case .compactBarHide: return .impact(.soft, intensity: 0.35)
         case .grabberDrag: return .selection
         case .layoutChange: return .impact(.rigid, intensity: 0.7)
+        case .textSizeStep: return .impact(.light, intensity: 0.6)
 
         case .glanceOpen: return .signature(.glanceOpen, fallback: .init(.medium, 0.8))
         case .glanceExpand: return .impact(.rigid, intensity: 0.8)
