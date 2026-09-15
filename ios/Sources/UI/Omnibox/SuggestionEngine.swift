@@ -20,6 +20,9 @@ struct Suggestion: Identifiable, Equatable {
         case goToHost(URL)
         /// One of Zen's urlbar actions.
         case action(OmniboxAction)
+        /// A service imported from a LAN scan (#0089C). Aliases are the point:
+        /// `proxmox` should be something you can type.
+        case localService(URL)
     }
 
     let id: String
@@ -121,7 +124,24 @@ final class SuggestionEngine: ObservableObject {
         }
 
         // 1. The top hit: what committing right now would do.
+        //
+        // An exact alias wins outright, because `OmniboxOverlay.commit` sends
+        // it there — the top row's whole job is being an honest preview of
+        // pressing Return, so the two check the same thing.
         let intent = URLDetector.intent(for: query, engine: engine, knownHosts: knownHosts)
+        if let service = state.localServices.exactMatch(query) {
+            results.append(
+                Suggestion(
+                    id: "top", kind: .localService(service.url), title: service.alias,
+                    subtitle: "Local · \(service.addressLabel)", symbol: service.symbol))
+            results += state.history.suggestions(for: query, limit: 3).map(Self.historyRow)
+            results.append(
+                Suggestion(
+                    id: "go-search", kind: .searchTerm, title: query,
+                    subtitle: "Search with \(engine.displayName)", symbol: engine.symbol))
+            suggestions = results
+            return
+        }
         switch intent {
         case .navigate(let url):
             results.append(
@@ -158,6 +178,12 @@ final class SuggestionEngine: ObservableObject {
                         subtitle: "Search with \(engine.displayName)", symbol: engine.symbol))
             }
         }
+
+        // 1c. Local services. Ranked above history because an alias is a name
+        // *you chose* for something on this network — if `proxmox` matches a
+        // service, that is what you meant, not a page you once visited whose
+        // title happened to contain the word.
+        results += state.localServices.suggestions(for: query, limit: 3).map(Self.localRow)
 
         // 2. History.
         results += state.history.suggestions(for: query, limit: 4).map(Self.historyRow)
@@ -196,6 +222,12 @@ final class SuggestionEngine: ObservableObject {
     func clear() {
         fetchTask?.cancel()
         suggestions = []
+    }
+
+    private static func localRow(_ service: LocalService) -> Suggestion {
+        Suggestion(
+            id: "local-\(service.id.uuidString)", kind: .localService(service.url),
+            title: service.alias, subtitle: service.addressLabel, symbol: service.symbol)
     }
 
     private static func historyRow(_ entry: HistoryEntry) -> Suggestion {

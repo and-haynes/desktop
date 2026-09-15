@@ -75,7 +75,27 @@
 		<true/>
 	</dict>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Zen needs local network access to open sites hosted on devices in your home, such as a router admin page or a home server.</string>
+	<string>Zen needs local network access to open sites hosted on devices in your home, such as a router admin page or a home server, and to find them when you scan from Settings.</string>
+	<!-- iOS only lets an app browse the Bonjour types it declares here, so this
+	     list and LANScanController.bonjourTypes have to stay in step. These are
+	     the types a home network actually advertises: web and admin panels,
+	     shells and file transfer, file and print sharing, and the media and
+	     automation devices that announce themselves. -->
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_http._tcp</string>
+		<string>_https._tcp</string>
+		<string>_ssh._tcp</string>
+		<string>_sftp-ssh._tcp</string>
+		<string>_smb._tcp</string>
+		<string>_printer._tcp</string>
+		<string>_ipp._tcp</string>
+		<string>_airplay._tcp</string>
+		<string>_homekit._tcp</string>
+		<string>_hap._tcp</string>
+		<string>_googlecast._tcp</string>
+		<string>_workstation._tcp</string>
+	</array>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 </dict>

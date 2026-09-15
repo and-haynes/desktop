@@ -1,5 +1,10 @@
 //  HistorySheet.swift
-//  History and bookmarks, with search.
+//  History, bookmarks and Local, with search.
+//
+//  Local sits beside the other two because it is the same kind of thing: a list
+//  of places you can get to. On a home network it is the list you use most, and
+//  burying it in Settings would have meant a trip through Settings every time
+//  (#0089C).
 
 import SwiftUI
 
@@ -16,6 +21,7 @@ struct HistorySheet: View {
     enum Section: String, CaseIterable, Identifiable {
         case history = "History"
         case bookmarks = "Bookmarks"
+        case local = "Local"
         var id: String { rawValue }
     }
 
@@ -25,6 +31,12 @@ struct HistorySheet: View {
                 switch tab {
                 case .history: historyList
                 case .bookmarks: bookmarksList
+                case .local:
+                    LocalServicesList(
+                        state: state, store: state.localServices, query: query,
+                        onOpen: { dismiss() }
+                    )
+                    .environment(\.zenPalette, palette)
                 }
             }
             .searchable(text: $query, prompt: "Search \(tab.rawValue.lowercased())")
@@ -36,7 +48,8 @@ struct HistorySheet: View {
                         ForEach(Section.allCases) { Text($0.rawValue).tag($0) }
                     }
                     .pickerStyle(.segmented)
-                    .frame(width: 220)
+                    .frame(width: 260)
+                    .accessibilityIdentifier("historySectionPicker")
                 }
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { dismiss() }

@@ -108,7 +108,7 @@ struct OmniboxOverlay: View {
         switch suggestion.kind {
         case .topHit:
             commit(state.omniboxText)
-        case .history(let url), .goToHost(let url):
+        case .history(let url), .goToHost(let url), .localService(let url):
             Haptics.shared.fire(.suggestionPick)
             navigate(to: url)
         case .searchTerm:
@@ -128,6 +128,15 @@ struct OmniboxOverlay: View {
             return
         }
         Haptics.shared.fire(.urlCommit)
+        // A bare word that *is* an alias you gave something on this network
+        // goes straight there (#0089C). Exact, whole-string, case-insensitive
+        // only: anything looser and typing `mail` would stop searching for
+        // mail, which is the mistake the single-word rule already refuses to
+        // make in the other direction.
+        if let service = state.localServices.exactMatch(trimmed) {
+            navigate(to: service.url)
+            return
+        }
         navigate(
             to: URLDetector.resolve(
                 trimmed, engine: state.settings.searchEngine,

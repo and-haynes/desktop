@@ -67,10 +67,30 @@ struct SettingsSheet: View {
                     .pickerStyle(.segmented)
                     .labelsHidden()
                     .accessibilityIdentifier("barFillPicker")
+
+                    NavigationLink {
+                        BarCustomizerView(state: state)
+                            .environment(\.zenPalette, palette)
+                    } label: {
+                        HStack {
+                            Label("Customize bar", systemImage: "slider.horizontal.3")
+                            Spacer()
+                            Text(
+                                BarPreset.preset(id: state.settings.barLayout.presetID)?.name
+                                    ?? "Custom"
+                            )
+                            .foregroundStyle(.secondary)
+                        }
+                    }
+                    .accessibilityIdentifier("customizeBarRow")
                 } header: {
-                    Text("Bar fill")
+                    Text("URL bar")
                 } footer: {
-                    Text(state.settings.barFill.detail)
+                    Text(
+                        state.settings.barFill.detail
+                            + " Customize bar goes further: where the bar sits, how tall it "
+                            + "is, what is inside the pill, which buttons it carries and what "
+                            + "its gestures do.")
                 }
 
                 Section("Search") {
@@ -171,6 +191,19 @@ struct SettingsSheet: View {
 
                 Section {
                     NavigationLink {
+                        LocalNetworkView(state: state)
+                            .environment(\.zenPalette, palette)
+                    } label: {
+                        HStack {
+                            Label("Local network", systemImage: "network")
+                            Spacer()
+                            Text("\(state.localServices.services.count)")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .accessibilityIdentifier("localNetworkRow")
+
+                    NavigationLink {
                         TrustedCertificatesView(store: state.trustedCertificates)
                     } label: {
                         HStack {
@@ -184,8 +217,11 @@ struct SettingsSheet: View {
                     Text("Home network")
                 } footer: {
                     Text(
-                        "Devices on your home network usually sign their own certificates. "
-                            + "Ones you have approved are listed here; swipe to forget.")
+                        "Local network scans the subnet this device is on for services "
+                            + "worth keeping, and the ones you import get aliases the "
+                            + "address bar understands. Devices on a home network usually "
+                            + "sign their own certificates; ones you have approved are "
+                            + "listed here — swipe to forget.")
                 }
 
                 Section("Keyboard shortcuts") {
