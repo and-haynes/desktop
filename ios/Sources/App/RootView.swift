@@ -124,7 +124,7 @@ struct RootView: View {
     /// did, and they are applied in their own layer because a single `body` with
     /// every modifier on it is more than the type-checker will sit still for.
     var body: some View {
-        window
+        sheets
             .onReceive(NotificationCenter.default.publisher(for: .zenNavigateBack)) { note in
                 webView(for: note)?.goBack()
             }
@@ -266,47 +266,58 @@ struct RootView: View {
                 break
             }
         }
-        .sheet(isPresented: $state.isHistorySheetPresented) {
-            HistorySheet(state: state, history: state.history, bookmarks: state.bookmarks)
+    }
+
+    /// The sheets, in one layer of their own.
+    ///
+    /// Not a style choice: `body` had grown past what the type-checker will
+    /// solve in reasonable time, and splitting it is the documented remedy.
+    /// They stay together and in this order because the certificate prompt is
+    /// *gated* against the others — see the binding below — and that gate reads
+    /// `isBlockingSheetPresented`, which has to know about all of them.
+    private var sheets: some View {
+        window
+            .sheet(isPresented: $state.isHistorySheetPresented) {
+                HistorySheet(state: state, history: state.history, bookmarks: state.bookmarks)
+                    .environment(\.zenPalette, palette)
+            }
+            .sheet(isPresented: $state.isSettingsPresented) {
+                SettingsSheet(state: state, sync: sync).environment(\.zenPalette, palette)
+            }
+            .sheet(isPresented: $state.isLocalServicesPresented) {
+                LocalSectionSheet(state: state).environment(\.zenPalette, palette)
+            }
+            .sheet(item: $shareItem) { url in
+                ShareSheet(items: [url])
+            }
+            // Root level, so it covers a split pane or a glance card — neither can
+            // present anything that covers the window. The binding is *gated*
+            // rather than direct: SwiftUI silently drops a second sheet presented
+            // from the same view while one is up, so a challenge raised while
+            // Settings or History is open would simply never appear, leaving the
+            // page blocked on a question nobody was asked. Gating queues it instead
+            // — it surfaces the moment the other sheet closes.
+            //
+            // The setter is deliberately inert. Gating dismisses the sheet by
+            // returning nil from the getter, and a setter that wrote that back
+            // would throw the challenge away; the only way out is answering it.
+            .sheet(
+                item: Binding(
+                    get: { state.isBlockingSheetPresented ? nil : state.pendingCertificateChallenge },
+                    set: { _ in })
+            ) { challenge in
+                CertificateSheet(
+                    challenge: challenge,
+                    onTrust: { state.resolveCertificateChallenge(.trust) },
+                    onReject: { state.resolveCertificateChallenge(.reject) }
+                )
                 .environment(\.zenPalette, palette)
-        }
-        .sheet(isPresented: $state.isSettingsPresented) {
-            SettingsSheet(state: state, sync: sync).environment(\.zenPalette, palette)
-        }
-        .sheet(isPresented: $state.isLocalServicesPresented) {
-            LocalSectionSheet(state: state).environment(\.zenPalette, palette)
-        }
-        .sheet(item: $shareItem) { url in
-            ShareSheet(items: [url])
-        }
-        // Root level, so it covers a split pane or a glance card — neither can
-        // present anything that covers the window. The binding is *gated*
-        // rather than direct: SwiftUI silently drops a second sheet presented
-        // from the same view while one is up, so a challenge raised while
-        // Settings or History is open would simply never appear, leaving the
-        // page blocked on a question nobody was asked. Gating queues it instead
-        // — it surfaces the moment the other sheet closes.
-        //
-        // The setter is deliberately inert. Gating dismisses the sheet by
-        // returning nil from the getter, and a setter that wrote that back
-        // would throw the challenge away; the only way out is answering it.
-        .sheet(
-            item: Binding(
-                get: { state.isBlockingSheetPresented ? nil : state.pendingCertificateChallenge },
-                set: { _ in })
-        ) { challenge in
-            CertificateSheet(
-                challenge: challenge,
-                onTrust: { state.resolveCertificateChallenge(.trust) },
-                onReject: { state.resolveCertificateChallenge(.reject) }
-            )
-            .environment(\.zenPalette, palette)
-        }
-        .sheet(item: $state.securityDetail) { detail in
-            SecurityDetailSheet(detail: detail, state: state)
-                .environment(\.zenPalette, palette)
-        }
-        .background { keyboardShortcuts }
+            }
+            .sheet(item: $state.securityDetail) { detail in
+                SecurityDetailSheet(detail: detail, state: state)
+                    .environment(\.zenPalette, palette)
+            }
+            .background { keyboardShortcuts }
     }
 
     // MARK: Background

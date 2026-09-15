@@ -241,7 +241,7 @@ ios/
                            probes, HTTP fingerprinting and the scan itself
     UI/                    Sidebar/, Omnibox/, Glance/, Split/, History/,
                            Settings/, plus NewTabPage and FindBar
-  Tests/ZenTests/          TESTCOUNT unit tests
+  Tests/ZenTests/          542 unit tests
   Tests/ZenUITests/        the screenshot driver
 ```
 
