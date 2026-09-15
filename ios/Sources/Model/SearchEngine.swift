@@ -1,0 +1,184 @@
+//  SearchEngine.swift
+//  Search providers and the URL-vs-search decision the omnibox makes.
+
+import Foundation
+
+enum SearchEngine: String, CaseIterable, Codable, Identifiable, Sendable {
+    case duckduckgo
+    case google
+    case bing
+    case startpage
+    case ecosia
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .duckduckgo: return "DuckDuckGo"
+        case .google: return "Google"
+        case .bing: return "Bing"
+        case .startpage: return "Startpage"
+        case .ecosia: return "Ecosia"
+        }
+    }
+
+    /// SF Symbol shown in the omnibox chip.
+    var symbol: String {
+        switch self {
+        case .duckduckgo: return "shield.lefthalf.filled"
+        case .google: return "magnifyingglass"
+        case .bing: return "b.circle"
+        case .startpage: return "lock.shield"
+        case .ecosia: return "leaf"
+        }
+    }
+
+    var host: String {
+        switch self {
+        case .duckduckgo: return "duckduckgo.com"
+        case .google: return "www.google.com"
+        case .bing: return "www.bing.com"
+        case .startpage: return "www.startpage.com"
+        case .ecosia: return "www.ecosia.org"
+        }
+    }
+
+    private var path: String {
+        switch self {
+        case .duckduckgo: return "/"
+        case .google: return "/search"
+        case .bing: return "/search"
+        case .startpage: return "/sp/search"
+        case .ecosia: return "/search"
+        }
+    }
+
+    func searchURL(for query: String) -> URL {
+        var components = URLComponents()
+        components.scheme = "https"
+        components.host = host
+        components.path = path
+        components.queryItems = [URLQueryItem(name: "q", value: query)]
+        // URLComponents percent-encodes "+" as a literal plus, which servers read
+        // as a space. Encode it explicitly so "c++" searches for what was typed.
+        components.percentEncodedQuery = components.percentEncodedQuery?
+            .replacingOccurrences(of: "+", with: "%2B")
+        return components.url ?? URL(string: "https://\(host)")!
+    }
+
+    /// Autocomplete endpoint. All five expose the OpenSearch JSON shape
+    /// `["query", ["suggestion", ...]]`, except Startpage which has no public
+    /// endpoint — it falls back to DuckDuckGo's.
+    func suggestionsURL(for query: String) -> URL? {
+        guard !query.isEmpty,
+            let q = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
+        else { return nil }
+        switch self {
+        case .duckduckgo, .startpage:
+            return URL(string: "https://duckduckgo.com/ac/?q=\(q)&type=list")
+        case .google:
+            return URL(string: "https://suggestqueries.google.com/complete/search?client=firefox&q=\(q)")
+        case .bing:
+            return URL(string: "https://api.bing.com/osjson.aspx?query=\(q)")
+        case .ecosia:
+            return URL(string: "https://ac.ecosia.org/autocomplete?q=\(q)&type=list")
+        }
+    }
+}
+
+/// What the omnibox decided a typed string means.
+enum OmniboxIntent: Equatable {
+    /// Navigate straight to this URL.
+    case navigate(URL)
+    /// Run this as a search query.
+    case search(String)
+}
+
+enum URLDetector {
+    /// Schemes we will hand to WKWebView directly.
+    private static let webSchemes: Set<String> = ["http", "https", "file", "about", "data"]
+
+    /// Schemes that are real but that we deliberately do not treat as web
+    /// navigation from the omnibox.
+    private static let knownNonWebSchemes: Set<String> = ["javascript", "mailto", "tel", "sms"]
+
+    /// A conservative TLD allowlist for bare hostnames. Without one, "swift ui"
+    /// is a search but "notes.app" would be ambiguous — Zen's desktop urlbar
+    /// leans on Firefox's fixup, which is far too large to port, so we take the
+    /// common TLDs plus anything the user spells with an explicit scheme.
+    private static let commonTLDs: Set<String> = [
+        "com", "org", "net", "io", "dev", "app", "co", "uk", "de", "fr", "eu",
+        "edu", "gov", "mil", "int", "info", "biz", "me", "tv", "cc", "ai", "sh",
+        "xyz", "site", "online", "tech", "ca", "au", "jp", "cn", "in", "br",
+        "ru", "nl", "se", "no", "fi", "dk", "es", "it", "pl", "ch", "at", "be",
+        "nz", "za", "mx", "kr", "local", "lan", "page", "blog", "cloud", "gg",
+    ]
+
+    /// Decide whether `input` is a destination or a query, exactly as the
+    /// omnibox does before it commits.
+    static func intent(for rawInput: String, engine: SearchEngine) -> OmniboxIntent {
+        let input = rawInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !input.isEmpty else { return .search("") }
+
+        // Anything with whitespace inside is a query, full stop. (A pasted URL
+        // with a space in it is broken anyway.)
+        if input.rangeOfCharacter(from: .whitespacesAndNewlines) != nil {
+            return .search(input)
+        }
+
+        // Explicit scheme wins.
+        if let schemeRange = input.range(of: "://") {
+            let scheme = String(input[input.startIndex..<schemeRange.lowerBound]).lowercased()
+            if webSchemes.contains(scheme), let url = URL(string: input), url.host != nil {
+                return .navigate(url)
+            }
+            return .search(input)
+        }
+        if let colon = input.firstIndex(of: ":") {
+            let scheme = String(input[input.startIndex..<colon]).lowercased()
+            if knownNonWebSchemes.contains(scheme) { return .search(input) }
+            // `about:blank`, `data:...` have no `//`.
+            if webSchemes.contains(scheme), let url = URL(string: input) {
+                return .navigate(url)
+            }
+        }
+
+        // localhost, with or without a port or path.
+        let hostCandidate = input.prefix(while: { $0 != "/" && $0 != "?" && $0 != "#" })
+        let hostOnly = hostCandidate.split(separator: ":").first.map(String.init) ?? ""
+        if hostOnly.lowercased() == "localhost" {
+            return URL(string: "http://\(input)").map(OmniboxIntent.navigate) ?? .search(input)
+        }
+
+        // Bare IPv4.
+        let octets = hostOnly.split(separator: ".", omittingEmptySubsequences: false)
+        if octets.count == 4, octets.allSatisfy({ UInt8($0) != nil }) {
+            return URL(string: "http://\(input)").map(OmniboxIntent.navigate) ?? .search(input)
+        }
+
+        // A dotted hostname with a plausible TLD.
+        let labels = hostOnly.split(separator: ".")
+        if labels.count >= 2, let tld = labels.last.map({ String($0).lowercased() }),
+            commonTLDs.contains(tld),
+            labels.allSatisfy({ !$0.isEmpty && $0.allSatisfy { $0.isLetter || $0.isNumber || $0 == "-" } })
+        {
+            return URL(string: "https://\(input)").map(OmniboxIntent.navigate) ?? .search(input)
+        }
+
+        return .search(input)
+    }
+
+    /// The URL to actually load for a typed string.
+    static func resolve(_ input: String, engine: SearchEngine) -> URL {
+        switch intent(for: input, engine: engine) {
+        case .navigate(let url): return url
+        case .search(let query): return engine.searchURL(for: query)
+        }
+    }
+
+    /// Host without `www.`, for compact display in tab rows and the url pill.
+    static func prettyHost(_ url: URL?) -> String {
+        guard let host = url?.host else { return "" }
+        return host.hasPrefix("www.") ? String(host.dropFirst(4)) : host
+    }
+}
