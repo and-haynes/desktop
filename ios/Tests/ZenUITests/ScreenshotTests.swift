@@ -20,6 +20,20 @@ final class ScreenshotTests: XCTestCase {
         continueAfterFailure = true
         app = XCUIApplication()
         app.launch()
+        recoverFromStuckCompactMode()
+    }
+
+    /// Compact mode is a *persisted* setting, so a run that failed partway
+    /// through the compact test hands the next launch an app with no visible
+    /// chrome to drive — every test after it then fails with "address bar
+    /// missing", which says nothing about the thing it was testing. The
+    /// grabber above the home indicator is the documented way back, so use it.
+    private func recoverFromStuckCompactMode() {
+        guard !addressBar.waitForExistence(timeout: 6) else { return }
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.965)).tap()
+        guard addressBar.waitForExistence(timeout: 4) else { return }
+        _ = tapMenuItem(matching: "label CONTAINS[c] 'Compact Mode'")
+        settle(1.0)
     }
 
     // MARK: Capture
@@ -223,6 +237,26 @@ final class ScreenshotTests: XCTestCase {
             app.buttons["Address and search"].waitForExistence(timeout: 3),
             "tapping the pill did not expand the bar")
         capture("40-compact-expanded\(suffix)")
+
+        // (c) The URL area of the *expanded* bar is still the way into the
+        // omnibox — expanding and searching are two taps, not one.
+        app.buttons["Address and search"].tap()
+        XCTAssertTrue(
+            app.textFields["omniboxField"].waitForExistence(timeout: 8),
+            "tapping the expanded bar's URL area did not open the omnibox")
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.06)).tap()
+        settle(1.0)
+
+        // (d) Up from the *pill* reaches the drawer, without expanding first.
+        XCTAssertTrue(scrollToThePill(pill), "the pill did not come back for the swipe")
+        pill.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            .press(
+                forDuration: 0.05,
+                thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.35)))
+        XCTAssertTrue(
+            app.buttons["New Tab"].waitForExistence(timeout: 5),
+            "swiping up from the pill did not open the sidebar")
+        closeSidebar()
 
         // Leave compact mode, or the setting persists into the next launch and
         // every test after this one starts with no bar to drive.
