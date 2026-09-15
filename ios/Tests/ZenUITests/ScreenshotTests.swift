@@ -1064,6 +1064,42 @@ final class ScreenshotTests: XCTestCase {
         try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-BADGE"))
     }
 
+    /// Typing a private-network octet fills the scheme in (#0089B), as
+    /// ordinary editable text you can type straight on from.
+    ///
+    /// Typed one character at a time on purpose: `typeText` with a whole string
+    /// arrives as a single insertion, which the rule *correctly* treats as a
+    /// paste and leaves alone. A person typing produces one character per
+    /// change, which is the case this is meant to catch.
+    func testTypingAPrivateOctetFillsTheScheme() throws {
+        settle(4.0)
+        guard let field = openOmnibox() else { return XCTFail("omnibox missing") }
+        for character in "10." { field.typeText(String(character)) }
+        settle(1.0)
+        XCTAssertEqual(
+            field.value as? String, "https://10.",
+            "typing a private octet should fill the scheme in")
+
+        // The caret must be after what was typed, so typing on just works.
+        for character in "0.0.80:8006" { field.typeText(String(character)) }
+        settle(1.0)
+        XCTAssertEqual(field.value as? String, "https://10.0.0.80:8006")
+        capture("22-scheme-prefill")
+
+        // Backspacing the scheme away must not bring it back in the same edit.
+        for _ in 0..<30 { field.typeText(XCUIKeyboardKey.delete.rawValue) }
+        settle(0.8)
+        for character in "10." { field.typeText(String(character)) }
+        settle(1.0)
+        XCTAssertEqual(
+            field.value as? String, "10.",
+            "after deleting the scheme it must not be re-inserted in the same edit")
+
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.08)).tap()
+        settle(1.0)
+        try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-PREFILL"))
+    }
+
     // MARK: The documented states
 
     func testCaptureAllStates() throws {

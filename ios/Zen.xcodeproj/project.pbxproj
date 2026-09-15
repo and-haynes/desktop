@@ -107,6 +107,7 @@
 		EA941DEBEE9C49205096BF8C /* SyncEndToEndTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 856D26B820B996AD65C24C1B /* SyncEndToEndTests.swift */; };
 		EBFCBE191E5F56835A65EA01 /* SecurityBadgeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61F848AA634ABBCD5B5552B8 /* SecurityBadgeTests.swift */; };
 		EDCF068803ADEC573CE28C5C /* ContentArea.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B9ECBBC9BB0FBB16B024CA2 /* ContentArea.swift */; };
+		EEEC641FDA6E1E752A175E06 /* SchemePrefillTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B97537F2DDF9B5798D7318A /* SchemePrefillTests.swift */; };
 		F278A134AA5D89D8DB34B1CF /* ZenSpacesRecordTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F59C0B0AEBCD61A88DBBE0CA /* ZenSpacesRecordTests.swift */; };
 		F3638E19ECD10178B6D512D5 /* WebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06CA2FAE5D6C9580B01E013C /* WebView.swift */; };
 		F377040F7D148CA0B16821DE /* BrowserLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B39F3D08AE876742212DAC6 /* BrowserLayoutTests.swift */; };
@@ -118,6 +119,7 @@
 		F87A3F320E95CFB5DBECCA5E /* SessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFF3EA739DDD841F4DF4C81E /* SessionStore.swift */; };
 		F983E91334952520FB66C91D /* HTTPTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46585DB0F80BC570B7EF0930 /* HTTPTransport.swift */; };
 		F9B99E781CB348293A0D9E24 /* SyncConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A028A06BB923202DE6744D2 /* SyncConfig.swift */; };
+		FA5EF93363DE0363AAE2529F /* SchemePrefill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FF2CD0605111150F60A8401 /* SchemePrefill.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -204,10 +206,12 @@
 		917EA944DBE84A76F6227467 /* TabsEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabsEngine.swift; sourceTree = "<group>"; };
 		926A0C7C35EF2BBD6BF3F07F /* ZenEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZenEnvironment.swift; sourceTree = "<group>"; };
 		9711F57491E845C7024435DE /* SpacesEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpacesEngine.swift; sourceTree = "<group>"; };
+		9B97537F2DDF9B5798D7318A /* SchemePrefillTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SchemePrefillTests.swift; sourceTree = "<group>"; };
 		9C89A165A5B3DE33E6C03E0B /* ColorParsing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorParsing.swift; sourceTree = "<group>"; };
 		9D527E0502C91198924E8E5E /* SyncSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncSettingsView.swift; sourceTree = "<group>"; };
 		9F09F9DBA3529788D7567C97 /* Tab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tab.swift; sourceTree = "<group>"; };
 		9FA950A132BEC1CE6A6AB420 /* JSONFileStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONFileStore.swift; sourceTree = "<group>"; };
+		9FF2CD0605111150F60A8401 /* SchemePrefill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SchemePrefill.swift; sourceTree = "<group>"; };
 		A1F4C708985F77AA30840735 /* StatusBarSettingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarSettingTests.swift; sourceTree = "<group>"; };
 		A85329F9BCB66962F38E0EA2 /* FocusModeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusModeTests.swift; sourceTree = "<group>"; };
 		ABA7F8DD18D946F9589A2F55 /* SettingsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsSheet.swift; sourceTree = "<group>"; };
@@ -345,6 +349,7 @@
 				00702F505256F196432DB86D /* OmniboxOverlay.swift */,
 				89CF4FD1B002F1922E42F267 /* OmniboxPill.swift */,
 				3E5240A82F9C160738FAA784 /* OmniboxTextField.swift */,
+				9FF2CD0605111150F60A8401 /* SchemePrefill.swift */,
 				5C856C6784CFBBAC153B6D5C /* SuggestionEngine.swift */,
 			);
 			path = Omnibox;
@@ -523,6 +528,7 @@
 				FF464950DD8915C034DD2E64 /* LANHostTests.swift */,
 				782C96F203ECA8E99702C663 /* LoadFailureTests.swift */,
 				773B35E2BE0EA1C9632F70C5 /* MockSyncServer.swift */,
+				9B97537F2DDF9B5798D7318A /* SchemePrefillTests.swift */,
 				61F848AA634ABBCD5B5552B8 /* SecurityBadgeTests.swift */,
 				F46B5E6DC096FDFE0832321E /* SecurityTests.swift */,
 				CEEEA5047438DAA8F1415FDC /* SessionStoreTests.swift */,
@@ -764,6 +770,7 @@
 				AEF649A69239786AB1D0BD15 /* RecentColorsStore.swift in Sources */,
 				403CBF62080CEC82CDD2799B /* RemoteTabsSection.swift in Sources */,
 				DAFDFB5A1A5E21EF209AF052 /* RootView.swift in Sources */,
+				FA5EF93363DE0363AAE2529F /* SchemePrefill.swift in Sources */,
 				7F44FFC531437E7F5E8165AD /* ScopedKeyJWE.swift in Sources */,
 				52D2889E3A1A18B197B46215 /* SearchEngine.swift in Sources */,
 				678382BB47757C63472894C2 /* SecurityBadge.swift in Sources */,
@@ -829,6 +836,7 @@
 				C3C3C63F3F71C8DC7F36F0AB /* LANHostTests.swift in Sources */,
 				1F4326C74B645F3296BDFDEB /* LoadFailureTests.swift in Sources */,
 				982AB9E72B9E86A050208A62 /* MockSyncServer.swift in Sources */,
+				EEEC641FDA6E1E752A175E06 /* SchemePrefillTests.swift in Sources */,
 				EBFCBE191E5F56835A65EA01 /* SecurityBadgeTests.swift in Sources */,
 				145E698CD3DF26C2497B756A /* SecurityTests.swift in Sources */,
 				8524DB2323656F48E3577C84 /* SessionStoreTests.swift in Sources */,
