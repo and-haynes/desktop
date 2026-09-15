@@ -15,6 +15,9 @@ struct Suggestion: Identifiable, Equatable {
         case topHit
         case history(URL)
         case searchTerm
+        /// A bare word read as a hostname — the explicit second option when
+        /// `meitner` could mean either thing.
+        case goToHost(URL)
         /// One of Zen's urlbar actions.
         case action(OmniboxAction)
     }
@@ -107,6 +110,7 @@ final class SuggestionEngine: ObservableObject {
         fetchTask?.cancel()
 
         let engine = state.settings.searchEngine
+        let knownHosts = state.knownSingleLabelHosts
         var results: [Suggestion] = []
 
         if query.isEmpty {
@@ -117,7 +121,8 @@ final class SuggestionEngine: ObservableObject {
         }
 
         // 1. The top hit: what committing right now would do.
-        switch URLDetector.intent(for: query, engine: engine) {
+        let intent = URLDetector.intent(for: query, engine: engine, knownHosts: knownHosts)
+        switch intent {
         case .navigate(let url):
             results.append(
                 Suggestion(
@@ -128,6 +133,30 @@ final class SuggestionEngine: ObservableObject {
                 Suggestion(
                     id: "top", kind: .topHit, title: term,
                     subtitle: "Search with \(engine.displayName)", symbol: engine.symbol))
+        }
+
+        // 1b. The other reading of a bare word. `meitner` is a machine on
+        // someone's network and `pottery` is a search, and nothing in the
+        // string tells them apart — so rather than guessing, both are offered,
+        // with whichever is *less* likely sitting second. Searching stays the
+        // default for a word we have never been to; once you have been to
+        // `meitner` the intent above flips and it is searching that moves down.
+        if let label = URLDetector.singleLabelName(query),
+            let hostURL = URLDetector.singleLabelURL(label)
+        {
+            switch intent {
+            case .search:
+                results.append(
+                    Suggestion(
+                        id: "go-host", kind: .goToHost(hostURL),
+                        title: "Go to \(hostURL.absoluteString)",
+                        subtitle: "Open as a network address", symbol: "network"))
+            case .navigate:
+                results.append(
+                    Suggestion(
+                        id: "go-search", kind: .searchTerm, title: label,
+                        subtitle: "Search with \(engine.displayName)", symbol: engine.symbol))
+            }
         }
 
         // 2. History.

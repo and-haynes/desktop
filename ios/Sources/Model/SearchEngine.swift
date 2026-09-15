@@ -114,9 +114,43 @@ enum URLDetector {
         "nz", "za", "mx", "kr", "local", "lan", "page", "blog", "cloud", "gg",
     ]
 
+    /// A bare single-label name — no dot, no scheme, no port, no path, no
+    /// whitespace. `meitner`, but not `meitner:8006` or `meitner/status`
+    /// (already unambiguously hosts), nor `swift ui` (obviously a search).
+    ///
+    /// This is the one genuinely ambiguous input a URL bar takes: `meitner` is
+    /// a machine on someone's network and `pottery` is a search, and nothing in
+    /// the string tells them apart. Naming the case lets the omnibox offer both
+    /// rather than guess.
+    static func singleLabelName(_ rawInput: String) -> String? {
+        let input = rawInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !input.isEmpty, input.count <= 63 else { return nil }
+        guard input.lowercased() != "localhost" else { return nil }
+        guard input.allSatisfy({ $0.isLetter || $0.isNumber || $0 == "-" }) else { return nil }
+        guard !input.hasPrefix("-"), !input.hasSuffix("-") else { return nil }
+        // A name that is only digits is a number, not a host.
+        guard input.contains(where: { !$0.isNumber }) else { return nil }
+        return input
+    }
+
+    /// Where a bare name would go. `http`, not `https`: a single-label name is
+    /// by definition not a public host, and home-network services overwhelmingly
+    /// answer on plain HTTP — the same reason `meitner:8006` already resolves
+    /// this way.
+    static func singleLabelURL(_ label: String) -> URL? {
+        URL(string: "http://\(label)")
+    }
+
     /// Decide whether `input` is a destination or a query, exactly as the
     /// omnibox does before it commits.
-    static func intent(for rawInput: String, engine: SearchEngine) -> OmniboxIntent {
+    ///
+    /// `knownHosts` is the set of single-label hostnames the user has actually
+    /// been to (see `BrowserState.knownSingleLabelHosts`). A bare word that
+    /// matches one stops being ambiguous: you have been to `meitner`, so
+    /// `meitner` means `meitner`.
+    static func intent(
+        for rawInput: String, engine: SearchEngine, knownHosts: Set<String> = []
+    ) -> OmniboxIntent {
         let input = rawInput.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !input.isEmpty else { return .search("") }
 
@@ -187,12 +221,20 @@ enum URLDetector {
             return URL(string: "http://\(input)").map(OmniboxIntent.navigate) ?? .search(input)
         }
 
+        // A bare word we have been to before is a machine, not a search term.
+        if !knownHosts.isEmpty, let label = singleLabelName(input),
+            knownHosts.contains(label.lowercased()), let url = singleLabelURL(label)
+        {
+            return .navigate(url)
+        }
+
         return .search(input)
     }
 
     /// The URL to actually load for a typed string.
-    static func resolve(_ input: String, engine: SearchEngine) -> URL {
-        switch intent(for: input, engine: engine) {
+    static func resolve(_ input: String, engine: SearchEngine, knownHosts: Set<String> = []) -> URL
+    {
+        switch intent(for: input, engine: engine, knownHosts: knownHosts) {
         case .navigate(let url): return url
         case .search(let query): return engine.searchURL(for: query)
         }

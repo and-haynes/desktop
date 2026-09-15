@@ -122,6 +122,10 @@ final class BrowserState: ObservableObject {
 
     // MARK: Derived accessors
 
+    /// Single-label hostnames the user has actually visited. A bare word in
+    /// the omnibox that matches one navigates instead of searching.
+    var knownSingleLabelHosts: Set<String> { history.singleLabelHosts }
+
     var activeSpace: Space? {
         spaces.first { $0.id == activeSpaceID } ?? spaces.first
     }

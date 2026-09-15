@@ -64,6 +64,20 @@ final class HistoryStore: ObservableObject {
         persist()
     }
 
+    /// Hostnames with no dot in them: the machines on the local network, in
+    /// practice. The omnibox uses these to decide that a bare `meitner` is a
+    /// destination rather than a search — having been there once is the only
+    /// evidence that separates the two.
+    var singleLabelHosts: Set<String> {
+        Set(
+            entries.compactMap { entry in
+                guard let host = entry.url.host?.lowercased(), !host.contains("."),
+                    host != "localhost"
+                else { return nil }
+                return host
+            })
+    }
+
     /// Frecency-ish ranking for omnibox suggestions: prefix matches on the host
     /// beat substring matches, and more-visited beats less-visited.
     func suggestions(for query: String, limit: Int = 6) -> [HistoryEntry] {

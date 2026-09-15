@@ -108,7 +108,7 @@ struct OmniboxOverlay: View {
         switch suggestion.kind {
         case .topHit:
             commit(state.omniboxText)
-        case .history(let url):
+        case .history(let url), .goToHost(let url):
             Haptics.shared.fire(.suggestionPick)
             navigate(to: url)
         case .searchTerm:
@@ -128,7 +128,10 @@ struct OmniboxOverlay: View {
             return
         }
         Haptics.shared.fire(.urlCommit)
-        navigate(to: URLDetector.resolve(trimmed, engine: state.settings.searchEngine))
+        navigate(
+            to: URLDetector.resolve(
+                trimmed, engine: state.settings.searchEngine,
+                knownHosts: state.knownSingleLabelHosts))
     }
 
     private func navigate(to url: URL) {

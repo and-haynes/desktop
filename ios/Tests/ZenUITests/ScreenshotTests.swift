@@ -306,6 +306,30 @@ final class ScreenshotTests: XCTestCase {
         try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-NEWTAB"))
     }
 
+    /// The single-word rule: `meitner` searches, but the other reading is
+    /// offered explicitly as the second row rather than guessed at.
+    func testSingleWordOffersGoToHost() throws {
+        settle(4.0)
+        guard let field = openOmnibox() else { return XCTFail("omnibox missing") }
+        field.typeText("meitner")
+        settle(2.5)
+
+        let goTo = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS[c] 'Go to http://meitner'")).firstMatch
+        XCTAssertTrue(
+            goTo.waitForExistence(timeout: 8),
+            "a bare word must offer 'Go to http://meitner' explicitly")
+        capture("26-single-word")
+
+        // And it navigates when picked.
+        goTo.tap()
+        settle(4.0)
+        XCTAssertTrue(
+            app.buttons["Address and search"].waitForExistence(timeout: 8),
+            "the omnibox should have closed onto the tab")
+        try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-SINGLEWORD"))
+    }
+
     // MARK: The documented states
 
     func testCaptureAllStates() throws {
