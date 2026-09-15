@@ -23,6 +23,9 @@ struct SpaceEditorView: View {
     @State private var isSymbol: Bool
     @State private var theme: ZenTheme
     @State private var emojiDraft: String
+    /// This space's display overrides (#008BB). Held locally and written on
+    /// Save like everything else in this editor, so Cancel really cancels.
+    @State private var display: DisplayOverrides
 
     init(state: BrowserState, space: Space?) {
         self.state = state
@@ -31,6 +34,7 @@ struct SpaceEditorView: View {
         _icon = State(initialValue: space?.icon ?? "sparkles")
         _isSymbol = State(initialValue: space?.isSymbol ?? true)
         _emojiDraft = State(initialValue: space.map { $0.isSymbol ? "" : $0.icon } ?? "")
+        _display = State(initialValue: space?.display ?? DisplayOverrides())
         _theme = State(
             initialValue: space?.theme
                 ?? ZenGradientGenerator.theme(
@@ -70,6 +74,8 @@ struct SpaceEditorView: View {
                             + "The dot you place is the accent; the others follow the harmony.")
                 }
 
+                displaySection
+
                 if let space, state.spaces.count > 1 {
                     Section {
                         Button(role: .destructive) {
@@ -100,6 +106,100 @@ struct SpaceEditorView: View {
 
     private var resolvedName: String {
         name.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    // MARK: Display (#008BB)
+
+    /// Every row offers Inherit first, and Inherit is the default — a space is
+    /// a context, not a second copy of your settings, and most of them should
+    /// carry one or two deliberate differences rather than a full set.
+    @ViewBuilder
+    private var displaySection: some View {
+        Section {
+            Picker("Layout", selection: $display.layout) {
+                Text("Inherit").tag(BrowserLayout?.none)
+                ForEach(BrowserLayout.allCases) { Text($0.displayName).tag(BrowserLayout?.some($0)) }
+            }
+            .accessibilityIdentifier("spaceLayoutPicker")
+
+            Picker("Appearance", selection: $display.appearance) {
+                Text("Inherit").tag(AppearanceMode?.none)
+                ForEach(AppearanceMode.allCases) { Text($0.displayName).tag(AppearanceMode?.some($0)) }
+            }
+            .accessibilityIdentifier("spaceAppearancePicker")
+
+            Picker("Bar layout", selection: barPresetBinding) {
+                Text("Inherit").tag(String?.none)
+                ForEach(BarPreset.all) { Text($0.name).tag(String?.some($0.id)) }
+            }
+            .accessibilityIdentifier("spaceBarPresetPicker")
+
+            Picker("Bar fill", selection: $display.barFill) {
+                Text("Inherit").tag(BarFill?.none)
+                ForEach(BarFill.allCases) { Text($0.displayName).tag(BarFill?.some($0)) }
+            }
+
+            Picker("Compact mode", selection: $display.compactModeEnabled) {
+                Text("Inherit").tag(Bool?.none)
+                Text("On").tag(Bool?.some(true))
+                Text("Off").tag(Bool?.some(false))
+            }
+
+            Picker("Sidebar position", selection: $display.sidebarEdge) {
+                Text("Inherit").tag(SidebarEdge?.none)
+                ForEach(SidebarEdge.allCases) { Text($0.displayName).tag(SidebarEdge?.some($0)) }
+            }
+
+            Picker("Text size", selection: $display.textSize) {
+                Text("Inherit").tag(Double?.none)
+                ForEach(PageZoom.steps, id: \.self) { step in
+                    Text(PageZoom.percentLabel(step)).tag(Double?.some(step))
+                }
+            }
+
+            Picker("Navigation helper", selection: $display.navigationHelperEnabled) {
+                Text("Inherit").tag(Bool?.none)
+                Text("On").tag(Bool?.some(true))
+                Text("Off").tag(Bool?.some(false))
+            }
+
+            Button(role: .destructive) {
+                display = DisplayOverrides()
+            } label: {
+                Label("Reset space display", systemImage: "arrow.counterclockwise")
+            }
+            .disabled(display.isEmpty)
+            .accessibilityIdentifier("resetSpaceDisplay")
+        } header: {
+            Text("Display")
+        } footer: {
+            Text(displayFooter)
+        }
+    }
+
+    /// Built as a `String`: interpolation inside a `Form` this size is what
+    /// tips the type checker over, and its error names no cause.
+    private var displayFooter: String {
+        let overridden = display.overriddenNames
+        let base =
+            "A space is a context, so it can look like one. Inherit follows "
+            + "Settings and keeps following it when Settings changes — which is "
+            + "why it is not the same as choosing the same value. Bar layout "
+            + "picks one of the named presets; the fully custom bar stays global."
+        guard !overridden.isEmpty else { return base + " Nothing is overridden yet." }
+        return base + " Overridden here: " + overridden.joined(separator: ", ") + "."
+    }
+
+    /// A preset id, or nil for inherit. Choosing a preset clears any full
+    /// layout this space carried — the two are alternatives, and leaving the
+    /// layout behind would make the picker look like it did nothing.
+    private var barPresetBinding: Binding<String?> {
+        Binding(
+            get: { display.barPresetID },
+            set: { newValue in
+                display.barPresetID = newValue
+                display.barLayout = nil
+            })
     }
 
     // MARK: Icon
@@ -221,9 +321,16 @@ struct SpaceEditorView: View {
                 $0.icon = icon
                 $0.isSymbol = isSymbol
                 $0.theme = theme
+                $0.display = display.isEmpty ? nil : display
             }
         } else {
-            state.addSpace(name: finalName, icon: icon, isSymbol: isSymbol, theme: theme)
+            // A new space is created first and then given its overrides —
+            // `addSpace` predates them and returns the space precisely so the
+            // caller can finish the job. Without this the Display section
+            // would silently do nothing on a space you are creating.
+            let created = state.addSpace(
+                name: finalName, icon: icon, isSymbol: isSymbol, theme: theme)
+            state.setDisplayOverrides(display, for: created.id)
         }
         dismiss()
     }

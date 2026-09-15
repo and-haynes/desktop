@@ -12,6 +12,15 @@ final class PageTopInsetTests: XCTestCase {
     /// An iPhone 17's top safe area, island and all.
     private let islandTop: CGFloat = 59
 
+    /// #008BB moved the inset rule onto the *resolved* display, since the
+    /// layout cycle is one of the things a space can override. These tests are
+    /// about the settings that feed it, so they resolve with no space.
+    private func resolvedInsets(_ settings: ZenSettings, safeAreaTop: CGFloat) -> PageTopInsets {
+        PageTopInsets.forDisplay(
+            EffectiveDisplay.resolve(settings: settings, overrides: nil),
+            safeAreaTop: safeAreaTop)
+    }
+
     // MARK: The rule does not see the status-bar setting
 
     func testTheInsetRuleIsUnchangedByTheStatusBarSetting() {
@@ -21,8 +30,8 @@ final class PageTopInsetTests: XCTestCase {
         hidden.showStatusBar = false
 
         XCTAssertEqual(
-            PageTopInsets.forSettings(shown, safeAreaTop: islandTop),
-            PageTopInsets.forSettings(hidden, safeAreaTop: islandTop))
+            resolvedInsets(shown, safeAreaTop: islandTop),
+            resolvedInsets(hidden, safeAreaTop: islandTop))
     }
 
     /// Belt and braces: every other setting held constant, flipping the status
@@ -36,9 +45,9 @@ final class PageTopInsetTests: XCTestCase {
 
         for top in [CGFloat(0), 20, islandTop, 62] {
             settings.showStatusBar = true
-            let shown = PageTopInsets.forSettings(settings, safeAreaTop: top)
+            let shown = resolvedInsets(settings, safeAreaTop: top)
             settings.showStatusBar = false
-            let hidden = PageTopInsets.forSettings(settings, safeAreaTop: top)
+            let hidden = resolvedInsets(settings, safeAreaTop: top)
             XCTAssertEqual(shown, hidden, "the status bar moved the page at safeAreaTop \(top)")
         }
     }
@@ -46,7 +55,7 @@ final class PageTopInsetTests: XCTestCase {
     // MARK: The card starts below the safe area
 
     func testTheCardStartsBelowTheSafeArea() {
-        let insets = PageTopInsets.forSettings(ZenSettings(), safeAreaTop: islandTop)
+        let insets = resolvedInsets(ZenSettings(), safeAreaTop: islandTop)
         XCTAssertFalse(insets.pageUnderTopSafeArea)
         XCTAssertEqual(insets.cardTopPadding, ZenMetrics.splitGap)
         // Nothing of ours is under the island, so the page needs no inset of
@@ -134,9 +143,17 @@ final class LayoutPageTopInsetTests: XCTestCase {
         return s
     }
 
+    /// See `PageTopInsetTests.resolvedInsets` — the rule takes the resolved
+    /// display since #008BB, and these tests carry no space overrides.
+    private func resolvedInsets(_ settings: ZenSettings, safeAreaTop: CGFloat) -> PageTopInsets {
+        PageTopInsets.forDisplay(
+            EffectiveDisplay.resolve(settings: settings, overrides: nil),
+            safeAreaTop: safeAreaTop)
+    }
+
     func testCardKeepsTheDesktopInsetAndDoesNotRunUnderTheIsland() {
         for statusBar in [true, false] {
-            let insets = PageTopInsets.forSettings(
+            let insets = resolvedInsets(
                 settings(.card, statusBar: statusBar), safeAreaTop: 59)
             XCTAssertFalse(insets.pageUnderTopSafeArea)
             XCTAssertEqual(insets.webTopContentInset, 0)
@@ -146,7 +163,7 @@ final class LayoutPageTopInsetTests: XCTestCase {
 
     func testEdgeToEdgeAndFullScreenGiveThePageTheTopBand() {
         for layout in [BrowserLayout.edgeToEdge, .fullScreen] {
-            let insets = PageTopInsets.forSettings(
+            let insets = resolvedInsets(
                 settings(layout, statusBar: true), safeAreaTop: 59)
             XCTAssertTrue(insets.pageUnderTopSafeArea, "\(layout) should reach the top edge")
             XCTAssertEqual(
@@ -160,9 +177,9 @@ final class LayoutPageTopInsetTests: XCTestCase {
     /// gone, so take the space". The island is hardware and is still there.
     func testHidingTheStatusBarMovesNothingInAnyLayout() {
         for layout in BrowserLayout.allCases {
-            let shown = PageTopInsets.forSettings(
+            let shown = resolvedInsets(
                 settings(layout, statusBar: true), safeAreaTop: 59)
-            let hidden = PageTopInsets.forSettings(
+            let hidden = resolvedInsets(
                 settings(layout, statusBar: false), safeAreaTop: 59)
             XCTAssertEqual(shown, hidden, "\(layout) moved when the status bar was hidden")
         }
@@ -170,7 +187,7 @@ final class LayoutPageTopInsetTests: XCTestCase {
 
     /// A proxy read before the window settles can hand us a negative inset.
     func testANegativeSafeAreaIsNotPassedOn() {
-        let insets = PageTopInsets.forSettings(
+        let insets = resolvedInsets(
             settings(.fullScreen, statusBar: true), safeAreaTop: -12)
         XCTAssertEqual(insets.webTopContentInset, 0)
     }

@@ -16,6 +16,7 @@ struct SettingsSheet: View {
     var body: some View {
         NavigationStack {
             Form {
+                spaceOverrideNoticeSection
                 appearanceSection
                 textSizeSection
                 navigationHelperSection
@@ -358,6 +359,46 @@ struct SettingsSheet: View {
         }
     }
 
+    /// What this screen is *not* deciding right now (#008BB).
+    ///
+    /// Without this the Settings screen is quietly wrong in any space that
+    /// overrides something: the picker shows Card, the space is on Full
+    /// Screen, and nothing on screen explains it. Named rather than counted,
+    /// because "3 values overridden" sends you hunting.
+    @ViewBuilder
+    private var spaceOverrideNoticeSection: some View {
+        if let space = state.activeSpace, let overrides = space.display, !overrides.isEmpty {
+            Section {
+                Button {
+                    editingSpace = space
+                } label: {
+                    HStack(alignment: .firstTextBaseline, spacing: 10) {
+                        Image(systemName: "square.stack.3d.up")
+                            .foregroundStyle(palette.accent.color)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("\(space.name) overrides these here")
+                                .font(.callout)
+                            Text(overrides.overriddenNames.joined(separator: ", "))
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                .tint(.primary)
+                .accessibilityIdentifier("spaceOverrideNotice")
+            } footer: {
+                Text(
+                    "The settings below are the defaults every space inherits. "
+                        + "This space has been told otherwise about the values "
+                        + "listed; its own Display section is where to change them.")
+            }
+        }
+    }
+
     /// The four page-stepping buttons (#008B9). The side offers Automatic
     /// first because that is the answer most people want and none of them
     /// would think to ask for: the edge *opposite* the sidebar, where the
@@ -387,7 +428,7 @@ struct SettingsSheet: View {
     /// interpolation inside a `Form` this large is what tips the type checker
     /// over, and the error it gives names no cause.
     private var navigationHelperFooter: String {
-        let side = state.settings.resolvedNavigationHelperSide.displayName
+        let side = state.display.navigationHelperSide.displayName
         return "Page up, page down, top and bottom, as four small buttons that "
             + "fade in while the page is scrolling and fade out once it settles "
             + "— on the same delay as compact mode, so the chrome and the "

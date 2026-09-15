@@ -175,7 +175,7 @@ struct OmniboxOverlay: View {
 
     private func perform(_ action: OmniboxAction) {
         switch action {
-        case .toggleCompactMode: state.settings.compactModeEnabled.toggle()
+        case .toggleCompactMode: state.setCompactMode(!state.display.compactModeEnabled)
         case .newSplitView, .unsplitView:
             Haptics.shared.fire(state.isSplitActive ? .splitExit : .splitEnter)
             withAnimation(.spring(response: 0.3, dampingFraction: 1)) { state.toggleSplit() }

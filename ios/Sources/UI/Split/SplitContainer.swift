@@ -70,8 +70,8 @@ struct SplitContainer<Pane: View>: View {
                     // the slot buttons for the pane's own controls.
                     OmniboxPill(
                         state: state, tabID: id, isSecondaryPane: true,
-                        isFloating: state.settings.barLayout.position.isFloating
-                            || state.settings.layout.barFloats)
+                        isFloating: state.display.barLayout.position.isFloating
+                            || state.display.layout.barFloats)
                 }
                 .transition(.move(edge: .top).combined(with: .opacity))
             }
@@ -84,7 +84,7 @@ struct SplitContainer<Pane: View>: View {
     /// present otherwise. It has no collapsed form of its own — a pane bar is
     /// already the short version — so it rides on `expanded` alone.
     private var secondaryBarHidden: Bool {
-        state.settings.compactModeEnabled && state.settings.compactHidesToolbar
+        state.display.compactModeEnabled && state.settings.compactHidesToolbar
             && state.compactBarPhase != .expanded
     }
 

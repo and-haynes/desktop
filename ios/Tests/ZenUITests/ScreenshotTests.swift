@@ -2102,6 +2102,97 @@ extension ScreenshotTests {
         dismissSheet()
     }
 
+    /// Per-workspace display (#008BB): a space overrides the layout and the
+    /// appearance, the chrome follows when you switch into it, and the global
+    /// Settings screen says so rather than quietly disagreeing with itself.
+    func testCaptureSpaceDisplayOverrides() throws {
+        settle(4.0)
+        navigate(to: "zen-browser.app")
+
+        XCTAssertTrue(openSpaceEditor(), "space editor missing")
+        let display = app.staticTexts["Display"].firstMatch
+        for _ in 0..<10 where !display.exists || !display.isHittable {
+            app.swipeUp()
+            settle(0.5)
+        }
+        capture("48-space-display-section")
+
+        XCTAssertTrue(pickOption("spaceLayoutPicker", "Full Screen"), "layout picker missing")
+        XCTAssertTrue(pickOption("spaceAppearancePicker", "Dark"), "appearance picker missing")
+        capture("48b-space-display-set")
+
+        app.buttons["Save"].firstMatch.tap()
+        settle(1.2)
+        dismissSheet()
+        settle(2.0)
+        // Personal is the active space, so the chrome it just overrode is what
+        // is on screen: full screen, dark.
+        capture("48c-space-display-applied")
+
+        // The other space inherits, so switching is the whole feature in one
+        // gesture: the layout changes under you.
+        openSidebar()
+        let work = app.buttons["Work"].firstMatch
+        if work.waitForExistence(timeout: 5) {
+            work.tap()
+            settle(1.5)
+            // Close the drawer first: it covers the chrome that is the whole
+            // point of the shot.
+            closeSidebar()
+            settle(1.5)
+            capture("48d-space-display-other-space")
+        } else {
+            closeSidebar()
+        }
+
+        // And Settings says which values it is *not* deciding.
+        if openSettings() {
+            let notice = app.buttons["spaceOverrideNotice"].firstMatch
+            settle(1.0)
+            if notice.exists { capture("48e-space-display-settings-note") }
+            dismissSheet()
+        }
+
+        // Put it back so the next run starts from the documented default.
+        if openSpaceEditor() {
+            let reset = app.buttons["resetSpaceDisplay"].firstMatch
+            for _ in 0..<10 where !reset.exists || !reset.isHittable {
+                app.swipeUp()
+                settle(0.5)
+            }
+            if reset.exists { reset.tap() }
+            settle(0.6)
+            app.buttons["Save"].firstMatch.tap()
+            settle(1.0)
+            dismissSheet()
+        }
+    }
+
+    /// Tap a `Form` picker row and then its option. Written to survive both
+    /// presentations SwiftUI picks between — a menu and a pushed list — because
+    /// which one you get depends on the form's context, not on the code.
+    @discardableResult
+    func pickOption(_ identifier: String, _ option: String) -> Bool {
+        let row = app.descendants(matching: .any)[identifier].firstMatch
+        for _ in 0..<10 where !row.exists || !row.isHittable {
+            app.swipeUp()
+            settle(0.5)
+        }
+        guard row.waitForExistence(timeout: 6) else { return false }
+        row.tap()
+        settle(1.0)
+        let choice = app.buttons[option].firstMatch
+        if choice.waitForExistence(timeout: 4) {
+            choice.tap()
+        } else {
+            let cell = app.staticTexts[option].firstMatch
+            guard cell.waitForExistence(timeout: 4) else { return false }
+            cell.tap()
+        }
+        settle(1.0)
+        return true
+    }
+
     func testSplitPaneBarsFollowTheLayout() throws {
         settle(4.0)
         navigate(to: "example.com")

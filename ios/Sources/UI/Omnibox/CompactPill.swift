@@ -67,7 +67,7 @@ struct CompactPill: View {
                 let action = BarSwipeGesture.action(
                     translation: value.translation, velocity: value.velocity,
                     isSidebarOpen: state.isSidebarVisible,
-                    mapping: state.settings.sidebarEdge.swipeMapping)
+                    mapping: state.display.sidebarEdge.swipeMapping)
                 guard action != .none else { return }
                 Haptics.shared.fire(.sidebarSnap)
                 withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {

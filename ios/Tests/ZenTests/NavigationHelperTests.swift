@@ -291,22 +291,29 @@ final class NavigationHelperTests: XCTestCase {
 
     /// Automatic is the edge *opposite* the sidebar: the sidebar's own edge
     /// already carries the drawer swipe and the bar's sidebar button.
+    ///
+    /// Resolved through `EffectiveDisplay` since #008BB, so that a space which
+    /// moved its own sidebar moves the helper with it.
+    private func side(_ settings: ZenSettings) -> SidebarEdge {
+        EffectiveDisplay.resolve(settings: settings, overrides: nil).navigationHelperSide
+    }
+
     func testAutomaticSitsOppositeTheSidebar() {
         var settings = ZenSettings()
         settings.navigationHelperSide = nil
 
         settings.sidebarEdge = .leading
-        XCTAssertEqual(settings.resolvedNavigationHelperSide, .trailing)
+        XCTAssertEqual(side(settings), .trailing)
 
         settings.sidebarEdge = .trailing
-        XCTAssertEqual(settings.resolvedNavigationHelperSide, .leading)
+        XCTAssertEqual(side(settings), .leading)
     }
 
     func testAnExplicitSideWins() {
         var settings = ZenSettings()
         settings.sidebarEdge = .leading
         settings.navigationHelperSide = .leading
-        XCTAssertEqual(settings.resolvedNavigationHelperSide, .leading)
+        XCTAssertEqual(side(settings), .leading)
     }
 
     // MARK: Persistence

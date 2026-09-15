@@ -112,6 +112,7 @@
 		852B5B207AAE8CDB3836F1C2 /* NavigationHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BE48A595CDD13E8F78E392 /* NavigationHelper.swift */; };
 		85C1BC4BA63342C20EDB9C78 /* BitwardenProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F46B00D79C5C8EEBFF9CDECD /* BitwardenProviderTests.swift */; };
 		87DD5F0DA37B8A7173EF2BA4 /* SyncKeyBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CD8A99FDFE15B58CCBE1B30 /* SyncKeyBundle.swift */; };
+		8A9F2BA7EDC338F1561A0785 /* EffectiveDisplay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 886D373F93733E3698351D8E /* EffectiveDisplay.swift */; };
 		8B405162DEA80D881A245836 /* SplitContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB377F3610015C51D9D15F94 /* SplitContainer.swift */; };
 		8E8DC64D692B707A0DA1BCE9 /* SyncSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D527E0502C91198924E8E5E /* SyncSettingsView.swift */; };
 		8F570F52C083B81FEAEFC734 /* ZenMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61E6535D6C6DA4C195C697FB /* ZenMetrics.swift */; };
@@ -162,6 +163,7 @@
 		CEECED300963669E945BAFC0 /* FxAOAuthClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF2B26FF99A304C19DF8AD0A /* FxAOAuthClient.swift */; };
 		CF466D4EBE4809AD6755CA10 /* LANScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF63C0BA1654969DAE9290EB /* LANScanner.swift */; };
 		D2049F02320C9293AEE49560 /* TOTPTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E859D1DEF1DF9F9AA9E7584 /* TOTPTests.swift */; };
+		D4360DD22330468CF00B1E13 /* EffectiveDisplayTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 906A5EB900875C49793A6C80 /* EffectiveDisplayTests.swift */; };
 		D4F0568B1C05C46875FC4501 /* DomainMatchingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73ACFDC6C2009EE241695476 /* DomainMatchingTests.swift */; };
 		D5C158BABDD0F6010AC1B9B8 /* SecurityDetailSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AEDCE4B1F5AACF8E73E5DFA /* SecurityDetailSheet.swift */; };
 		D8CB8B9B0078993A3418F1AB /* SyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E0CC2AA18586635CEDAF86D /* SyncService.swift */; };
@@ -315,6 +317,7 @@
 		85B0AE33B7A1B2100B23FAB2 /* PageTopInsetTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageTopInsetTests.swift; sourceTree = "<group>"; };
 		869895F2D79E90B9042D92DF /* ZenGradientView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZenGradientView.swift; sourceTree = "<group>"; };
 		86AA8039EF0952DB0A5EED82 /* HistorySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistorySheet.swift; sourceTree = "<group>"; };
+		886D373F93733E3698351D8E /* EffectiveDisplay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EffectiveDisplay.swift; sourceTree = "<group>"; };
 		88B7ABF2AE6B67A857ECDDE5 /* ZenGradient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZenGradient.swift; sourceTree = "<group>"; };
 		896D79F909A07C86E2E39E1C /* ColorParsingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorParsingTests.swift; sourceTree = "<group>"; };
 		89CF4FD1B002F1922E42F267 /* OmniboxPill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OmniboxPill.swift; sourceTree = "<group>"; };
@@ -324,6 +327,7 @@
 		8EF927EF7B88CDA97759FFF1 /* ZenSpacesRecords.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZenSpacesRecords.swift; sourceTree = "<group>"; };
 		8F5985143FF548F6D1F62EF9 /* LocalNetworkView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalNetworkView.swift; sourceTree = "<group>"; };
 		8FF289D1C71AF8A70C502CAD /* ZenTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = ZenTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		906A5EB900875C49793A6C80 /* EffectiveDisplayTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EffectiveDisplayTests.swift; sourceTree = "<group>"; };
 		917EA944DBE84A76F6227467 /* TabsEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabsEngine.swift; sourceTree = "<group>"; };
 		91A09516ABC154A03FB38B3C /* OnePasswordVaultProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnePasswordVaultProvider.swift; sourceTree = "<group>"; };
 		926A0C7C35EF2BBD6BF3F07F /* ZenEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZenEnvironment.swift; sourceTree = "<group>"; };
@@ -780,6 +784,7 @@
 				896D79F909A07C86E2E39E1C /* ColorParsingTests.swift */,
 				01CC03C6EAEC84E98E2C6915 /* CompactBarTests.swift */,
 				73ACFDC6C2009EE241695476 /* DomainMatchingTests.swift */,
+				906A5EB900875C49793A6C80 /* EffectiveDisplayTests.swift */,
 				A85329F9BCB66962F38E0EA2 /* FocusModeTests.swift */,
 				8D423177180833AD4F4538C7 /* FxAWebChannelBridgeTests.swift */,
 				CAF4B40A9E2B2DA45870E23C /* FxAWebChannelTests.swift */,
@@ -867,6 +872,7 @@
 				2DFF41C7C831387F7A408651 /* BarLayout.swift */,
 				B3DDC7AF839E8CA2D86E73F8 /* BrowserLayout.swift */,
 				4297C472C3DEAD2D96846B2E /* BrowserState.swift */,
+				886D373F93733E3698351D8E /* EffectiveDisplay.swift */,
 				184829DDCA044CE2BB001C37 /* LocalService.swift */,
 				2E08239B4E2E6399FD303A1D /* PageTopInsets.swift */,
 				E6F50C30E6017F5CE0A3A949 /* SearchEngine.swift */,
@@ -1051,6 +1057,7 @@
 				EDCF068803ADEC573CE28C5C /* ContentArea.swift in Sources */,
 				AA57230D44D6BDDB17DB8D95 /* ContentBlocker.swift in Sources */,
 				05F34E7154C201FD8C122312 /* DomainMatching.swift in Sources */,
+				8A9F2BA7EDC338F1561A0785 /* EffectiveDisplay.swift in Sources */,
 				37048826351CB638FDF4835F /* ErrorPageView.swift in Sources */,
 				7C11E3E08187A3225F84258C /* EssentialsGrid.swift in Sources */,
 				6729665B0438F58791DC807C /* FaviconService.swift in Sources */,
@@ -1181,6 +1188,7 @@
 				E7F82330EA0D9210C94241F7 /* ColorParsingTests.swift in Sources */,
 				77EE444C8C297740CD53C141 /* CompactBarTests.swift in Sources */,
 				D4F0568B1C05C46875FC4501 /* DomainMatchingTests.swift in Sources */,
+				D4360DD22330468CF00B1E13 /* EffectiveDisplayTests.swift in Sources */,
 				C4F6A443C04D27948F298927 /* FocusModeTests.swift in Sources */,
 				76577B1B0B9A197A618F9121 /* FxAWebChannelBridgeTests.swift in Sources */,
 				73FB4B64946C016E25E36449 /* FxAWebChannelTests.swift in Sources */,

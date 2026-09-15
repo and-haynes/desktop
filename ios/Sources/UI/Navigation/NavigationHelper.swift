@@ -228,18 +228,11 @@ final class NavigationHelperController: ObservableObject {
 }
 
 // MARK: - Which side they sit on
-
-extension ZenSettings {
-    /// The edge the helper lives on, resolved.
-    ///
-    /// `nil` in the setting means automatic, and automatic is the *opposite*
-    /// of the sidebar edge: the sidebar's own edge is where the drawer swipe
-    /// and the bar's sidebar button already live, so putting a column of four
-    /// more targets there would stack two gestures under one thumb.
-    var resolvedNavigationHelperSide: SidebarEdge {
-        navigationHelperSide ?? (sidebarEdge == .leading ? .trailing : .leading)
-    }
-}
+//
+// Resolving "Automatic" — the edge *opposite* the sidebar, because the
+// sidebar's own edge already carries the drawer swipe and the bar's sidebar
+// button — belongs to `EffectiveDisplay` since #008BB, so that a space which
+// moved its sidebar moves the helper with it.
 
 // MARK: - The buttons
 
@@ -260,10 +253,8 @@ struct NavigationHelperStack: View {
     private static let diameter: CGFloat = 38
     private static let spacing: CGFloat = 8
 
-    private var side: SidebarEdge { state.settings.resolvedNavigationHelperSide }
-    private var fill: BarFill {
-        state.settings.barLayout.resolvedFill(default: state.settings.barFill)
-    }
+    private var side: SidebarEdge { state.display.navigationHelperSide }
+    private var fill: BarFill { state.display.resolvedBarFill }
 
     var body: some View {
         VStack(spacing: Self.spacing) {
@@ -333,7 +324,7 @@ struct NavigationHelperBridge: ViewModifier {
     func body(content: Content) -> some View {
         content
             .onAppear(perform: sync)
-            .onChange(of: state.settings.navigationHelperEnabled) { _, _ in sync() }
+            .onChange(of: state.display.navigationHelperEnabled) { _, _ in sync() }
             .onChange(of: state.settings.compactHideDelay) { _, _ in sync() }
             .onReceive(NotificationCenter.default.publisher(for: .zenPageScrollBegan)) { _ in
                 helper.pageDidScroll()
@@ -356,7 +347,7 @@ struct NavigationHelperBridge: ViewModifier {
 
     private func sync() {
         helper.stillDelay = state.settings.compactHideDelay
-        helper.isEnabled = state.settings.navigationHelperEnabled
+        helper.isEnabled = state.display.navigationHelperEnabled
     }
 
     private func scroll(_ note: Notification) {

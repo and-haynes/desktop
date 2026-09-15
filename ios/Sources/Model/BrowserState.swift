@@ -215,10 +215,60 @@ final class BrowserState: ObservableObject {
         tabs.firstIndex { $0.id == id }
     }
 
+    // MARK: The resolved display (#008BB)
+
+    /// What the chrome should look like right now: the global settings with
+    /// the active space's overrides applied.
+    ///
+    /// **The only way to ask.** Nothing in the app may read
+    /// `settings.layout`, `.appearance`, `.barLayout`, `.barFill`,
+    /// `.compactModeEnabled`, `.sidebarEdge`, `.defaultPageZoom` or
+    /// `.navigationHelperEnabled` directly — a view that does keeps working in
+    /// the global case and silently ignores the override, which is a hole
+    /// rather than a bug. `EffectiveDisplayTests` reads the source tree and
+    /// fails if one appears.
+    var display: EffectiveDisplay {
+        EffectiveDisplay.resolve(settings: settings, overrides: activeSpace?.display)
+    }
+
+    /// Write a display value at whichever level currently decides it.
+    ///
+    /// The layout cycle and the compact toggle are reachable from the bar, and
+    /// from there "which level am I editing?" is not a question anyone should
+    /// have to answer. So the rule is: if the active space overrides this
+    /// value, the gesture edits *that*; otherwise it edits the global. A space
+    /// that has opted out of the global stays opted out.
+    func setLayout(_ layout: BrowserLayout) {
+        write(\.layout, layout, global: { $0.layout = layout })
+    }
+
+    func setCompactMode(_ enabled: Bool) {
+        write(\.compactModeEnabled, enabled, global: { $0.compactModeEnabled = enabled })
+    }
+
+    private func write<Value>(
+        _ keyPath: WritableKeyPath<DisplayOverrides, Value?>, _ value: Value,
+        global: (inout ZenSettings) -> Void
+    ) {
+        if let spaceID = activeSpaceID, activeSpace?.display?[keyPath: keyPath] != nil {
+            updateSpace(spaceID) { $0.display?[keyPath: keyPath] = value }
+            return
+        }
+        global(&settings)
+    }
+
+    /// Replace a space's display overrides wholesale — what the space editor
+    /// saves, and what "Reset space display" clears.
+    func setDisplayOverrides(_ overrides: DisplayOverrides?, for spaceID: UUID) {
+        updateSpace(spaceID) {
+            $0.display = (overrides?.isEmpty ?? true) ? nil : overrides
+        }
+    }
+
     /// The palette for the active space, with the appearance setting applied.
     /// An explicit Light or Dark overrides the space's own contrast heuristic.
     func palette(systemDark: Bool) -> ZenPalette {
-        let base = settings.appearance.surfaceBase(
+        let base = display.appearance.surfaceBase(
             systemDark: systemDark, spacePrefersDark: activeSpace?.theme.forcedDarkMode)
         guard let space = activeSpace else {
             return ZenPalette(accent: ZenTokens.defaultAccent, base: base)
@@ -228,7 +278,7 @@ final class BrowserState: ObservableObject {
 
     /// What SwiftUI should force for this session, or nil to follow the system.
     func preferredColorScheme(systemDark: Bool) -> ColorScheme? {
-        if let explicit = settings.appearance.preferredColorScheme { return explicit }
+        if let explicit = display.appearance.preferredColorScheme { return explicit }
         return activeSpace?.theme.forcedDarkMode.map { $0 ? .dark : .light }
     }
 

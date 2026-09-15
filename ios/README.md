@@ -90,6 +90,10 @@ that Zen has never had:
 | **#0088F** | Named colours & code lookup | A searchable CSS/X11 + curated swatch library in the colour tool, plus a code search over a palette JSON you import yourself. No licensed colour system is bundled — see below. |
 | **#00890** | Sepia | A third palette base (paper `#F4ECD8` over ink `#5B4636`) run through zen-theme.css's own `color-mix` chain, plus an off-by-default page tint. |
 | **#00896** | Customisable bar | One persisted `BarLayout` describes the whole URL bar — where it sits, how big it is, what is inside the pill, which buttons it carries, what its gestures do and when it hides. Four presets, ones you save, and JSON import/export. |
+| **#008B7** | Text size | Safari's `AA` row — smaller and larger side by side in the More menu, with the percentage between them — on `WKWebView.pageZoom`, remembered per registrable domain, with a global default in Settings and ⌘+ / ⌘− / ⌘0 on iPad. |
+| **#008B9** | Navigation helper | Page up, page down, top and bottom as four minimal round buttons that fade in while the page is scrolling and fade out once it settles. Off by default; they take the edge opposite the sidebar, never the first scroll gesture, and step by one *visible* screenful less a small overlap. |
+| **#008BA** | Two-line stacked bar | `Rows: 1 / 2` in Customize bar. Two puts the address on its own line and the buttons on a full-width row below it, raising a side from four glyphs to seven; landscape can collapse it back. |
+| **#008BB** | Per-workspace display | A space can override the layout, appearance, bar layout and fill, compact mode, sidebar edge, text size and the navigation helper. Everything else inherits, and keeps inheriting when the global changes. |
 | **#0089C** | LAN scanner & Local | Settings scans the subnet this device is on, finds what is listening, reads page titles and certificate fingerprints, and keeps the ones you pick under aliases the address bar understands. |
 
 Everything else in this README is shared with `ios`.

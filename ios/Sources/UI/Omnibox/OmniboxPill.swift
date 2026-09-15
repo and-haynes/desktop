@@ -40,7 +40,7 @@ struct OmniboxPill: View {
     /// Put the bar away. Owned by whoever animates it (RootView).
     var onHideBar: () -> Void = {}
 
-    var layout: BarLayout { layoutOverride ?? state.settings.barLayout }
+    var layout: BarLayout { layoutOverride ?? state.display.barLayout }
 
     /// Double-tap bookkeeping for the address area — see `addressTapped()`.
     @State private var lastAddressTap = Date.distantPast
@@ -110,7 +110,11 @@ struct OmniboxPill: View {
         isStacked ? max(24, buttonRowHeight - 2) : 36
     }
 
-    private var fill: BarFill { layout.resolvedFill(default: state.settings.barFill) }
+    /// The backing. `layout` is the editor's draft when one is being previewed
+    /// and the resolved one otherwise, so this reads through it rather than
+    /// through `display.resolvedBarFill` — the preview has to show the fill
+    /// being edited, not the one currently in force.
+    private var fill: BarFill { layout.resolvedFill(default: state.display.barFill) }
 
     private var context: BarActionContext {
         BarActionContext(
@@ -533,14 +537,14 @@ struct OmniboxPill: View {
         case .reloadStop: return navigation.isLoading ? "Stop" : "Reload"
         case .splitView: return state.isSplitActive ? "Exit Split View" : "Split View"
         case .compactToggle:
-            return state.settings.compactModeEnabled ? "Exit Compact Mode" : "Compact Mode"
+            return state.display.compactModeEnabled ? "Exit Compact Mode" : "Compact Mode"
         case .focusMode: return state.isFocusMode ? "Leave Focus (erases)" : "Focus Mode"
         case .desktopSite:
             return state.settings.preferDesktopSite ? "Request Mobile Site" : "Request Desktop Site"
         case .bookmark:
             return BarActionRunner.isOn(.bookmark, state: state, tabID: tabID)
                 ? "Remove Bookmark" : "Add Bookmark"
-        case .layoutCycle: return "Layout: \(state.settings.layout.displayName)"
+        case .layoutCycle: return "Layout: \(state.display.layout.displayName)"
         case .sidebar: return "Tabs"
         case .localServices: return "Local"
         default: return action.title
@@ -651,7 +655,7 @@ private struct BarGestures<Menu: View>: ViewModifier {
                 guard
                     let action = BarSwipeGesture.action(
                         translation: value.translation, velocity: value.velocity, layout: layout,
-                        sidebarEdge: state.settings.sidebarEdge)
+                        sidebarEdge: state.display.sidebarEdge)
                 else { return }
                 if layout.haptics { Haptics.shared.fire(.sidebarSnap) }
                 BarActionRunner.perform(action, state: state, context: context)

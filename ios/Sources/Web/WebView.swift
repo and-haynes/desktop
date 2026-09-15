@@ -58,7 +58,7 @@ struct WebView: UIViewRepresentable {
         // Page zoom is a property of the *site*, so it is re-resolved whenever
         // the tab this view is showing changes (#008B7).
         view.applyPageZoom(
-            state.pageZoom.zoom(for: tab.url, default: state.settings.defaultPageZoom))
+            state.pageZoom.zoom(for: tab.url, default: state.display.textSize))
     }
 
     /// Changing `contentInset` while the user is at the very top would leave
@@ -162,7 +162,7 @@ struct WebView: UIViewRepresentable {
             // URL here rather than the tab's (#008B7).
             webView.applyPageZoom(
                 state.pageZoom.zoom(
-                    for: webView.url, default: state.settings.defaultPageZoom))
+                    for: webView.url, default: state.display.textSize))
             guard let tabID else { return }
             state.updateTab(tabID) { $0.loadFailure = nil }
         }

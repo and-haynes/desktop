@@ -63,7 +63,7 @@ struct ZenSettings: Codable, Equatable, Sendable {
     /// should not decide for them that they page rather than flick.
     var navigationHelperEnabled: Bool = false
     /// Which edge they sit on, or nil for automatic — which is the opposite of
-    /// `sidebarEdge`. See `resolvedNavigationHelperSide`.
+    /// `sidebarEdge`. See `EffectiveDisplay.navigationHelperSide`.
     var navigationHelperSide: SidebarEdge?
 
     init() {}

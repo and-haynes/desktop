@@ -43,26 +43,14 @@ struct PageTopInsets: Equatable, Sendable {
     }
 
     /// What `RootView` runs.
-    static func forSettings(_ settings: ZenSettings, safeAreaTop: CGFloat) -> PageTopInsets {
+    ///
+    /// Takes the *resolved* display rather than the global settings since
+    /// #008BB: the layout cycle is one of the things a space can override, and
+    /// a page inset computed from the global would be inset for the wrong
+    /// layout in every such space.
+    static func forDisplay(_ display: EffectiveDisplay, safeAreaTop: CGFloat) -> PageTopInsets {
         resolve(
-            pageUnderTopSafeArea: settings.pageRunsUnderTopSafeArea,
+            pageUnderTopSafeArea: display.pageRunsUnderTopSafeArea,
             safeAreaTop: safeAreaTop, gap: ZenMetrics.splitGap)
     }
-}
-
-extension ZenSettings {
-    /// Does the page surface run under the top safe area?
-    ///
-    /// The *layout cycle* decides, and nothing else. Card frames the content,
-    /// so the card starts below the safe area; edge-to-edge and full screen
-    /// both hand the page the top band, and that is where
-    /// `webTopContentInset` earns its keep — the page paints to the very top
-    /// as it scrolls, while its content and its own `position: fixed` header
-    /// start below the island rather than behind it.
-    ///
-    /// Emphatically *not* a function of `showStatusBar`. That was the #008A9
-    /// bug, and the layout cycle is exactly where it is easiest to reintroduce
-    /// — "the clock is gone, so take the space" is wrong, because the island
-    /// is still there.
-    var pageRunsUnderTopSafeArea: Bool { layout.ignoresTopSafeArea }
 }

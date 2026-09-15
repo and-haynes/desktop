@@ -56,7 +56,7 @@ enum BarActionRunner {
         switch action {
         case .bookmark: return tab.map { state.bookmarks.isBookmarked($0.url) } ?? false
         case .splitView: return state.isSplitActive
-        case .compactToggle: return state.settings.compactModeEnabled
+        case .compactToggle: return state.display.compactModeEnabled
         case .focusMode: return state.isFocusMode
         case .desktopSite: return state.settings.preferDesktopSite
         case .sidebar: return state.isSidebarVisible
@@ -148,8 +148,11 @@ enum BarActionRunner {
         case .layoutCycle:
             NotificationCenter.default.post(name: .zenCycleLayout, object: nil)
         case .compactToggle:
-            fire(state.settings.compactModeEnabled ? .compactBarShow : .compactBarHide, state)
-            state.settings.compactModeEnabled.toggle()
+            let on = state.display.compactModeEnabled
+            fire(on ? .compactBarShow : .compactBarHide, state)
+            // Written at whichever level currently decides it, so toggling it
+            // in a space that overrides compact mode changes *that* space.
+            state.setCompactMode(!on)
         case .focusMode:
             NotificationCenter.default.post(name: .zenToggleFocusMode, object: nil)
         case .eraseFocus:
@@ -184,7 +187,7 @@ enum BarActionRunner {
 
     /// Haptics are opt-out per layout, on top of the global level.
     private static func fire(_ event: HapticEvent, _ state: BrowserState) {
-        guard state.settings.barLayout.haptics else { return }
+        guard state.display.barLayout.haptics else { return }
         Haptics.shared.fire(event)
     }
 

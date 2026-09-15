@@ -84,14 +84,14 @@ struct RootView: View {
 
     /// Compact mode has the chrome away — anything short of the full bar.
     private var chromeHidden: Bool {
-        state.settings.compactModeEnabled && compactBar.phase != .expanded
+        state.display.compactModeEnabled && compactBar.phase != .expanded
     }
 
     /// Which of compact mode's three states the bar is in (#008AF).
     /// `expanded` whenever compact mode's toolbar half is off, so everything
     /// below reads one value and never the setting.
     private var barPhase: CompactBarPhase {
-        guard state.settings.compactModeEnabled, state.settings.compactHidesToolbar else {
+        guard state.display.compactModeEnabled, state.settings.compactHidesToolbar else {
             return .expanded
         }
         return compactBar.phase
@@ -111,11 +111,11 @@ struct RootView: View {
         chromeHidden && state.settings.compactHidesToolbar
     }
 
-    private var layoutMode: BrowserLayout { state.settings.layout }
+    private var layoutMode: BrowserLayout { state.display.layout }
 
     // MARK: The customisable bar (#00896)
 
-    private var barLayout: BarLayout { state.settings.barLayout }
+    private var barLayout: BarLayout { state.display.barLayout }
     private var barPosition: BarPosition { barLayout.position(landscape: isLandscape) }
     private var barAutoHide: BarAutoHide { barLayout.autoHide(landscape: isLandscape) }
     /// One line or two (#008BA). Landscape can collapse it back, which is
@@ -422,7 +422,7 @@ struct RootView: View {
     }
 
     private var padLayout: some View {
-        let edge = state.settings.sidebarEdge
+        let edge = state.display.sidebarEdge
         return HStack(spacing: 0) {
             if edge == .leading, showPadSidebar { padSidebar(edge: edge) }
             content
@@ -448,7 +448,7 @@ struct RootView: View {
     }
 
     private var phoneLayout: some View {
-        let edge = state.settings.sidebarEdge
+        let edge = state.display.sidebarEdge
         return ZStack(alignment: edge.alignment) {
             content
             if state.isSidebarVisible {
@@ -482,7 +482,7 @@ struct RootView: View {
     /// Where the page starts at the top, per the layout cycle. Hiding the
     /// status bar is deliberately not an input — see `PageTopInsets` (#008A9).
     private var topInsets: PageTopInsets {
-        PageTopInsets.forSettings(state.settings, safeAreaTop: safeAreaTop)
+        PageTopInsets.forDisplay(state.display, safeAreaTop: safeAreaTop)
     }
 
     /// Card keeps Zen's desktop inset; the other two layouts hand the page the
@@ -506,6 +506,10 @@ struct RootView: View {
         }
         .animation(.spring(response: 0.34, dampingFraction: 0.86), value: layoutMode)
         .animation(.spring(response: 0.34, dampingFraction: 0.86), value: barPosition)
+        // A space can change any of those at once (#008BB), and a chrome that
+        // jumped between two arrangements would read as a glitch rather than
+        // as arriving somewhere.
+        .animation(.spring(response: 0.34, dampingFraction: 0.86), value: state.activeSpaceID)
     }
 
     @ViewBuilder
@@ -619,6 +623,7 @@ struct RootView: View {
         .animation(.easeInOut(duration: ZenTokens.hiddenToolbarTransition), value: barHidden)
         .animation(.easeInOut(duration: 0.2), value: state.isFindBarVisible)
         .animation(.spring(response: 0.3, dampingFraction: 0.9), value: barRows)
+        .animation(.spring(response: 0.34, dampingFraction: 0.9), value: state.activeSpaceID)
     }
 
     /// The bar's own vertical offset, on top of whatever the safe area needs.
@@ -884,7 +889,7 @@ struct RootView: View {
     /// Advance the layout cycle. Shared by the overflow menu and Cmd-Shift-F.
     private func cycleLayout() {
         withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
-            state.settings.layout = state.settings.layout.next
+            state.setLayout(state.display.layout.next)
         }
     }
 
@@ -892,7 +897,7 @@ struct RootView: View {
     /// goes, both follow `sidebarEdge` — the gesture always opens toward the
     /// drawer's actual edge and closes back toward it.
     private var drawerEdgeSwipe: some Gesture {
-        let edge = state.settings.sidebarEdge
+        let edge = state.display.sidebarEdge
         return DragGesture(minimumDistance: 20)
             .onChanged { _ in Haptics.shared.prepare(.sidebarSnap) }
             .onEnded { value in
@@ -996,7 +1001,7 @@ private struct CompactBarBridge: ViewModifier {
     func body(content: Content) -> some View {
         content
             .onAppear(perform: sync)
-            .onChange(of: state.settings.compactModeEnabled) { _, _ in sync() }
+            .onChange(of: state.display.compactModeEnabled) { _, _ in sync() }
             .onChange(of: state.settings.compactHideDelay) { _, _ in sync() }
             .onChange(of: controller.phase) { _, phase in state.compactBarPhase = phase }
             // Anything covering the page pauses the countdown and hands the bar
@@ -1017,7 +1022,7 @@ private struct CompactBarBridge: ViewModifier {
     /// *toolbar* follows it.
     private func sync() {
         controller.stillDelay = state.settings.compactHideDelay
-        controller.isEnabled = state.settings.compactModeEnabled
+        controller.isEnabled = state.display.compactModeEnabled
         state.compactBarPhase = controller.phase
     }
 }

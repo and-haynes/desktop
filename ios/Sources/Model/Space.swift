@@ -22,6 +22,11 @@ struct Space: Identifiable, Codable, Equatable, Sendable {
     /// that deleting and recreating a space can deliberately reuse or discard
     /// its cookie jar.
     var dataStoreID: UUID = UUID()
+    /// This space's display choices, or nil for "inherit everything" (#008BB).
+    /// Optional rather than an always-present empty value so a space that has
+    /// never been customised writes no key at all, and every space file from
+    /// before the feature reads back unchanged.
+    var display: DisplayOverrides?
 
     init(
         name: String, icon: String, isSymbol: Bool = false, theme: ZenTheme = .default,

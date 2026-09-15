@@ -90,7 +90,7 @@ struct TextSizeMenuSection: View {
     }
 
     private var current: Double {
-        zoom.zoom(for: url, default: state.settings.defaultPageZoom)
+        zoom.zoom(for: url, default: state.display.textSize)
     }
 
     var body: some View {
@@ -172,7 +172,7 @@ struct PageZoomBridge: ViewModifier {
             }
             // Changing the global default has to move every page that has no
             // opinion of its own, not just the next one loaded.
-            .onChange(of: state.settings.defaultPageZoom) { _, _ in applyToAll() }
+            .onChange(of: state.display.textSize) { _, _ in applyToAll() }
     }
 
     private func handle(_ note: Notification) {
@@ -184,7 +184,7 @@ struct PageZoomBridge: ViewModifier {
         guard let tabID, let tab = state.tab(id: tabID), !tab.isNewTabPage else { return }
         let level = PageZoomCommand.apply(
             change, url: tab.url, store: state.pageZoom,
-            default: state.settings.defaultPageZoom)
+            default: state.display.textSize)
         pool.existing(for: tabID)?.applyPageZoom(level)
         // Two panes on the same site should not disagree about how big it is.
         applyToAll()
@@ -194,7 +194,7 @@ struct PageZoomBridge: ViewModifier {
         for view in pool.loadedViews {
             guard let id = view.tabID, let tab = state.tab(id: id) else { continue }
             view.applyPageZoom(
-                state.pageZoom.zoom(for: tab.url, default: state.settings.defaultPageZoom))
+                state.pageZoom.zoom(for: tab.url, default: state.display.textSize))
         }
     }
 }
