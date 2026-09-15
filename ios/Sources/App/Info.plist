@@ -27,6 +27,14 @@
 		<key>UIColorName</key>
 		<string>LaunchBackground</string>
 	</dict>
+	<!-- Hidden from the very first frame, so a default launch never flashes a
+	     status bar that the app is about to remove. This key only governs the
+	     launch; once the scene is up, RootView's `.statusBarHidden` (i.e. the
+	     hosting controller's `prefersStatusBarHidden`) is authoritative, which
+	     is why `UIViewControllerBasedStatusBarAppearance` is deliberately left
+	     at its YES default — setting it to NO would take the toggle away. -->
+	<key>UIStatusBarHidden</key>
+	<true/>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

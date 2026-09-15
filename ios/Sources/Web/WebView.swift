@@ -10,6 +10,12 @@ struct WebView: UIViewRepresentable {
     let space: Space
     @ObservedObject var state: BrowserState
     let pool: WebViewPool
+    /// Applied to the scroll view directly. `contentInsetAdjustmentBehavior`
+    /// stays `.never`, so these are the only thing moving the page — which is
+    /// what keeps scroll-to-top landing in the right place when the page runs
+    /// to the top edge with the status bar hidden.
+    var topContentInset: CGFloat = 0
+    var bottomContentInset: CGFloat = 0
 
     func makeCoordinator() -> Coordinator {
         Coordinator(state: state, pool: pool)
@@ -46,6 +52,24 @@ struct WebView: UIViewRepresentable {
         view.navigationDelegate = context.coordinator
         view.uiDelegate = context.coordinator
         view.scrollView.delegate = context.coordinator
+        applyInsets(to: view)
+    }
+
+    /// Changing `contentInset` while the user is at the very top would leave
+    /// the page scrolled into the inset, so nudge the offset to match when we
+    /// were already pinned there.
+    private func applyInsets(to view: ZenWebView) {
+        let insets = UIEdgeInsets(
+            top: topContentInset, left: 0, bottom: bottomContentInset, right: 0)
+        guard view.scrollView.contentInset != insets else { return }
+        let wasAtTop = view.scrollView.contentOffset.y <= -view.scrollView.contentInset.top + 1
+        view.scrollView.contentInset = insets
+        // Keep the scroll indicators out from under the island too.
+        view.scrollView.verticalScrollIndicatorInsets = insets
+        view.syncUnderPageBackground()
+        if wasAtTop {
+            view.scrollView.setContentOffset(CGPoint(x: 0, y: -insets.top), animated: false)
+        }
     }
 
     static func dismantleUIView(_ view: ZenWebView, coordinator: Coordinator) {
@@ -124,6 +148,7 @@ struct WebView: UIViewRepresentable {
         func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
             // Something arrived, so the watchdog's job is done.
             cancelWatchdog()
+            (webView as? ZenWebView)?.syncUnderPageBackground()
             guard let tabID else { return }
             state.updateTab(tabID) { $0.loadFailure = nil }
         }
@@ -133,6 +158,8 @@ struct WebView: UIViewRepresentable {
             guard let tabID else { return }
             let zen = webView as? ZenWebView
             zen?.isProgrammaticNavigation = false
+
+            zen?.syncUnderPageBackground()
 
             let title = webView.title ?? ""
             let url = webView.url

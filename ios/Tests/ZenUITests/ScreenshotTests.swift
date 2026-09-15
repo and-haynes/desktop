@@ -226,6 +226,58 @@ final class ScreenshotTests: XCTestCase {
         try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-ERROR"))
     }
 
+    /// The status bar is hidden by default (#00899). Captures the default,
+    /// proves the Settings toggle brings it back, and puts it away again so the
+    /// session does not carry the change into the next test.
+    func testCaptureStatusBar() throws {
+        let suffix = UIDevice.current.userInterfaceIdiom == .pad ? "-ipad" : ""
+        settle(4.0)
+        capture("24-status-bar-hidden\(suffix)")
+
+        XCTAssertTrue(setShowStatusBar(true), "could not turn the status bar on")
+        settle(2.0)
+        capture("24b-status-bar-shown\(suffix)")
+
+        XCTAssertTrue(setShowStatusBar(false), "the choice did not persist, or would not go back")
+        settle(2.0)
+        capture("24c-status-bar-hidden-again\(suffix)")
+        try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-STATUSBAR"))
+    }
+
+    /// Drive the Settings toggle to a known state. Returns false if the toggle
+    /// was not where it should be, or was already the value asked for (which
+    /// would mean the previous step did not take).
+    private func setShowStatusBar(_ on: Bool) -> Bool {
+        guard tapMenuItem(matching: "label CONTAINS[c] 'Settings'") else { return false }
+        settle(1.5)
+        let toggle = app.switches["showStatusBarToggle"].firstMatch
+        guard toggle.waitForExistence(timeout: 8) else { return false }
+        guard (toggle.value as? String) == (on ? "0" : "1") else { return false }
+        // A SwiftUI Form toggle's accessibility frame is the whole row, and its
+        // centre is dead space between the label and the switch — tapping there
+        // does nothing. Aim at the switch.
+        toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+        settle(1.2)
+        let settled = (toggle.value as? String) == (on ? "1" : "0")
+        dismissSheet()
+        return settled
+    }
+
+    /// Done, or a pull-down if the toolbar button is not reachable — a sheet
+    /// left up swallows every step after it.
+    private func dismissSheet() {
+        let done = app.buttons["Done"].firstMatch
+        if done.waitForExistence(timeout: 4), done.isHittable {
+            done.tap()
+        } else {
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.12))
+                .press(
+                    forDuration: 0.05,
+                    thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.95)))
+        }
+        settle(1.5)
+    }
+
     // MARK: The documented states
 
     func testCaptureAllStates() throws {

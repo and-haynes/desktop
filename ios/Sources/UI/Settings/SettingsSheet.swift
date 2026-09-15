@@ -22,12 +22,16 @@ struct SettingsSheet: View {
                     .pickerStyle(.inline)
                     .labelsHidden()
                     .accessibilityIdentifier("appearancePicker")
+                    Toggle("Show status bar", isOn: $state.settings.showStatusBar)
+                        .accessibilityIdentifier("showStatusBarToggle")
                 } header: {
                     Text("Appearance")
                 } footer: {
                     Text(
                         "Follow System uses the space's own colours to decide light or dark "
-                            + "where the theme is strongly tinted, as Zen does.")
+                            + "where the theme is strongly tinted, as Zen does. The status "
+                            + "bar is hidden by default so the page gets the whole screen; "
+                            + "the Dynamic Island is hardware and stays either way.")
                 }
 
                 Section {

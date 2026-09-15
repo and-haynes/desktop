@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		07D657FFDC6486DA3E995C6F /* StatusBarSettingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1F4C708985F77AA30840735 /* StatusBarSettingTests.swift */; };
 		0D6058BEE7D077BBC0C92DEE /* HistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE1AF5E02B5EB27129E3FECE /* HistoryStore.swift */; };
 		10DB9AA9F73EA1211E61422B /* BrowserStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B7DC3083D917DB62298DF0C /* BrowserStateTests.swift */; };
 		142E6F824884B6B4AFEFD672 /* JSONFileStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FA950A132BEC1CE6A6AB420 /* JSONFileStore.swift */; };
@@ -114,6 +115,7 @@
 		9C89A165A5B3DE33E6C03E0B /* ColorParsing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorParsing.swift; sourceTree = "<group>"; };
 		9F09F9DBA3529788D7567C97 /* Tab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tab.swift; sourceTree = "<group>"; };
 		9FA950A132BEC1CE6A6AB420 /* JSONFileStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONFileStore.swift; sourceTree = "<group>"; };
+		A1F4C708985F77AA30840735 /* StatusBarSettingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarSettingTests.swift; sourceTree = "<group>"; };
 		ABA7F8DD18D946F9589A2F55 /* SettingsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsSheet.swift; sourceTree = "<group>"; };
 		ACBD665DE4374F9877BC1681 /* ZenColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZenColor.swift; sourceTree = "<group>"; };
 		B1EA773520486C401C1B3FDA /* WebEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebEngine.swift; sourceTree = "<group>"; };
@@ -316,6 +318,7 @@
 				782C96F203ECA8E99702C663 /* LoadFailureTests.swift */,
 				CEEEA5047438DAA8F1415FDC /* SessionStoreTests.swift */,
 				F0D144C896B0D8E6CAC17372 /* SplitAndCompactTests.swift */,
+				A1F4C708985F77AA30840735 /* StatusBarSettingTests.swift */,
 				4FD8CD4DF4B3F44BB275D8F1 /* URLDetectorTests.swift */,
 				8504E45FB01390B4338E9D84 /* ZenColorTests.swift */,
 			);
@@ -549,6 +552,7 @@
 				1F4326C74B645F3296BDFDEB /* LoadFailureTests.swift in Sources */,
 				8524DB2323656F48E3577C84 /* SessionStoreTests.swift in Sources */,
 				61874C43C279ED772781240F /* SplitAndCompactTests.swift in Sources */,
+				07D657FFDC6486DA3E995C6F /* StatusBarSettingTests.swift in Sources */,
 				F58099A6CC5B8EE3C77186B9 /* URLDetectorTests.swift in Sources */,
 				E9384E64A2209CC5EA11CB15 /* ZenColorTests.swift in Sources */,
 			);

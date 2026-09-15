@@ -30,6 +30,10 @@ struct ZenSettings: Codable, Equatable, Sendable {
     var compactHideDelay: Double = 1.8
     /// How much the phone talks back. Default Normal; see `Haptics`.
     var hapticLevel: HapticLevel = .normal
+    /// Show the clock, signal and battery. Off by default: in a browser the
+    /// page *is* the app, and 60pt of someone else's status is a tax on every
+    /// screenful. The Dynamic Island is hardware and stays regardless.
+    var showStatusBar: Bool = false
 
     init() {}
 
@@ -42,6 +46,7 @@ struct ZenSettings: Codable, Equatable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case searchEngine, compactModeEnabled, compactHidesSidebar, compactHidesToolbar
         case preferDesktopSite, sidebarPinnedOnPad, appearance, compactHideDelay, hapticLevel
+        case showStatusBar
     }
 
     init(from decoder: Decoder) throws {
@@ -73,6 +78,8 @@ struct ZenSettings: Codable, Equatable, Sendable {
             ?? fallback.compactHideDelay
         hapticLevel =
             try c.decodeIfPresent(HapticLevel.self, forKey: .hapticLevel) ?? fallback.hapticLevel
+        showStatusBar =
+            try c.decodeIfPresent(Bool.self, forKey: .showStatusBar) ?? fallback.showStatusBar
     }
 }
 

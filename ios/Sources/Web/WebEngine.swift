@@ -162,4 +162,17 @@ final class ZenWebView: WKWebView {
     /// attempt clears the failure that would have been shown. That is the
     /// "nothing happens, forever" in #0089A.
     var lastRequestedURL: URL?
+
+    /// The page runs to the top edge when the status bar is hidden, so the
+    /// scroll view carries a top inset to keep the site's own header clear of
+    /// the Dynamic Island. The strip that inset opens up must look like *the
+    /// page*, not like the chrome — WebKit already knows what colour that is,
+    /// so borrow it rather than guessing.
+    func syncUnderPageBackground() {
+        guard scrollView.contentInset.top > 0 else {
+            scrollView.backgroundColor = .clear
+            return
+        }
+        scrollView.backgroundColor = underPageBackgroundColor
+    }
 }
