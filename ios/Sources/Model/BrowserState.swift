@@ -34,6 +34,10 @@ final class BrowserState: ObservableObject {
     @Published var compactRevealed: Bool = false
     @Published var isOmniboxOpen: Bool = false
     @Published var omniboxText: String = ""
+    /// Which tab the omnibox is editing. nil means the active tab — set
+    /// explicitly when a split pane's own bar opens it, so typing a URL in the
+    /// second pane does not navigate the first.
+    @Published var omniboxTargetTabID: UUID?
     /// The tab a Glance card is showing over the current page, if any.
     @Published var glanceTabID: UUID?
     /// The second pane of a split, if split view is active.
@@ -472,6 +476,20 @@ final class BrowserState: ObservableObject {
     func isGlanceOnly(_ tabID: UUID) -> Bool { glanceTabID == tabID }
 
     var isSplitActive: Bool { splitSecondaryTabID != nil }
+
+    /// The tab the omnibox will navigate — its explicit target if a pane's own
+    /// bar opened it, otherwise whatever is active.
+    var omniboxTargetTab: Tab? {
+        if let id = omniboxTargetTabID { return tab(id: id) }
+        return activeTab
+    }
+
+    /// Open the omnibox against a specific pane.
+    func openOmnibox(for tabID: UUID?, prefill: String) {
+        omniboxTargetTabID = tabID
+        omniboxText = prefill
+        isOmniboxOpen = true
+    }
 
     /// Split the active tab against the next tab in the space, matching Zen's
     /// two-pane `vsep` default. Upstream supports up to four panes; see README.

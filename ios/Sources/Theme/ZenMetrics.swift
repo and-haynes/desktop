@@ -53,6 +53,9 @@ enum ZenMetrics {
     static let omniboxFloatingHeight: CGFloat = 62
     /// Collapsed inline urlbar height.
     static let omniboxPillHeight: CGFloat = 48
+    /// A split pane's own bar — slimmer, since it carries fewer controls and
+    /// the pane has less room to give.
+    static let paneBarHeight: CGFloat = 38
     /// `border-radius: 12px` on the floating input.
     static let omniboxRadius: CGFloat = 12
     /// `min-width: min(90%, 62rem)`

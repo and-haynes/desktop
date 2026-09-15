@@ -55,9 +55,32 @@ struct SplitContainer<Pane: View>: View {
         return min(max(proposed, ZenMetrics.splitMinFraction), 1 - ZenMetrics.splitMinFraction)
     }
 
+    /// The secondary pane gets its own URL bar. It follows compact behaviour —
+    /// present while the page is scrolling, gone shortly after — so a split on
+    /// a phone does not spend two bars' worth of height on chrome.
     @ViewBuilder
     private func paneView(_ id: UUID) -> some View {
         let isFocused = id == state.activeTabID
+        let showsOwnBar = id == secondaryID && !secondaryBarHidden
+        VStack(spacing: 4) {
+            if showsOwnBar {
+                OmniboxPill(state: state, tabID: id, isSecondaryPane: true) {}
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+            paneContent(id, isFocused: isFocused)
+        }
+        .animation(.easeInOut(duration: ZenTokens.hiddenToolbarTransition), value: showsOwnBar)
+    }
+
+    /// The secondary bar hides on the same rule as the main one in compact
+    /// mode, and is always present otherwise.
+    private var secondaryBarHidden: Bool {
+        state.settings.compactModeEnabled && state.settings.compactHidesToolbar
+            && !state.compactRevealed
+    }
+
+    @ViewBuilder
+    private func paneContent(_ id: UUID, isFocused: Bool) -> some View {
         pane(id)
             .clipShape(
                 RoundedRectangle(cornerRadius: ZenMetrics.contentRadius, style: .continuous)

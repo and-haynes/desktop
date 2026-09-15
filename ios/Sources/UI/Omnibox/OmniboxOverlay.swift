@@ -127,7 +127,9 @@ struct OmniboxOverlay: View {
     }
 
     private func navigate(to url: URL) {
-        if let tabID = state.activeTabID {
+        // The target is the pane whose bar opened this, not necessarily the
+        // active tab.
+        if let tabID = state.omniboxTargetTab?.id {
             state.updateTab(tabID) { tab in
                 tab.url = url
                 tab.title = ""
@@ -140,6 +142,7 @@ struct OmniboxOverlay: View {
     }
 
     private func close() {
+        state.omniboxTargetTabID = nil
         isFieldFocused = false
         engine.clear()
         withAnimation(.easeOut(duration: 0.18)) {
