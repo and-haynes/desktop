@@ -55,8 +55,9 @@ struct RootView: View {
             overlays
         }
         .environment(\.zenPalette, palette)
-        // A themed space can override the system scheme (`shouldBeDarkMode`).
-        .preferredColorScheme(state.activeSpace?.theme.forcedDarkMode.map { $0 ? .dark : .light })
+        // An explicit Light/Dark wins; on Follow System a themed space can
+        // still override via `shouldBeDarkMode`.
+        .preferredColorScheme(state.preferredColorScheme(systemDark: systemScheme == .dark))
         .onAppear {
             pool.pool.state = state
             // A restored session has icons for nothing it has not yet loaded;

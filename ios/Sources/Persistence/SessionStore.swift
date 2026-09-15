@@ -22,8 +22,47 @@ struct ZenSettings: Codable, Equatable, Sendable {
     var preferDesktopSite: Bool = false
     /// Sidebar stays open beside the content on iPad.
     var sidebarPinnedOnPad: Bool = true
+    /// Follow system / Light / Dark, as `zen.view.window.scheme`.
+    var appearance: AppearanceMode = .system
 
     init() {}
+
+    // Swift's synthesized Decodable does *not* fall back to a property's
+    // default when a key is missing — it throws. That would mean every new
+    // setting we add makes existing session files undecodable, and since
+    // SessionStore.load() treats a decode failure as "no session", shipping one
+    // would silently wipe everyone's tabs. Decode each key optionally instead,
+    // so an older file just picks up the defaults for whatever it predates.
+    private enum CodingKeys: String, CodingKey {
+        case searchEngine, compactModeEnabled, compactHidesSidebar, compactHidesToolbar
+        case preferDesktopSite, sidebarPinnedOnPad, appearance
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let fallback = ZenSettings()
+        searchEngine =
+            try c.decodeIfPresent(SearchEngine.self, forKey: .searchEngine)
+            ?? fallback.searchEngine
+        compactModeEnabled =
+            try c.decodeIfPresent(Bool.self, forKey: .compactModeEnabled)
+            ?? fallback.compactModeEnabled
+        compactHidesSidebar =
+            try c.decodeIfPresent(Bool.self, forKey: .compactHidesSidebar)
+            ?? fallback.compactHidesSidebar
+        compactHidesToolbar =
+            try c.decodeIfPresent(Bool.self, forKey: .compactHidesToolbar)
+            ?? fallback.compactHidesToolbar
+        preferDesktopSite =
+            try c.decodeIfPresent(Bool.self, forKey: .preferDesktopSite)
+            ?? fallback.preferDesktopSite
+        sidebarPinnedOnPad =
+            try c.decodeIfPresent(Bool.self, forKey: .sidebarPinnedOnPad)
+            ?? fallback.sidebarPinnedOnPad
+        appearance =
+            try c.decodeIfPresent(AppearanceMode.self, forKey: .appearance)
+            ?? fallback.appearance
+    }
 }
 
 /// The whole persisted browser state. `version` lets a future format change

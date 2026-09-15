@@ -146,9 +146,21 @@ final class BrowserState: ObservableObject {
         tabs.firstIndex { $0.id == id }
     }
 
+    /// The palette for the active space, with the appearance setting applied.
+    /// An explicit Light or Dark overrides the space's own contrast heuristic.
     func palette(systemDark: Bool) -> ZenPalette {
-        activeSpace?.palette(systemDark: systemDark)
-            ?? ZenPalette(accent: ZenTokens.defaultAccent, isDark: systemDark)
+        let isDark = settings.appearance.isDark(
+            systemDark: systemDark, spacePrefersDark: activeSpace?.theme.forcedDarkMode)
+        guard let space = activeSpace else {
+            return ZenPalette(accent: ZenTokens.defaultAccent, isDark: isDark)
+        }
+        return ZenPalette(accent: space.accent(isDark: isDark), isDark: isDark)
+    }
+
+    /// What SwiftUI should force for this session, or nil to follow the system.
+    func preferredColorScheme(systemDark: Bool) -> ColorScheme? {
+        if let explicit = settings.appearance.preferredColorScheme { return explicit }
+        return activeSpace?.theme.forcedDarkMode.map { $0 ? .dark : .light }
     }
 
     // MARK: Selection

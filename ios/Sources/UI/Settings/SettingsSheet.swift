@@ -13,6 +13,23 @@ struct SettingsSheet: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    Picker("Appearance", selection: $state.settings.appearance) {
+                        ForEach(AppearanceMode.allCases) { mode in
+                            Label(mode.displayName, systemImage: mode.symbol).tag(mode)
+                        }
+                    }
+                    .pickerStyle(.inline)
+                    .labelsHidden()
+                    .accessibilityIdentifier("appearancePicker")
+                } header: {
+                    Text("Appearance")
+                } footer: {
+                    Text(
+                        "Follow System uses the space's own colours to decide light or dark "
+                            + "where the theme is strongly tinted, as Zen does.")
+                }
+
                 Section("Search") {
                     Picker("Search engine", selection: $state.settings.searchEngine) {
                         ForEach(SearchEngine.allCases) { engine in

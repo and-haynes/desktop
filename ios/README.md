@@ -100,7 +100,8 @@ network and takes minutes, where the unit tests take under a second.
 | 9 | **Bookmarks** | Done | Toggle in the omnibox pill; managed from the same sheet as history. |
 | 10 | **Theme** — light/dark + Zen tokens | Done | Follows the system unless a themed space overrides it, which is what upstream's `shouldBeDarkMode()` does. |
 | 10 | Per-space accent picker | Done | Swatches plus a harmony picker; the other dots derive from the same hue offsets the desktop wheel snaps to. |
-| 10 | Full 380×380 colour wheel | Partial | The maths is ported (`ZenGradientGenerator.color(at:)` and its inverse) but the editor offers swatches rather than a draggable wheel. |
+| 10 | **Colour tool** | Done | A real accent picker: a Canvas hue/saturation wheel with a separate brightness track, HSB and RGB sliders with live numeric readouts, and hex / RGB-triplet entry validated with specific errors. Recent colours and the space's own gradient stops are one-tap targets; the system `ColorPicker` is offered as a secondary route for the eyedropper. Every path writes the same `ZenColor`, so the zen-theme.css derivations are unchanged. |
+| 10 | **Appearance** | Done | Follow System / Light / Dark, matching Zen's `zen.view.window.scheme`. An explicit choice overrides a space's `shouldBeDarkMode()` contrast heuristic; Follow System lets it apply. |
 | 10 | Film grain | Partial | A generated noise tile at `.overlay` blend. Upstream ships `grain-bg.png` at `mix-blend-mode: hard-light`, which SwiftUI has no equivalent for. |
 | 11 | **Keyboard shortcuts** | Done | ⌘T, ⌘W, ⌘L, ⌃Tab / ⌃⇧Tab, ⇧⌘S, ⇧⌘E, plus ⌘F and ⌃⇧← / ⌃⇧→. |
 | 12 | **Share sheet** | Done | From the omnibox overflow menu. |
@@ -191,6 +192,14 @@ own `WKWebsiteDataStore(forIdentifier:)` (iOS 17+) is strictly stronger.
 | Split view with a draggable divider (stacked in portrait, side by side when wide) | The persistent sidebar on iPad |
 | ![Split view side by side on iPad](docs/screenshots/06-split-ipad.png) | ![The compact-mode grabber](docs/screenshots/10-compact-grabber.png) |
 | Split view on iPad, where the panes sit side by side | Compact mode: the bar is gone, the grabber remains |
+
+### The colour tool
+
+| | |
+|---|---|
+| ![The accent colour picker](docs/screenshots/14-colour-picker.png) | ![Hex entry applied](docs/screenshots/15-colour-hex.png) |
+| Wheel, brightness track, HSB/RGB sliders, recents | Typed hex, validated and applied |
+
 
 ## Licence
 
