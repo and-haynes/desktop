@@ -63,7 +63,6 @@
 		4BFDB75AC44DC39DD5AB0EFE /* BarSwipeGesture.swift in Sources */ = {isa = PBXBuildFile; fileRef = C328A5EE18F01699DF47AE6A /* BarSwipeGesture.swift */; };
 		4D76FE9AEA01B9EAC61CFDAE /* PasswordVaultService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61A91F73EB04E1F6A5D09522 /* PasswordVaultService.swift */; };
 		4D86D9F0730D15CBFF2F493A /* JSONValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = D06FE302E103E94A2B0B70FE /* JSONValue.swift */; };
-		4E23EEBFCA930AD94495FCCD /* PasswordsSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C637E5D74CE1DB03EE0E068 /* PasswordsSettingsView.swift */; };
 		508BFA96B5CF670C7E44DD59 /* ZenApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E314F1A113B5A944AA437E9 /* ZenApp.swift */; };
 		508D81EAE3B70903F088B707 /* CompactPill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D06C8D8148A3844473E549E /* CompactPill.swift */; };
 		51F1FB7AEAD30E024D1731A0 /* BarLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4EE1F1C848DA15375B71211 /* BarLayoutTests.swift */; };
@@ -221,7 +220,6 @@
 		08F38A9E603B59D0F676F8BF /* VaultCredentialStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultCredentialStoreTests.swift; sourceTree = "<group>"; };
 		0B45A1CC7FF5A2C483F051EE /* LocalServiceStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalServiceStore.swift; sourceTree = "<group>"; };
 		0B8DCFE94556981F90968D3C /* VaultCredentialStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultCredentialStore.swift; sourceTree = "<group>"; };
-		0C637E5D74CE1DB03EE0E068 /* PasswordsSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordsSettingsView.swift; sourceTree = "<group>"; };
 		0E0CC2AA18586635CEDAF86D /* SyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncService.swift; sourceTree = "<group>"; };
 		0E42D3A655596C22CAF2E52E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		14D9FF5859A605EAFB0CC40F /* BarActionRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BarActionRunner.swift; sourceTree = "<group>"; };
@@ -555,7 +553,6 @@
 				7A05A16182422126E6EDD0E2 /* BarSlotEditor.swift */,
 				8F5985143FF548F6D1F62EF9 /* LocalNetworkView.swift */,
 				FD2B41BF8055939CD99B474A /* NamedColorLibraryView.swift */,
-				0C637E5D74CE1DB03EE0E068 /* PasswordsSettingsView.swift */,
 				ABA7F8DD18D946F9589A2F55 /* SettingsSheet.swift */,
 				7688B6E1EA8ADB19B677A426 /* SpaceEditorView.swift */,
 				E9BD01F6D1974BF412ADDE49 /* SyncDiagnosticsView.swift */,
@@ -1075,7 +1072,6 @@
 				23FA735CF34CD97EE0585DD2 /* PasswordVaultProvider.swift in Sources */,
 				4D76FE9AEA01B9EAC61CFDAE /* PasswordVaultService.swift in Sources */,
 				626899AF2E80A8FC5AFD45AF /* PasswordsPanel.swift in Sources */,
-				4E23EEBFCA930AD94495FCCD /* PasswordsSettingsView.swift in Sources */,
 				955AEB36F1B7022E72ACBC80 /* PasswordsSettingsView.swift in Sources */,
 				AEF649A69239786AB1D0BD15 /* RecentColorsStore.swift in Sources */,
 				403CBF62080CEC82CDD2799B /* RemoteTabsSection.swift in Sources */,
