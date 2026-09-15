@@ -76,6 +76,7 @@ network and takes minutes, where the unit tests take under a second.
 | 1 | Space swipe to switch | Done | Horizontal drag on the sidebar translates the list live, then springs, as `ZenSpacesSwipe` does. |
 | 1 | Space switcher strip | Done | Along the sidebar bottom, each chip previewing its own accent. |
 | 2 | **Vertical tab sidebar** | Done | Slide-in drawer on iPhone (edge swipe or toolbar button), persistent on iPad. |
+| 2 | Sidebar edge (#008A8) | Done | Settings → Sidebar position: Left / Right, as Zen desktop's own `sidebar.position` allows. Moves the drawer/persistent sidebar and its edge-swipe reveal, mirrors the URL bar's swipe-to-open gesture and moves the toolbar button to match. Animated, with a haptic on toggle. |
 | 2 | Swipe to close a tab row | Done | Pull left past the threshold, with a haptic at the threshold itself. |
 | 2 | Swipe the URL bar to the sidebar | Done | Right or up on the bar opens the drawer, left or down closes it (#0089F). The direction → action map is a table, so the planned URL-bar customisation can reassign it. |
 | 2 | New Tab strip | Done | Full-width, 44pt, pinned below the tab list rather than scrolling away inside it (#0089F). |

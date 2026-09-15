@@ -56,6 +56,27 @@ struct SettingsSheet: View {
                     Text(state.settings.hapticLevel.detail)
                 }
 
+                Section {
+                    Picker("Sidebar position", selection: $state.settings.sidebarEdge) {
+                        ForEach(SidebarEdge.allCases) { edge in
+                            Text(edge.displayName).tag(edge)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .accessibilityIdentifier("sidebarEdgePicker")
+                    .onChange(of: state.settings.sidebarEdge) { _, _ in
+                        Haptics.shared.fire(.layoutChange)
+                    }
+                } header: {
+                    Text("Sidebar")
+                } footer: {
+                    Text(
+                        "Zen desktop lets the vertical tab sidebar sit on either edge. This "
+                            + "moves the drawer, its edge swipe, the URL bar's swipe-to-open "
+                            + "gesture and the toolbar button to match.")
+                }
+
                 Section("Search") {
                     Picker("Search engine", selection: $state.settings.searchEngine) {
                         ForEach(SearchEngine.allCases) { engine in

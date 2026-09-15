@@ -177,17 +177,24 @@ struct RootView: View {
     }
 
     private var padLayout: some View {
-        HStack(spacing: 0) {
-            if showPadSidebar {
-                SidebarView(state: state, sync: sync)
-                    .frame(width: ZenMetrics.sidebarWidthPad)
-                    .transition(.move(edge: .leading).combined(with: .opacity))
-            }
+        let edge = state.settings.sidebarEdge
+        return HStack(spacing: 0) {
+            if edge == .leading, showPadSidebar { padSidebar(edge: edge) }
             content
+            if edge == .trailing, showPadSidebar { padSidebar(edge: edge) }
         }
         .animation(
             .spring(response: ZenMetrics.compactAnimationDuration * 2, dampingFraction: 1),
             value: showPadSidebar)
+        .animation(
+            .spring(response: ZenMetrics.compactAnimationDuration * 2, dampingFraction: 1),
+            value: edge)
+    }
+
+    private func padSidebar(edge: SidebarEdge) -> some View {
+        SidebarView(state: state, sync: sync)
+            .frame(width: ZenMetrics.sidebarWidthPad)
+            .transition(.move(edge: edge.swiftUIEdge).combined(with: .opacity))
     }
 
     private var showPadSidebar: Bool {
@@ -196,7 +203,8 @@ struct RootView: View {
     }
 
     private var phoneLayout: some View {
-        ZStack(alignment: .leading) {
+        let edge = state.settings.sidebarEdge
+        return ZStack(alignment: edge.alignment) {
             content
             if state.isSidebarVisible {
                 // Tap-to-dismiss scrim behind the drawer.
@@ -217,10 +225,11 @@ struct RootView: View {
                             .ignoresSafeArea()
                     }
                     .zenBigShadow()
-                    .transition(.move(edge: .leading))
+                    .transition(.move(edge: edge.swiftUIEdge))
             }
         }
         .animation(.spring(response: 0.32, dampingFraction: 0.9), value: state.isSidebarVisible)
+        .animation(.spring(response: 0.32, dampingFraction: 0.9), value: edge)
         // Edge swipe to open the drawer, as the toolbar button does.
         .gesture(drawerEdgeSwipe)
     }
@@ -405,17 +414,33 @@ struct RootView: View {
         }
     }
 
+    /// Which edge the reveal swipe starts from, and which way a dismiss swipe
+    /// goes, both follow `sidebarEdge` — the gesture always opens toward the
+    /// drawer's actual edge and closes back toward it.
     private var drawerEdgeSwipe: some Gesture {
-        DragGesture(minimumDistance: 20)
+        let edge = state.settings.sidebarEdge
+        return DragGesture(minimumDistance: 20)
             .onChanged { _ in Haptics.shared.prepare(.sidebarSnap) }
             .onEnded { value in
                 guard abs(value.translation.width) > abs(value.translation.height) else { return }
-                if value.startLocation.x < 24 && value.translation.width > 40 {
+                let opens: Bool
+                let closes: Bool
+                switch edge {
+                case .leading:
+                    opens = value.startLocation.x < 24 && value.translation.width > 40
+                    closes = value.translation.width < -40
+                case .trailing:
+                    opens =
+                        value.startLocation.x > UIScreen.main.bounds.width - 24
+                        && value.translation.width < -40
+                    closes = value.translation.width > 40
+                }
+                if opens {
                     Haptics.shared.fire(.sidebarSnap)
                     withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) {
                         state.isSidebarVisible = true
                     }
-                } else if state.isSidebarVisible && value.translation.width < -40 {
+                } else if state.isSidebarVisible && closes {
                     Haptics.shared.fire(.sidebarSnap)
                     withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) {
                         state.isSidebarVisible = false

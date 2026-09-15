@@ -71,13 +71,33 @@ enum BarSwipeGesture {
         translation: CGSize, velocity: CGSize, isSidebarOpen: Bool,
         mapping: [BarSwipeDirection: BarGestureAction] = defaultMapping
     ) -> BarGestureAction {
-        guard let direction = direction(translation: translation, velocity: velocity),
-            let action = mapping[direction]
-        else { return .none }
+        guard let direction = direction(translation: translation, velocity: velocity) else {
+            return .none
+        }
+        return resolve(direction: direction, isSidebarOpen: isSidebarOpen, mapping: mapping)
+    }
+
+    /// The pure (direction, table) → action step, split out from `action`
+    /// above so the sidebar-edge setting can be tested against it directly:
+    /// no distance or velocity, just "which way, and from which table."
+    static func resolve(
+        direction: BarSwipeDirection, isSidebarOpen: Bool,
+        mapping: [BarSwipeDirection: BarGestureAction] = defaultMapping
+    ) -> BarGestureAction {
+        guard let action = mapping[direction] else { return .none }
         switch action {
         case .openSidebar: return isSidebarOpen ? .none : .openSidebar
         case .closeSidebar: return isSidebarOpen ? .closeSidebar : .none
         case .none: return .none
         }
+    }
+
+    /// `resolve`, using the mapping a given sidebar edge implies — the
+    /// (edge, gesture direction) → open/close/none function the sidebar-edge
+    /// setting is built on.
+    static func action(
+        direction: BarSwipeDirection, isSidebarOpen: Bool, edge: SidebarEdge
+    ) -> BarGestureAction {
+        resolve(direction: direction, isSidebarOpen: isSidebarOpen, mapping: edge.swipeMapping)
     }
 }

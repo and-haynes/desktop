@@ -34,6 +34,9 @@ struct ZenSettings: Codable, Equatable, Sendable {
     /// page *is* the app, and 60pt of someone else's status is a tax on every
     /// screenful. The Dynamic Island is hardware and stays regardless.
     var showStatusBar: Bool = false
+    /// Which edge the vertical tab sidebar lives on. Zen desktop lets it move
+    /// to the right; this mirrors that choice.
+    var sidebarEdge: SidebarEdge = .leading
 
     init() {}
 
@@ -46,7 +49,7 @@ struct ZenSettings: Codable, Equatable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case searchEngine, compactModeEnabled, compactHidesSidebar, compactHidesToolbar
         case preferDesktopSite, sidebarPinnedOnPad, appearance, compactHideDelay, hapticLevel
-        case showStatusBar
+        case showStatusBar, sidebarEdge
     }
 
     init(from decoder: Decoder) throws {
@@ -80,6 +83,8 @@ struct ZenSettings: Codable, Equatable, Sendable {
             try c.decodeIfPresent(HapticLevel.self, forKey: .hapticLevel) ?? fallback.hapticLevel
         showStatusBar =
             try c.decodeIfPresent(Bool.self, forKey: .showStatusBar) ?? fallback.showStatusBar
+        sidebarEdge =
+            try c.decodeIfPresent(SidebarEdge.self, forKey: .sidebarEdge) ?? fallback.sidebarEdge
     }
 }
 

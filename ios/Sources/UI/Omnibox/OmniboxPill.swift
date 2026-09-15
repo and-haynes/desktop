@@ -41,7 +41,7 @@ struct OmniboxPill: View {
                         isActivePane ? palette.accent.color : palette.text.withAlpha(0.3).color)
                     .frame(width: 22, height: 36)
                     .accessibilityLabel(isActivePane ? "Active pane" : "Inactive pane")
-            } else {
+            } else if state.settings.sidebarEdge == .leading {
                 sidebarButton
             }
 
@@ -90,6 +90,9 @@ struct OmniboxPill: View {
                     bookmarkButton(tab)
                 }
                 menuButton
+                if state.settings.sidebarEdge == .trailing {
+                    sidebarButton
+                }
             }
         }
         .padding(.horizontal, 6)
@@ -109,14 +112,17 @@ struct OmniboxPill: View {
     /// opens the omnibox and the buttons at either end all keep working, and a
     /// gesture that never travels 12pt is a tap, not a swipe. The direction
     /// mapping lives in `BarSwipeGesture` so the planned URL-bar customisation
-    /// can reassign it without touching this.
+    /// can reassign it without touching this; the sidebar-edge setting reaches
+    /// it the same way — `SidebarEdge.swipeMapping` mirrors right/left when the
+    /// drawer is on the right, leaving up/down alone.
     private var sidebarSwipe: some Gesture {
         DragGesture(minimumDistance: 12)
             .onChanged { _ in Haptics.shared.prepare(.sidebarSnap) }
             .onEnded { value in
                 let action = BarSwipeGesture.action(
                     translation: value.translation, velocity: value.velocity,
-                    isSidebarOpen: state.isSidebarVisible)
+                    isSidebarOpen: state.isSidebarVisible,
+                    mapping: state.settings.sidebarEdge.swipeMapping)
                 guard action != .none else { return }
                 Haptics.shared.fire(.sidebarSnap)
                 withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
@@ -151,7 +157,7 @@ struct OmniboxPill: View {
                 state.isSidebarVisible.toggle()
             }
         } label: {
-            Image(systemName: "sidebar.leading")
+            Image(systemName: state.settings.sidebarEdge.toggleSymbolName)
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(palette.text.withAlpha(0.7).color)
                 .frame(width: 34, height: 36)

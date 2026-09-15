@@ -426,6 +426,54 @@ final class ScreenshotTests: XCTestCase {
         try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-SINGLEWORD"))
     }
 
+    /// Sidebar position (#008A8): Settings → Sidebar position: Right moves the
+    /// drawer (iPhone) or the persistent sidebar (iPad) to the opposite edge,
+    /// along with its edge swipe, the toolbar button and the URL bar's
+    /// swipe-to-open gesture.
+    ///
+    /// Reaching Settings on iPad in this simulator/OS combination is flaky
+    /// independently of this feature — `testCaptureSyncSettings` and
+    /// `testCaptureCompactGrabber` show the same sheet-never-presents symptom
+    /// on the same unmodified `openSettings()` path — so this shares that
+    /// pre-existing risk rather than working around it here.
+    func testCaptureSidebarRight() throws {
+        let isPad = UIDevice.current.userInterfaceIdiom == .pad
+        settle(4.0)
+
+        XCTAssertTrue(openSettings(), "could not open Settings")
+        let rightSegment = app.buttons["Right"].firstMatch
+        XCTAssertTrue(rightSegment.waitForExistence(timeout: 8), "sidebar position control missing")
+        rightSegment.tap()
+        settle(0.5)
+        dismissSheet()
+
+        let strip = app.buttons["newTabStrip"].firstMatch
+        if isPad {
+            settle(1.5)
+        } else {
+            openSidebar()
+        }
+        XCTAssertTrue(strip.waitForExistence(timeout: 8), "sidebar missing")
+        // The new-tab strip spans the sidebar, so its midpoint moving past the
+        // screen's own midpoint is proof the sidebar actually moved, not just
+        // that the setting changed.
+        XCTAssertGreaterThan(
+            strip.frame.midX, UIScreen.main.bounds.width / 2,
+            "the sidebar should have moved to the right edge")
+        capture(isPad ? "31-sidebar-right-ipad" : "30-sidebar-right")
+
+        // Leave the setting as found, so later states in the same run — which
+        // assume a leading sidebar — are not thrown off.
+        if !isPad { openSidebar() }
+        XCTAssertTrue(openSettings(), "could not reopen Settings")
+        let leftSegment = app.buttons["Left"].firstMatch
+        if leftSegment.waitForExistence(timeout: 8) { leftSegment.tap() }
+        settle(0.5)
+        dismissSheet()
+
+        try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-SIDEBAREDGE"))
+    }
+
     // MARK: The documented states
 
     func testCaptureAllStates() throws {
