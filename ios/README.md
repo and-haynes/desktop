@@ -188,7 +188,9 @@ own `WKWebsiteDataStore(forIdentifier:)` (iOS 17+) is strictly stronger.
 | ![The omnibox open with suggestions](docs/screenshots/05-omnibox.png) | ![A Glance card over the current page](docs/screenshots/04-glance.png) |
 | The centered floating search box with suggestions | Glance: a link as a card over the dimmed page |
 | ![Split view with two panes](docs/screenshots/06-split.png) | ![The persistent sidebar on iPad](docs/screenshots/02-sidebar-ipad.png) |
-| Split view with a draggable divider | The persistent sidebar on iPad |
+| Split view with a draggable divider (stacked in portrait, side by side when wide) | The persistent sidebar on iPad |
+| ![Split view side by side on iPad](docs/screenshots/06-split-ipad.png) | |
+| Split view on iPad, where the panes sit side by side | |
 
 ## Licence
 
