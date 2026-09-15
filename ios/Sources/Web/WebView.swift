@@ -192,6 +192,13 @@ struct WebView: UIViewRepresentable {
 
         // MARK: Scroll offset, for session restore
 
+        func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+            // Scrolling puts the compact chrome away again — the reveal is
+            // meant to be momentary, and RootView owns the animation.
+            guard state.compactRevealed else { return }
+            NotificationCenter.default.post(name: .zenHideRevealedChrome, object: nil)
+        }
+
         func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate: Bool) {
             recordScroll(scrollView)
         }

@@ -17,7 +17,6 @@ struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var shareItem: URL?
-    @State private var compactRevealTask: Task<Void, Never>?
 
     @MainActor
     init(state: BrowserState? = nil) {
@@ -52,7 +51,7 @@ struct RootView: View {
         ZStack {
             background
             layout
-            edgeRevealZone
+            compactGrabber
             overlays
         }
         .environment(\.zenPalette, palette)
@@ -72,6 +71,9 @@ struct RootView: View {
             } else {
                 state.select(tabID)
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .zenHideRevealedChrome)) { _ in
+            hideChrome()
         }
         .onChange(of: scenePhase) { _, phase in
             // Flush the session on the way out; a jetsam gives no warning.
@@ -171,6 +173,11 @@ struct RootView: View {
                 ContentArea(state: state, space: space, pool: pool.pool)
                     .padding(.horizontal, ZenMetrics.splitGap)
                     .padding(.top, ZenMetrics.splitGap)
+                    // Tapping the page puts a revealed compact toolbar away
+                    // again. Simultaneous so it never swallows a page tap.
+                    .simultaneousGesture(
+                        TapGesture().onEnded { hideChrome() },
+                        including: state.compactRevealed ? .all : .subviews)
             }
 
             VStack(spacing: 8) {
@@ -211,45 +218,59 @@ struct RootView: View {
         }
     }
 
-    // MARK: Compact-mode edge reveal
+    // MARK: Compact-mode grabber
 
-    /// `_getCrossedEdge` reveals the chrome when the pointer comes within 10px
-    /// of the screen edge. A finger needs a wider strip, and a tap rather than
-    /// a hover.
+    /// Upstream reveals the hidden chrome when the pointer comes within 10px of
+    /// a screen edge. The touch translation of that — a tap strip along the
+    /// bottom — sits exactly where the iOS home gesture lives and loses every
+    /// race with it. So the reveal is an explicit target instead: a drag-handle
+    /// pill just above the home indicator, tapped or pulled up.
     @ViewBuilder
-    private var edgeRevealZone: some View {
+    private var compactGrabber: some View {
         if chromeHidden {
-            HStack {
-                Color.clear
-                    .frame(width: ZenMetrics.compactEdgeHitWidth)
-                    .contentShape(Rectangle())
-                    .onTapGesture { revealChrome() }
+            VStack {
                 Spacer()
-            }
-            .ignoresSafeArea()
-            .overlay(alignment: .bottom) {
-                Color.clear
-                    .frame(height: ZenMetrics.compactEdgeHitWidth)
+                Capsule()
+                    .fill(palette.text.withAlpha(0.35).color)
+                    .frame(
+                        width: ZenMetrics.compactGrabberWidth,
+                        height: ZenMetrics.compactGrabberHeight)
+                    .shadow(color: .black.opacity(0.25), radius: 3, y: 1)
+                    // A 6pt pill is not a touch target; 44pt is.
+                    .frame(height: ZenMetrics.compactGrabberHitHeight)
+                    .frame(maxWidth: .infinity)
                     .contentShape(Rectangle())
                     .onTapGesture { revealChrome() }
+                    .gesture(
+                        DragGesture(minimumDistance: 8)
+                            .onEnded { value in
+                                // Pull up to reveal; a downward flick is the
+                                // user reaching for the home gesture.
+                                if value.translation.height < -8 { revealChrome() }
+                            }
+                    )
+                    .accessibilityLabel("Show toolbar")
+                    .accessibilityAddTraits(.isButton)
             }
+            .transition(.opacity)
+            .zIndex(1)
         }
     }
 
     private func revealChrome() {
-        compactRevealTask?.cancel()
         withAnimation(
             .spring(response: ZenMetrics.compactAnimationDuration * 2, dampingFraction: 1)
         ) {
             state.compactRevealed = true
         }
-        // Auto-hide again, like the toolbar flash popup.
-        compactRevealTask = Task {
-            try? await Task.sleep(for: .seconds(ZenMetrics.compactRevealDuration))
-            guard !Task.isCancelled else { return }
-            withAnimation(.easeInOut(duration: ZenTokens.hiddenToolbarTransition)) {
-                state.compactRevealed = false
-            }
+    }
+
+    /// The reveal is momentary: tapping the page or scrolling puts it back.
+    /// There is no auto-hide timer — a deliberate reveal should not time out.
+    private func hideChrome() {
+        guard state.compactRevealed else { return }
+        withAnimation(.easeInOut(duration: ZenTokens.hiddenToolbarTransition)) {
+            state.compactRevealed = false
         }
     }
 

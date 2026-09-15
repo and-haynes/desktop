@@ -101,13 +101,14 @@ enum ZenMetrics {
 
     // MARK: Compact mode — ZenCompactMode.mjs
 
-    /// `_getCrossedEdge` uses `maxDistance = 10px` from the document edge.
-    /// A finger needs more than 10pt to hit reliably.
-    static let compactEdgeHitWidth: CGFloat = 20
     /// Motion spring `bounce: 0, duration: 0.12`.
     static let compactAnimationDuration: Double = 0.12
-    /// `zen.view.compact.toolbar-flash-popup.duration`, default 800ms.
-    static let compactRevealDuration: Double = 2.4
+    /// The reveal grabber. Upstream's 10px hover edge has no touch equivalent
+    /// that does not fight the iOS home gesture, so the reveal is an explicit
+    /// drag-handle pill with a full-size hit area behind it.
+    static let compactGrabberWidth: CGFloat = 36
+    static let compactGrabberHeight: CGFloat = 6
+    static let compactGrabberHitHeight: CGFloat = 44
 
     // MARK: Content
 

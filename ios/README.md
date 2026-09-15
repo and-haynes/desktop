@@ -89,7 +89,7 @@ network and takes minutes, where the unit tests take under a second.
 | 4 | Search engine choice | Done | DuckDuckGo (default), Google, Bing, Startpage, Ecosia. Startpage has no public autocomplete endpoint and borrows DuckDuckGo's. |
 | 4 | Desktop/mobile user agent | Done | Global setting; applied per web view at creation. |
 | 5 | **Compact mode** | Done | Keeps Zen's two independent toggles (hide sidebar / hide toolbar), persisted. |
-| 5 | Edge reveal | Partial | Tap the left or bottom edge strip to reveal, auto-hiding after 2.4s. Upstream reveals on *hover* within 10px; there is no hover on a touch screen, so this is a tap, and there is no equivalent of the outside-the-window mouse tracking. |
+| 5 | Reveal | Done | A drag-handle grabber above the home indicator (36×6pt pill, 44pt hit area): tap or pull up to reveal, tap the page or scroll to hide. Upstream reveals on *hover* within 10px of an edge; the touch translation of that sat on top of the iOS home gesture and lost, so it is an explicit target instead. |
 | 6 | **Split view** — two panes | Done | Side by side when wide (iPad, landscape iPhone), stacked when tall. Draggable divider with the same 7%-of-parent minimum. Focused pane gets the 2px accent outline. |
 | 6 | 3–4 panes, grid/hsep layouts | **TODO** | Upstream's `MAX_TABS = 4` with a nested split tree. The model holds one secondary pane; extending it means replacing `splitSecondaryTabID` with a node tree. |
 | 7 | **Glance** | Done | Long-press a link → "Open in Glance", or from a tab row's context menu. Card over a dimmed page with close / expand-to-tab / split-out. |
@@ -172,7 +172,7 @@ own `WKWebsiteDataStore(forIdentifier:)` (iOS 17+) is strictly stronger.
 | — | Address bar selects all on focus | SwiftUI's `TextField` cannot select its contents, so the address bar is a small `UITextField` wrapper. Without it, tapping the bar and typing *appends* to the current URL. |
 | urlbar inline at the top | Floating pill at the *bottom* on iPhone | A phone is held one-handed; the top of a modern iPhone is not thumb-reachable. |
 | Close shortcut default `switch` | Pinned/essential close = `reset-unload-switch` | Swiping a row away has to visibly do something. Essentials still cannot be destroyed, only demoted. |
-| Chrome revealed on hover | Revealed on an edge tap | No hover on a touch screen. |
+| Chrome revealed on hover | Revealed by a grabber pill | No hover on a touch screen, and a bottom-edge tap loses every race with the iOS home gesture. |
 | Invisible 5px splitter | 28pt hit area with a visible grab pill | A finger needs something to aim at. |
 | Close button appears on row hover | Shown on the selected row; swipe otherwise | Same. |
 | Glance: 80% wide, full height | 88% × 78%, centred | Full height on a phone is indistinguishable from just opening the tab. |

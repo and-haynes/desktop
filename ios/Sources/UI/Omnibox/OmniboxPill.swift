@@ -160,4 +160,7 @@ extension Notification.Name {
     /// Posted by the overflow menu and the "Reload Tab" omnibox action; RootView
     /// observes it, because only it can reach the web view pool.
     static let zenReloadActiveTab = Notification.Name("zen.reloadActiveTab")
+    /// Put a revealed compact toolbar away again — posted when the page is
+    /// scrolled. RootView owns the animation.
+    static let zenHideRevealedChrome = Notification.Name("zen.hideRevealedChrome")
 }
