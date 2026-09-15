@@ -85,8 +85,10 @@ final class PasswordsAutoFillTests: XCTestCase {
     func testAConfigurationWithNoVaultCarriesNoUserScripts() {
         let space = Space(name: "AutoFill", icon: "key.fill", isSymbol: true)
         let configuration = WebEngine.configuration(for: space, desktop: false)
+        // The media observer (#008B0) is always present and lives in the
+        // isolated client world; everything else must be absent.
         XCTAssertTrue(
-            configuration.userContentController.userScripts.isEmpty,
+            vaultScripts(in: configuration).isEmpty,
             "the browsing configuration injects a script with no vault connected")
     }
 
@@ -101,10 +103,8 @@ final class PasswordsAutoFillTests: XCTestCase {
                 credentials: InMemoryVaultCredentialStore(), url: temporaryURL()),
             makeProvider: { _, _ in throw VaultError.notConfigured })
         _ = LoginFormObserver.install(on: configuration, vault: service)
-        XCTAssertEqual(configuration.userContentController.userScripts.count, 1)
-        XCTAssertEqual(
-            configuration.userContentController.userScripts.first?.injectionTime,
-            .atDocumentEnd)
+        XCTAssertEqual(vaultScripts(in: configuration).count, 1)
+        XCTAssertEqual(vaultScripts(in: configuration).first?.injectionTime, .atDocumentEnd)
         // Sign-in forms in iframes are common enough that main-frame-only would
         // miss them; the origin check in the handler is what makes it safe.
         XCTAssertEqual(
@@ -170,5 +170,12 @@ final class PasswordsAutoFillTests: XCTestCase {
             try await Task.sleep(for: .milliseconds(25))
         }
         throw XCTSkip("fixture \(name).html never finished loading")
+    }
+
+    /// Every user script except the always-present media observer.
+    private func vaultScripts(in configuration: WKWebViewConfiguration) -> [WKUserScript] {
+        configuration.userContentController.userScripts.filter {
+            $0.source != VideoPopOut.mediaObserverScript
+        }
     }
 }
