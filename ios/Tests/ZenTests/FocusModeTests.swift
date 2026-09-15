@@ -292,7 +292,9 @@ final class ContentBlocklistTests: XCTestCase {
     func testBlocklistCompiles() async throws {
         // WKContentRuleListStore is unavailable in some CI sandboxes; skip
         // rather than fail, since the JSON validity above is the part we own.
-        guard let store = WKContentRuleListStore.default() else {
+        // `default()` is main-actor isolated, and an `async` test method is not
+        // — so the hop is explicit rather than implied.
+        guard let store = await MainActor.run(body: { WKContentRuleListStore.default() }) else {
             throw XCTSkip("no content rule list store available")
         }
         let json = try ContentBlocker.blocklistJSON()

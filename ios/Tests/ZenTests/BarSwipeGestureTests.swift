@@ -62,71 +62,69 @@ final class BarSwipeGestureTests: XCTestCase {
             .up)
     }
 
-    // MARK: Mapping
+    // MARK: Mapping through the layout (#00896)
 
-    func testRightAndUpOpenTheSidebar() {
+    func testTheDefaultLayoutReachesTheTabsWithAnUpwardSwipe() {
+        let layout = BarPreset.zen.layout
         XCTAssertEqual(
             BarSwipeGesture.action(
-                translation: CGSize(width: 60, height: 0), velocity: slow, isSidebarOpen: false),
-            .openSidebar)
-        XCTAssertEqual(
-            BarSwipeGesture.action(
-                translation: CGSize(width: 0, height: -60), velocity: slow, isSidebarOpen: false),
-            .openSidebar)
+                translation: CGSize(width: 0, height: -60), velocity: slow, layout: layout),
+            .sidebar)
     }
 
-    func testLeftAndDownCloseTheSidebar() {
+    func testHorizontalSwipesChangeTabsByDefault() {
+        let layout = BarPreset.zen.layout
         XCTAssertEqual(
             BarSwipeGesture.action(
-                translation: CGSize(width: -60, height: 0), velocity: slow, isSidebarOpen: true),
-            .closeSidebar)
+                translation: CGSize(width: -60, height: 0), velocity: slow, layout: layout),
+            .nextTab)
         XCTAssertEqual(
             BarSwipeGesture.action(
-                translation: CGSize(width: 0, height: 60), velocity: slow, isSidebarOpen: true),
-            .closeSidebar)
-    }
-
-    /// Opening an open sidebar is not an action; it must not reach the haptic.
-    func testAnActionThatIsAlreadyTrueIsNotAnAction() {
-        XCTAssertEqual(
-            BarSwipeGesture.action(
-                translation: CGSize(width: 60, height: 0), velocity: slow, isSidebarOpen: true),
-            .none)
-        XCTAssertEqual(
-            BarSwipeGesture.action(
-                translation: CGSize(width: -60, height: 0), velocity: slow, isSidebarOpen: false),
-            .none)
+                translation: CGSize(width: 60, height: 0), velocity: slow, layout: layout),
+            .previousTab)
     }
 
     func testATapProducesNoAction() {
-        XCTAssertEqual(
+        XCTAssertNil(
             BarSwipeGesture.action(
-                translation: .zero, velocity: .zero, isSidebarOpen: false),
-            .none)
+                translation: .zero, velocity: .zero, layout: BarPreset.zen.layout))
     }
 
-    /// The mapping is a table precisely so the coming URL-bar customisation can
-    /// reassign a direction. Proving it is injectable is proving that seam.
+    /// The whole reason the mapping is a table: the customiser reassigns a
+    /// direction without touching the gesture recogniser.
     func testTheMappingCanBeReassigned() {
-        let swapped: [BarSwipeDirection: BarGestureAction] = [
-            .right: .closeSidebar, .left: .openSidebar,
-        ]
+        var layout = BarPreset.zen.layout
+        layout.setGesture(.reloadStop, for: .swipeUp)
         XCTAssertEqual(
             BarSwipeGesture.action(
-                translation: CGSize(width: 60, height: 0), velocity: slow, isSidebarOpen: true,
-                mapping: swapped),
-            .closeSidebar)
-        XCTAssertEqual(
+                translation: CGSize(width: 0, height: -60), velocity: slow, layout: layout),
+            .reloadStop)
+    }
+
+    /// An explicit "nothing" is off, and must not fall back to a default.
+    func testAGestureSetToNothingDoesNothing() {
+        var layout = BarPreset.zen.layout
+        layout.setGesture(.none, for: .swipeDown)
+        XCTAssertNil(
             BarSwipeGesture.action(
-                translation: CGSize(width: 0, height: -60), velocity: slow, isSidebarOpen: false,
-                mapping: swapped),
-            .none, "an unmapped direction does nothing")
+                translation: CGSize(width: 0, height: 60), velocity: slow, layout: layout))
+    }
+
+    func testAnUnmappedDirectionDoesNothing() {
+        var layout = BarPreset.zen.layout
+        layout.gestures.removeValue(forKey: .swipeLeft)
+        XCTAssertNil(
+            BarSwipeGesture.action(
+                translation: CGSize(width: -60, height: 0), velocity: slow, layout: layout))
     }
 
     func testEveryDirectionIsMappedByDefault() {
+        let layout = BarPreset.zen.layout
         for direction in BarSwipeDirection.allCases {
-            XCTAssertNotNil(
-                BarSwipeGesture.defaultMapping[direction], "\(direction) has no default action")
+            guard let gesture = BarGesture(direction: direction) else {
+                return XCTFail("\(direction) has no gesture")
+            }
+            XCTAssertNotNil(layout.gestures[gesture], "\(direction) has no default action")
         }
     }
 }

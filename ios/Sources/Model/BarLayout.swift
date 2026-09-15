@@ -487,7 +487,14 @@ struct BarLayout: Codable, Equatable, Sendable {
         gestures = Self.decodeGestures(c, fallback: fallback.gestures)
         autoHide = c.lenient(.autoHide, fallback.autoHide)
         landscape = c.lenient(.landscape, BarLandscapeOverride())
-        presetID = try? c.decodeIfPresent(String.self, forKey: .presetID)
+        // Encoded explicitly, null and all, so "no key" (an older file, or an
+        // empty document) and "deliberately not a preset any more" stay
+        // different answers — otherwise every edited layout would read back as
+        // the preset it started from.
+        presetID =
+            c.contains(.presetID)
+            ? (try? c.decodeIfPresent(String.self, forKey: .presetID)) ?? nil
+            : fallback.presetID
         self = normalised()
     }
 
@@ -550,7 +557,7 @@ struct BarLayout: Codable, Equatable, Sendable {
             forKey: .gestures)
         try c.encode(autoHide, forKey: .autoHide)
         try c.encode(landscape, forKey: .landscape)
-        try c.encodeIfPresent(presetID, forKey: .presetID)
+        try c.encode(presetID, forKey: .presetID)
     }
 }
 
