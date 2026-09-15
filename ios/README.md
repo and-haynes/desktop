@@ -571,6 +571,18 @@ prompt fails every connection afterwards with no visible cause.
 |---|---|
 | ![The accent colour picker](docs/screenshots/14-colour-picker.png) | ![Hex entry applied](docs/screenshots/15-colour-hex.png) |
 | Wheel, brightness track, HSB/RGB sliders, recents | Typed hex, validated and applied |
+### Focus mode and LAN certificates
+
+| | | |
+|---|---|---|
+| ![Focus mode](docs/screenshots/11-focus.png) | ![The erase confirmation](docs/screenshots/12-focus-erase.png) | ![The LAN certificate prompt](docs/screenshots/13-lan-cert.png) |
+| **Focus** — purple, ephemeral, trash button in the bar | **Erase** — the session is gone, and says so | **LAN certificate** — calm and specific, fingerprint shown |
+
+The certificate shot is from a real self-signed HTTPS server on `localhost`
+(which classifies as local): the SHA-256 in the sheet was checked against
+`openssl x509 -fingerprint -sha256` and matched. It is captured out of band —
+see the note in `Tests/ZenUITests/ScreenshotTests.swift` for why XCUITest
+cannot drive an app that is deliberately blocked on a challenge handler.
 ### The layout cycle
 
 | | | |

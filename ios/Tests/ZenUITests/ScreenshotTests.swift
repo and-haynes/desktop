@@ -425,6 +425,53 @@ final class ScreenshotTests: XCTestCase {
         try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-COLOUR"))
     }
 
+    /// Focus mode and its erase confirmation (#00888).
+    func testCaptureFocusStates() throws {
+        let suffix = UIDevice.current.userInterfaceIdiom == .pad ? "-ipad" : ""
+        settle(4.0)
+
+        XCTAssertTrue(
+            tapMenuItem(matching: "label CONTAINS[c] 'Focus Mode'"), "Focus menu item missing")
+        settle(2.5)
+        // Load something so the shot is a real session, not an empty tab.
+        navigate(to: "duckduckgo.com")
+        capture("11-focus\(suffix)")
+
+        // The erase button is the mode's signature control.
+        let erase = app.buttons["Erase browsing session"]
+        XCTAssertTrue(erase.waitForExistence(timeout: 8), "erase button missing")
+        erase.tap()
+        // The toast is short-lived — grab it straight away.
+        settle(0.7)
+        capture("12-focus-erase\(suffix)")
+        settle(3.0)
+
+        // Leave Focus so the next test starts clean.
+        _ = tapMenuItem(matching: "label CONTAINS[c] 'Leave Focus'")
+        settle(2.0)
+        try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-FOCUS"))
+    }
+
+    // The LAN certificate prompt is NOT driven from here, deliberately.
+    //
+    // The whole point of the design is that the challenge's completion handler
+    // is held until the owner answers — which means the app has an outstanding
+    // network load and never reaches XCUITest's "idle" state, so the harness
+    // blocks inside typeText() before it can even look for the sheet. That is
+    // correct app behaviour and a genuine XCUITest limitation, not a bug to
+    // work around here.
+    //
+    // docs/screenshots/13-lan-cert.png is therefore captured out of band,
+    // against a real self-signed HTTPS server on the host:
+    //
+    //   openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem \
+    //     -days 2 -nodes -subj "/CN=localhost"
+    //   python3 -c '...'   # serve it on 127.0.0.1:8443
+    //   # in the app: open https://localhost:8443/
+    //   xcrun simctl io booted screenshot 13-lan-cert.png
+    //
+    // The fingerprint the sheet displays was checked against
+    // `openssl x509 -fingerprint -sha256` and matched.
 
     /// The silent-failure bug (#0089A), reproduced against real endpoints:
     /// a refused port on a LAN-looking host, which is exactly what
