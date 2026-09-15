@@ -38,6 +38,11 @@ final class SyncService: ObservableObject {
 
     var isSignedIn: Bool { account != nil }
 
+    /// The step-by-step transcript of a sign-in and first sync (#008AA). Its
+    /// own `ObservableObject` so the diagnostics screen can redraw on every
+    /// line without republishing the whole service.
+    let diagnostics = SyncDiagnostics()
+
     /// The name other devices see. Empty preference means "ask the system".
     var effectiveDeviceName: String {
         preferences.deviceName.isEmpty
@@ -56,6 +61,11 @@ final class SyncService: ObservableObject {
     private var signInFlow: FxASignInFlow?
     /// Non-nil while the sign-in sheet should be up. The view observes it.
     @Published private(set) var pendingSignIn: FxAAuthorizationRequest?
+    /// True between `oauth_login` and the end of the exchange. The sheet's
+    /// `item:` binding fires its setter when the sheet goes away, and without
+    /// this that dismissal would call `cancelSignIn()` and stamp `.signedOut`
+    /// over a sign-in that is halfway through succeeding.
+    private var isCompletingSignIn = false
     private var syncTask: Task<Void, Never>?
     private var timer: Timer?
     private var lastAttemptAt: Date?
@@ -104,10 +114,15 @@ final class SyncService: ObservableObject {
     func beginSignIn(email: String? = nil) async {
         guard !status.isBusy else { return }
         status = .signingIn
+        diagnostics.beginAttempt()
         do {
             // Discovery first: Mozilla moves hosts, and a stale constant is a
             // sign-in that fails for no visible reason.
             endpoints = await FxAOAuthClient.discoverEndpoints(transport: transport)
+            diagnostics.log(
+                .authorizeOpened,
+                "endpoints: oauth \(endpoints.oauthServer.host ?? "?"), token "
+                    + (endpoints.tokenServer.host ?? "?"))
             let client = FxAOAuthClient(endpoints: endpoints, transport: transport)
 
             if SyncConfig.usesSystemAuthSession {
@@ -125,41 +140,109 @@ final class SyncService: ObservableObject {
             pendingSignIn = try client.authorizationRequest(email: email)
         } catch let error as SyncError {
             signInFlow = nil
+            if error != .cancelled { diagnostics.failed(.authorizeOpened, error) }
             status = error == .cancelled ? .signedOut : .failed(error.localizedDescription)
         } catch {
             signInFlow = nil
+            diagnostics.failed(.authorizeOpened, error)
             status = .failed(error.localizedDescription)
         }
     }
 
-    /// Step two: the sheet saw a navigation to the redirect. Exchange the code
-    /// and, if that works, we are signed in.
+    /// Step two, the one that matters: the sheet handed us an
+    /// `fxaccounts:oauth_login` over the WebChannel. Validate the state,
+    /// exchange the code, and — if that works — we are signed in.
+    func completeSignIn(login: FxAWebChannelOAuthLogin) async {
+        guard let request = pendingSignIn else { return }
+        await completeSignIn(request: request) { client in
+            let code = try FxAOAuthClient.authorizationCode(
+                fromWebChannel: login, expectedState: request.state)
+            self.diagnostics.succeeded(.oauthLogin, "state matched")
+            if !login.declinedSyncEngines.isEmpty {
+                self.applyChooseWhatToSync(
+                    declined: login.declinedSyncEngines, offered: login.offeredSyncEngines)
+            }
+            return try await client.exchange(code: code, request: request)
+        }
+    }
+
+    /// The fallback path: a navigation to the registered redirect carried the
+    /// code. Not what this client id does — see `FxAWebChannel.swift` — but it
+    /// costs nothing to keep working.
     func completeSignIn(callback: URL) async {
         guard let request = pendingSignIn else { return }
+        await completeSignIn(request: request) { client in
+            let code = try FxAOAuthClient.authorizationCode(
+                fromCallback: callback, expectedState: request.state)
+            self.diagnostics.succeeded(.oauthLogin, "state matched (redirect)")
+            return try await client.exchange(code: code, request: request)
+        }
+    }
+
+    private func completeSignIn(
+        request: FxAAuthorizationRequest,
+        exchange: @escaping (FxAOAuthClient) async throws -> FxAOAuthTokens
+    ) async {
         pendingSignIn = nil
+        isCompletingSignIn = true
+        defer { isCompletingSignIn = false }
         status = .signingIn
         do {
             let client = FxAOAuthClient(endpoints: endpoints, transport: transport)
-            let code = try FxAOAuthClient.authorizationCode(
-                fromCallback: callback, expectedState: request.state)
-            let tokens = try await client.exchange(code: code, request: request)
+            let tokens = try await exchange(client)
+            diagnostics.succeeded(
+                .codeExchange,
+                SyncDiagnostics.shape(tokens.accessToken, label: "access token")
+                    + ", refresh token "
+                    + (tokens.refreshToken == nil ? "missing" : "present")
+                    + ", scopes " + tokens.scopes.joined(separator: " "))
             try await adopt(tokens: tokens, client: client)
         } catch let error as SyncError {
+            if error != .cancelled { diagnostics.failed(.codeExchange, error) }
             status = error == .cancelled ? .signedOut : .failed(error.localizedDescription)
         } catch {
+            diagnostics.failed(.codeExchange, error)
             status = .failed(error.localizedDescription)
         }
     }
 
     func cancelSignIn() {
+        // The sheet's dismissal fires this even when it was dismissed *by* a
+        // successful login. Do not undo a sign-in that is in flight.
+        guard !isCompletingSignIn else { return }
         pendingSignIn = nil
         signInFlow?.cancel()
         signInFlow = nil
         status = isSignedIn ? (preferences.enabled ? .idle : .paused) : .signedOut
     }
 
+    /// Honour the "choose what to sync" checkboxes. Only engines the page
+    /// actually offered are touched: `spaces` is Zen's own collection, it is
+    /// never on that screen, and inferring "declined" from its absence would
+    /// silently switch off the one engine this app exists for.
+    private func applyChooseWhatToSync(declined: [String], offered: [String]) {
+        let declinedSet = Set(declined)
+        let offeredSet = Set(offered.isEmpty ? SyncConfig.webChannelEngines : offered)
+        var adopted = preferences
+        func apply(_ engine: String, _ keyPath: WritableKeyPath<SyncPreferences, Bool>) {
+            guard offeredSet.contains(engine) else { return }
+            adopted[keyPath: keyPath] = !declinedSet.contains(engine)
+        }
+        apply(BookmarksEngine.collection, \.syncBookmarks)
+        apply(TabsEngine.collection, \.syncTabs)
+        apply(HistoryEngine.collection, \.syncHistory)
+        preferences = adopted
+        diagnostics.log(
+            .oauthLogin, "choose-what-to-sync: declined " + declined.joined(separator: ", "))
+    }
+
     private func adopt(tokens: FxAOAuthTokens, client: FxAOAuthClient) async throws {
-        guard let scopedKey = tokens.scopedKey else { throw SyncError.scopedKeyMissing }
+        guard let scopedKey = tokens.scopedKey else {
+            diagnostics.failed(.keysDecrypted, SyncError.scopedKeyMissing)
+            throw SyncError.scopedKeyMissing
+        }
+        diagnostics.succeeded(
+            .keysDecrypted, "oldsync scoped key decrypted from keys_jwe, kid \(scopedKey.kid)")
 
         var secrets = SyncSecrets()
         secrets.refreshToken = tokens.refreshToken
@@ -176,6 +259,7 @@ final class SyncService: ObservableObject {
         state.lastError = nil
         persist()
         status = preferences.enabled ? .idle : .paused
+        diagnostics.log(.firstSync, "starting")
         syncNow(reason: .signIn)
     }
 
@@ -200,6 +284,7 @@ final class SyncService: ObservableObject {
         lastSyncedAt = nil
         remoteTabs = []
         status = .signedOut
+        diagnostics.log(.signedOut, "keys removed from this device")
         persist()
     }
 
@@ -286,6 +371,7 @@ final class SyncService: ObservableObject {
     private func runSync() async {
         do {
             try await performSync()
+            diagnostics.succeeded(.firstSync, "completed")
             state.lastError = nil
             lastSyncedAt = now()
             state.lastSyncedAt = lastSyncedAt
@@ -293,19 +379,23 @@ final class SyncService: ObservableObject {
         } catch let error as SyncError {
             switch error {
             case .backoff(let seconds):
+                diagnostics.log(.firstSync, error.localizedDescription)
                 status = .backingOff(until: now().addingTimeInterval(seconds))
             case .authenticationExpired:
                 // The refresh token is gone or revoked. Keep the account row
                 // so the owner can see *why* they are being asked again.
+                diagnostics.failed(.firstSync, error)
                 status = .failed(error.localizedDescription)
                 state.lastError = error.localizedDescription
             default:
+                diagnostics.failed(.firstSync, error)
                 status = .failed(error.localizedDescription)
                 state.lastError = error.localizedDescription
             }
         } catch is CancellationError {
             status = preferences.enabled ? .idle : .paused
         } catch {
+            diagnostics.failed(.firstSync, error)
             status = .failed(error.localizedDescription)
             state.lastError = error.localizedDescription
         }
@@ -341,12 +431,21 @@ final class SyncService: ObservableObject {
             baseURL: endpoints.tokenServer, transport: transport)
         var token = secrets.token
         if token == nil || token!.isExpired() {
-            token = try await tokenClient.token(
-                accessToken: accessToken, keyID: scopedKey.kid)
+            diagnostics.log(.tokenServer, "requesting \(tokenClient.url.absoluteString)")
+            do {
+                token = try await tokenClient.token(
+                    accessToken: accessToken, keyID: scopedKey.kid)
+            } catch {
+                diagnostics.failed(.tokenServer, error)
+                throw error
+            }
             secrets.token = token
             self.secrets.save(secrets)
+            diagnostics.succeeded(.tokenServer, "allocated, uid \(token?.uid ?? 0)")
         }
         guard let token else { throw SyncError.authenticationExpired }
+        diagnostics.succeeded(
+            .storageNode, token.storageEndpoint.host ?? token.storageEndpoint.absoluteString)
 
         let storage = SyncStorageClient(
             token: token, transport: transport,

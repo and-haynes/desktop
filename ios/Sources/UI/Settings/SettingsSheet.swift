@@ -190,14 +190,28 @@ struct SettingsSheet: View {
                     set: { if $0 == nil { sync.cancelSignIn() } })
             ) { request in
                 FxASignInSheet(
-                    request: request,
-                    onCallback: { url in Task { await sync.completeSignIn(callback: url) } },
+                    request: request, diagnostics: sync.diagnostics,
+                    onEvent: { event in handle(event) },
                     onCancel: { sync.cancelSignIn() })
             }
+            .syncFailureAlert(sync.diagnostics)
             .sheet(item: $editingSpace) { SpaceEditorView(state: state, space: $0) }
             .sheet(isPresented: $isCreatingSpace) { SpaceEditorView(state: state, space: nil) }
         }
         .tint(palette.accent.color)
+    }
+
+    /// The sign-in sheet's three outcomes. Kept out of the body so the Form's
+    /// modifier chain stays something the type checker can finish.
+    private func handle(_ event: FxASignInEvent) {
+        switch event {
+        case .login(let login):
+            Task { await sync.completeSignIn(login: login) }
+        case .redirect(let url):
+            Task { await sync.completeSignIn(callback: url) }
+        case .signOutRequested:
+            Task { await sync.signOut() }
+        }
     }
 
     private var appVersion: String {

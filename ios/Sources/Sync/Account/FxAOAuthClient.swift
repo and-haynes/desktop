@@ -132,6 +132,13 @@ struct FxAOAuthClient: Sendable {
             // the first time the access token expires.
             URLQueryItem(name: "access_type", value: "offline"),
             URLQueryItem(name: "keys_jwk", value: keysJWK),
+            // Without these two the content server finishes the flow by
+            // *navigating* to `redirect_uri` — which this client id does not
+            // do, so nothing ever arrives and the sheet hangs (#008AA). With
+            // them the result comes back over the WebChannel instead. Firefox
+            // for iOS sends the same pair.
+            URLQueryItem(name: "context", value: SyncConfig.webChannelContext),
+            URLQueryItem(name: "action", value: SyncConfig.webChannelAction),
         ]
         if let email, !email.isEmpty { items.append(URLQueryItem(name: "email", value: email)) }
         components.queryItems = items
@@ -167,6 +174,22 @@ struct FxAOAuthClient: Sendable {
             throw SyncError.message("Sign-in response carried no authorization code.")
         }
         return code
+    }
+
+    /// The WebChannel equivalent of the above: `fxaccounts:oauth_login` brings
+    /// the code and the state in a message rather than in a URL, and the state
+    /// has to be checked just as hard. A page that manufactures a login is the
+    /// attack this stops — it cannot know the state we generated.
+    static func authorizationCode(
+        fromWebChannel login: FxAWebChannelOAuthLogin, expectedState: String
+    ) throws -> String {
+        guard login.state == expectedState else {
+            throw SyncError.message("Sign-in response did not match this request.")
+        }
+        guard !login.code.isEmpty else {
+            throw SyncError.message("Sign-in response carried no authorization code.")
+        }
+        return login.code
     }
 
     // MARK: Step 4–5 — code for tokens, JWE for the scoped key

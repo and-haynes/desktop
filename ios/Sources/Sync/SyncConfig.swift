@@ -76,6 +76,27 @@ enum SyncConfig {
 
     static var scopeString: String { scopes.joined(separator: " ") }
 
+    // MARK: WebChannel (#008AA)
+    //
+    // This client id is a WebChannel client: with `context` set below, the
+    // content server delivers the authorization code over a DOM event channel
+    // instead of navigating to `redirectURI`, and a browser waiting for that
+    // navigation waits for ever. `FxAWebChannel.swift` has the protocol.
+
+    /// The `context` that turns the flow into a WebChannel one. Firefox for
+    /// iOS sends exactly this.
+    static let webChannelContext = "oauth_webchannel_v1"
+
+    /// Firefox for iOS sends `action=email` so the flow starts on the
+    /// email-first form rather than assuming a session the sheet cannot have.
+    static let webChannelAction = "email"
+
+    /// Advertised to the page in `fxaccounts:fxa_status` — it is what the
+    /// "choose what to sync" checkboxes are drawn from. Only engines this
+    /// build genuinely syncs, and only names Firefox Sync knows: `spaces` is
+    /// Zen's own collection and is not something FxA can offer a checkbox for.
+    static let webChannelEngines = ["bookmarks", "history", "tabs"]
+
     // MARK: Endpoints
 
     /// Discovery document. Everything below is a fallback for when it cannot

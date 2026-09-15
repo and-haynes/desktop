@@ -11,7 +11,15 @@ import SwiftUI
 
 struct SyncSettingsSection: View {
     @ObservedObject var sync: SyncService
+    /// Observed separately: `SyncDiagnostics` publishes on every logged line,
+    /// and the service does not republish for it.
+    @ObservedObject var diagnostics: SyncDiagnostics
     @Environment(\.zenPalette) private var palette
+
+    init(sync: SyncService) {
+        _sync = ObservedObject(wrappedValue: sync)
+        _diagnostics = ObservedObject(wrappedValue: sync.diagnostics)
+    }
 
     var body: some View {
         Section {
@@ -20,6 +28,7 @@ struct SyncSettingsSection: View {
             } else {
                 signInRow
             }
+            diagnosticsRow
         } header: {
             Text("Sync")
         } footer: {
@@ -53,6 +62,30 @@ struct SyncSettingsSection: View {
                     .offset(y: 18)
             }
         }
+    }
+
+    /// Always present, signed in or out: a sign-in that failed is exactly when
+    /// the transcript matters, and that is the state where there is no account
+    /// row to hang it off (#008AA).
+    private var diagnosticsRow: some View {
+        NavigationLink {
+            SyncDiagnosticsView(diagnostics: diagnostics)
+        } label: {
+            HStack {
+                Label("Sync diagnostics", systemImage: "stethoscope")
+                Spacer()
+                if diagnostics.hasFailure {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.red)
+                        .font(.caption)
+                } else if let step = diagnostics.lastStep {
+                    Text(step.rawValue)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .accessibilityIdentifier("syncDiagnosticsLink")
     }
 
     // MARK: Signed in
@@ -132,11 +165,12 @@ struct SyncSettingsSection: View {
                 + "ciphertext and never hold the key."
         }
         return
-            "Sign in with the same Mozilla account Zen uses on the desktop. Sign-in opens "
-            + "in Safari, so your password is never typed into this app. The consent screen "
-            + "says Firefox: Zen for iOS signs in as an unofficial client using Firefox for "
+            "Sign in with the same Mozilla account Zen uses on the desktop. The form is "
+            + "Mozilla's own page, loaded in a sheet whose cookies are thrown away with it, "
+            + "and the origin is printed along its bottom edge. The consent screen says "
+            + "Firefox: Zen for iOS signs in as an unofficial client using Firefox for "
             + "iOS's public OAuth client id, because Mozilla does not issue ids to "
-            + "third-party browsers."
+            + "third-party browsers. If it stops, Sync diagnostics says where."
     }
 }
 
