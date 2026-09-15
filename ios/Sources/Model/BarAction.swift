@@ -32,6 +32,8 @@ enum BarAction: String, Codable, CaseIterable, Identifiable, Sendable {
     case copyURL
     case findInPage
     case desktopSite
+    /// Picture in Picture for the page's video (#008B0).
+    case popOutVideo
 
     // Tabs and spaces
     case sidebar
@@ -76,6 +78,7 @@ enum BarAction: String, Codable, CaseIterable, Identifiable, Sendable {
         case .copyURL: return "Copy URL"
         case .findInPage: return "Find in Page"
         case .desktopSite: return "Desktop Site"
+        case .popOutVideo: return "Pop Out Video"
         case .sidebar: return "Tabs"
         case .newTab: return "New Tab"
         case .closeTab: return "Close Tab"
@@ -113,6 +116,7 @@ enum BarAction: String, Codable, CaseIterable, Identifiable, Sendable {
         case .copyURL: return "doc.on.doc"
         case .findInPage: return "text.magnifyingglass"
         case .desktopSite: return "desktopcomputer"
+        case .popOutVideo: return "pip.enter"
         case .sidebar: return "sidebar.leading"
         case .newTab: return "plus"
         case .closeTab: return "xmark"
@@ -152,7 +156,8 @@ enum BarAction: String, Codable, CaseIterable, Identifiable, Sendable {
         switch self {
         case .none: return .other
         case .back, .forward, .reloadStop, .scrollToTop: return .navigation
-        case .share, .bookmark, .copyURL, .findInPage, .desktopSite: return .page
+        case .share, .bookmark, .copyURL, .findInPage, .desktopSite, .popOutVideo:
+            return .page
         case .sidebar, .newTab, .closeTab, .nextTab, .previousTab, .spaceSwitcher:
             return .tabs
         case .splitView, .glance, .layoutCycle, .compactToggle, .focusMode, .eraseFocus:

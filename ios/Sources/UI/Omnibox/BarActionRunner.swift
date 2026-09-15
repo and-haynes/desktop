@@ -101,6 +101,10 @@ enum BarActionRunner {
             state.isFindBarVisible = true
         case .desktopSite:
             state.settings.preferDesktopSite.toggle()
+        case .popOutVideo:
+            // Only RootView can reach the pool, as with reload and the
+            // navigation verbs.
+            post(.zenPopOutVideo, tabID)
 
         case .sidebar:
             fire(.sidebarSnap, state)

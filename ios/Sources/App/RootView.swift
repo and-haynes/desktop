@@ -18,8 +18,9 @@ struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var shareItem: URL?
-    /// Countdown that puts the compact bar away after scrolling stops.
-    @State private var compactHideTask: Task<Void, Never>?
+    /// Compact mode's three-state machine (#008AF). Owned here because only
+    /// the root sees the page-scroll notifications and the grabber at once.
+    @StateObject private var compactBar = CompactBarController()
     /// The window's top safe-area inset, measured once at the root. The content
     /// ignores the safe area in two of the three layouts, so the web view needs
     /// the number explicitly to keep the page's own header out from under the
@@ -73,9 +74,27 @@ struct RootView: View {
     private var tintsPages: Bool { palette.isSepia && state.settings.sepiaTintsPages }
     private var isPad: Bool { sizeClass == .regular }
 
-    /// Compact mode hides the chrome until an edge gesture reveals it.
+    /// Compact mode has the chrome away — anything short of the full bar.
     private var chromeHidden: Bool {
-        state.settings.compactModeEnabled && !state.compactRevealed
+        state.settings.compactModeEnabled && compactBar.phase != .expanded
+    }
+
+    /// Which of compact mode's three states the bar is in (#008AF).
+    /// `expanded` whenever compact mode's toolbar half is off, so everything
+    /// below reads one value and never the setting.
+    private var barPhase: CompactBarPhase {
+        guard state.settings.compactModeEnabled, state.settings.compactHidesToolbar else {
+            return .expanded
+        }
+        return compactBar.phase
+    }
+
+    /// The collapsed pill stands in for the bar rather than nothing at all —
+    /// but only where *compact mode* is what put the bar away. A bar hidden by
+    /// a deliberate `hideBar` gesture stays hidden; that is what deliberate
+    /// means.
+    private var showsCompactPill: Bool {
+        barPhase == .pill && !barHiddenByGesture
     }
     private var sidebarHidden: Bool {
         chromeHidden && state.settings.compactHidesSidebar
@@ -108,7 +127,7 @@ struct RootView: View {
         case .compact:
             // Follow compact mode whether or not it is switched on, which is
             // what makes this rule different from `never`.
-            return state.settings.compactHidesToolbar && !state.compactRevealed
+            return state.settings.compactHidesToolbar && compactBar.phase != .expanded
         }
     }
 
@@ -191,6 +210,10 @@ struct RootView: View {
         .onReceive(NotificationCenter.default.publisher(for: .zenHideRevealedChrome)) { _ in
             hideChrome()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .zenPopOutVideo)) { note in
+            popOutVideo(webView(for: note))
+        }
+        .modifier(CompactBarBridge(state: state, controller: compactBar))
         .onReceive(NotificationCenter.default.publisher(for: .zenPageScrollBegan)) { _ in
             // Nothing may buzz during a scroll — see `Haptics.isScrolling`.
             Haptics.shared.isScrolling = true
@@ -413,17 +436,15 @@ struct RootView: View {
         .gesture(drawerEdgeSwipe)
     }
 
-    /// With the status bar hidden there is nothing left in the top band but
-    /// empty gradient, so even the card layout — which normally keeps Zen's
-    /// desktop inset — gives the page the top edge.
-    ///
-    /// The island itself is hardware and simply sits over the page, as it does
-    /// over video, photos and maps. The alternative — insetting the page by the
-    /// island's height — needs a strip in the page's own background colour to
-    /// look like anything but a black slab, and WebKit will not tell us that
-    /// colour while the web view is transparent (which it must be, so the space
-    /// gradient shows through before a page paints).
-    private var reclaimsTopEdge: Bool { !state.settings.showStatusBar }
+    /// Where the page starts at the top, per the layout cycle. Hiding the
+    /// status bar is deliberately not an input — see `PageTopInsets` (#008A9).
+    private var topInsets: PageTopInsets {
+        PageTopInsets.forSettings(state.settings, safeAreaTop: safeAreaTop)
+    }
+
+    /// Card keeps Zen's desktop inset; the other two layouts hand the page the
+    /// top edge. This follows the layout, not the status bar.
+    private var reclaimsTopEdge: Bool { topInsets.pageUnderTopSafeArea }
 
     /// The bar can now be at either end and either in the flow or over the
     /// page, which is four arrangements rather than two — so the alignment and
@@ -466,7 +487,7 @@ struct RootView: View {
             // Simultaneous so it never swallows a tap meant for the page.
             .simultaneousGesture(
                 TapGesture().onEnded { hideChrome() },
-                including: state.compactRevealed ? .all : .subviews)
+                including: state.compactBarPhase != .hidden ? .all : .subviews)
         }
     }
 
@@ -493,10 +514,12 @@ struct RootView: View {
     /// over it.
     private var webTopInset: CGFloat {
         var inset: CGFloat = 0
-        if layoutMode.ignoresTopSafeArea, state.settings.showStatusBar,
-            !(!barFloats && barPosition.isTop)
-        {
-            inset += safeAreaTop
+        // `PageTopInsets` owns the status-bar half of this (#008A9): the inset
+        // is a function of the layout and the window's safe area, never of
+        // whether the clock is showing. A bar *docked* at the top has already
+        // taken the safe area, so the page must not be inset for it twice.
+        if !(!barFloats && barPosition.isTop) {
+            inset += topInsets.webTopContentInset
         }
         // A bar floating at the *top* covers the page's first screenful the
         // same way the bottom one covers its last.
@@ -529,7 +552,15 @@ struct RootView: View {
                         onShare: { shareItem = $0 },
                         onHideBar: { hideBarByGesture() }
                     )
+                    // Any touch on the bar keeps it, for as long as you are on
+                    // it. The customised layout is whatever `OmniboxPill`
+                    // draws, so expanding the pill gives back *your* bar
+                    // rather than a default one (#008AF).
+                    .simultaneousGesture(TapGesture().onEnded { compactBar.barInteracted() })
                     .transition(.move(edge: edge).combined(with: .opacity))
+                } else if showsCompactPill {
+                    CompactPill(state: state) { compactBar.pillTapped() }
+                        .transition(.scale(scale: 0.88).combined(with: .opacity))
                 }
             }
         }
@@ -582,6 +613,9 @@ struct RootView: View {
             .allowsHitTesting(false)
             .zIndex(4)
         }
+
+        ZenToastOverlay(message: $state.toast)
+            .zIndex(6)
 
         // Above everything, including the omnibox — the point is that nothing
         // from the session is readable until the owner authenticates.
@@ -668,15 +702,12 @@ struct RootView: View {
     /// The grabber's deliberate reveal: no countdown, it stays until the page
     /// is tapped or scrolled.
     private func revealChrome() {
-        compactHideTask?.cancel()
-        compactHideTask = nil
         barRevealTask?.cancel()
         barRevealTask = nil
-        Haptics.shared.fire(.compactBarShow)
+        compactBar.grabberRevealed()
         withAnimation(
             .spring(response: ZenMetrics.compactAnimationDuration * 2, dampingFraction: 1)
         ) {
-            state.compactRevealed = true
             // The grabber is the way back from every rule that can hide the
             // bar, so it clears all of them rather than just compact mode's.
             barHiddenByGesture = false
@@ -728,40 +759,38 @@ struct RootView: View {
 
     /// Scrolling brings the bar back for as long as you keep scrolling. Each
     /// scroll event restarts the countdown, so a long flick does not flicker.
+    /// Scrolling brings back the *pill* and only the pill — a full toolbar for
+    /// every flick is the noise compact mode exists to remove (#008AF).
     private func revealChromeWhileScrolling() {
-        guard state.settings.compactModeEnabled else { return }
-        compactHideTask?.cancel()
-        compactHideTask = nil
-        guard !state.compactRevealed else { return }
-        withAnimation(.easeOut(duration: ZenTokens.hiddenToolbarTransition)) {
-            state.compactRevealed = true
-        }
+        compactBar.pageDidScroll()
     }
 
     /// Start the fade-out countdown. Cancelled by any further scrolling, so
     /// the bar only goes when the page has actually settled.
+    /// Scrolling settled; everything from here is the still-timer.
     private func scheduleCompactHide() {
-        guard state.settings.compactModeEnabled, state.compactRevealed else { return }
-        compactHideTask?.cancel()
-        let delay = max(0.2, state.settings.compactHideDelay)
-        compactHideTask = Task {
-            try? await Task.sleep(for: .seconds(delay))
-            guard !Task.isCancelled else { return }
-            withAnimation(.easeInOut(duration: ZenTokens.hiddenToolbarTransition)) {
-                state.compactRevealed = false
-            }
-        }
+        compactBar.scrollDidEnd()
     }
 
     /// The reveal is momentary: tapping the page or scrolling puts it back.
     /// There is no auto-hide timer — a deliberate reveal should not time out.
     private func hideChrome() {
-        compactHideTask?.cancel()
-        compactHideTask = nil
-        guard state.compactRevealed else { return }
-        Haptics.shared.fire(.compactBarHide)
-        withAnimation(.easeInOut(duration: ZenTokens.hiddenToolbarTransition)) {
-            state.compactRevealed = false
+        compactBar.pageTapped()
+    }
+
+    /// Ask a page to pop its video out (#008B0). Only the root can: the bar
+    /// action and the context menu that offer it cannot reach the pool.
+    private func popOutVideo(_ webView: ZenWebView?) {
+        guard let view = webView else {
+            state.toast = ZenToastMessage("No page to pop out.", symbol: "pip.exit")
+            return
+        }
+        Haptics.shared.fire(.layoutChange)
+        view.popOutVideo { result in
+            // Success says so by itself — the video visibly leaves the page.
+            guard let message = result.message else { return }
+            Haptics.shared.fire(.loadError)
+            state.toast = ZenToastMessage(message, symbol: "pip.exit")
         }
     }
 
@@ -904,6 +933,42 @@ struct RootView: View {
             action()
         }
         .keyboardShortcut(key, modifiers: modifiers)
+    }
+}
+
+/// Keeps the compact-bar machine fed — the settings it runs on going in, the
+/// phase the rest of the tree reads coming out. A separate layer because
+/// `RootView`'s own modifier chain is already at the type checker's limit.
+private struct CompactBarBridge: ViewModifier {
+    @ObservedObject var state: BrowserState
+    @ObservedObject var controller: CompactBarController
+
+    func body(content: Content) -> some View {
+        content
+            .onAppear(perform: sync)
+            .onChange(of: state.settings.compactModeEnabled) { _, _ in sync() }
+            .onChange(of: state.settings.compactHideDelay) { _, _ in sync() }
+            .onChange(of: controller.phase) { _, phase in state.compactBarPhase = phase }
+            // Anything covering the page pauses the countdown and hands the bar
+            // back whole on the way out — see `coveredDidChange`.
+            .onChange(of: isCovered) { _, covered in
+                controller.coveredDidChange(covered)
+            }
+    }
+
+    /// The page is not what you are looking at right now.
+    private var isCovered: Bool {
+        state.isOmniboxOpen || state.isSettingsPresented || state.isHistorySheetPresented
+            || state.isSidebarVisible || state.focusLocked
+    }
+
+    /// The machine runs whenever compact mode is on, whichever halves of the
+    /// chrome it hides — `RootView.barPhase` is what decides whether the
+    /// *toolbar* follows it.
+    private func sync() {
+        controller.stillDelay = state.settings.compactHideDelay
+        controller.isEnabled = state.settings.compactModeEnabled
+        state.compactBarPhase = controller.phase
     }
 }
 

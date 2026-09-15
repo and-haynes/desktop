@@ -563,6 +563,11 @@ extension Notification.Name {
     static let zenPageScrollBegan = Notification.Name("zen.pageScrollBegan")
     /// Scrolling settled. Starts the hide countdown.
     static let zenPageScrollEnded = Notification.Name("zen.pageScrollEnded")
+    /// Put the page's video into Picture in Picture (#008B0). Posted by the
+    /// `popOutVideo` bar action and the page's context menu; RootView observes
+    /// it, for the same reason as `zenReloadActiveTab` — the web view lives in
+    /// the pool.
+    static let zenPopOutVideo = Notification.Name("zen.popOutVideo")
     /// Advance the layout cycle. RootView owns the transition animation.
     static let zenCycleLayout = Notification.Name("zen.cycleLayout")
     /// Every Focus tab has been torn down; the pool must drop their web views

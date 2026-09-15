@@ -121,3 +121,57 @@ final class CSSColorTests: XCTestCase {
         XCTAssertNil(CSSColor.parse(""))
     }
 }
+
+/// The layout cycle is the *only* input to where the page starts (#008A9,
+/// #00887). This is the branch where `pageRunsUnderTopSafeArea` can actually be
+/// true, so it is the branch where getting it wrong shows.
+final class LayoutPageTopInsetTests: XCTestCase {
+
+    private func settings(_ layout: BrowserLayout, statusBar: Bool) -> ZenSettings {
+        var s = ZenSettings()
+        s.layout = layout
+        s.showStatusBar = statusBar
+        return s
+    }
+
+    func testCardKeepsTheDesktopInsetAndDoesNotRunUnderTheIsland() {
+        for statusBar in [true, false] {
+            let insets = PageTopInsets.forSettings(
+                settings(.card, statusBar: statusBar), safeAreaTop: 59)
+            XCTAssertFalse(insets.pageUnderTopSafeArea)
+            XCTAssertEqual(insets.webTopContentInset, 0)
+            XCTAssertEqual(insets.cardTopPadding, ZenMetrics.splitGap)
+        }
+    }
+
+    func testEdgeToEdgeAndFullScreenGiveThePageTheTopBand() {
+        for layout in [BrowserLayout.edgeToEdge, .fullScreen] {
+            let insets = PageTopInsets.forSettings(
+                settings(layout, statusBar: true), safeAreaTop: 59)
+            XCTAssertTrue(insets.pageUnderTopSafeArea, "\(layout) should reach the top edge")
+            XCTAssertEqual(
+                insets.webTopContentInset, 59,
+                "the page paints to the top but its content starts below the island")
+            XCTAssertEqual(insets.cardTopPadding, 0)
+        }
+    }
+
+    /// The #008A9 bug, in the place it is easiest to reintroduce: "the clock is
+    /// gone, so take the space". The island is hardware and is still there.
+    func testHidingTheStatusBarMovesNothingInAnyLayout() {
+        for layout in BrowserLayout.allCases {
+            let shown = PageTopInsets.forSettings(
+                settings(layout, statusBar: true), safeAreaTop: 59)
+            let hidden = PageTopInsets.forSettings(
+                settings(layout, statusBar: false), safeAreaTop: 59)
+            XCTAssertEqual(shown, hidden, "\(layout) moved when the status bar was hidden")
+        }
+    }
+
+    /// A proxy read before the window settles can hand us a negative inset.
+    func testANegativeSafeAreaIsNotPassedOn() {
+        let insets = PageTopInsets.forSettings(
+            settings(.fullScreen, statusBar: true), safeAreaTop: -12)
+        XCTAssertEqual(insets.webTopContentInset, 0)
+    }
+}
