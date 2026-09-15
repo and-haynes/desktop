@@ -118,6 +118,12 @@ struct RootView: View {
     private var barLayout: BarLayout { state.settings.barLayout }
     private var barPosition: BarPosition { barLayout.position(landscape: isLandscape) }
     private var barAutoHide: BarAutoHide { barLayout.autoHide(landscape: isLandscape) }
+    /// One line or two (#008BA). Landscape can collapse it back, which is
+    /// what the setting exists for.
+    private var barRows: BarRows { barLayout.rows(landscape: isLandscape) }
+    /// How much of the screen the bar occupies — *not* `barLayout.height`,
+    /// which is only the address line once there are two.
+    private var barExtent: CGFloat { CGFloat(barLayout.totalHeight(rows: barRows)) }
 
     /// Whether the bar sits over the page rather than taking room from it. The
     /// full-screen *layout* floats it regardless of position, because that is
@@ -565,7 +571,7 @@ struct RootView: View {
         // A bar floating at the *top* covers the page's first screenful the
         // same way the bottom one covers its last.
         if barFloats, barPosition.isTop, !barHidden {
-            inset += CGFloat(barLayout.height) + topBarInset + 8
+            inset += barExtent + topBarInset + 8
         }
         return inset
     }
@@ -574,7 +580,7 @@ struct RootView: View {
     /// permanently covered without a matching inset.
     private var webBottomInset: CGFloat {
         guard barFloats, !barPosition.isTop, !barHidden else { return 0 }
-        return CGFloat(barLayout.height) + bottomBarInset + 12
+        return barExtent + bottomBarInset + 12
     }
 
     private var barStack: some View {
@@ -589,7 +595,7 @@ struct RootView: View {
                 }
                 if !barHidden {
                     OmniboxPill(
-                        state: state, isFloating: barFloats,
+                        state: state, isFloating: barFloats, isLandscape: isLandscape,
                         onShare: { shareItem = $0 },
                         onHideBar: { hideBarByGesture() }
                     )
@@ -612,6 +618,7 @@ struct RootView: View {
         .padding(.bottom, barPosition.isTop ? 4 : bottomBarInset)
         .animation(.easeInOut(duration: ZenTokens.hiddenToolbarTransition), value: barHidden)
         .animation(.easeInOut(duration: 0.2), value: state.isFindBarVisible)
+        .animation(.spring(response: 0.3, dampingFraction: 0.9), value: barRows)
     }
 
     /// The bar's own vertical offset, on top of whatever the safe area needs.

@@ -255,14 +255,57 @@ struct BarCustomizerView: View {
                 "Offset from the edge", value: bind(\.verticalOffset),
                 range: 0...BarLayout.maxVerticalOffset, unit: "pt")
             Toggle("Pill", isOn: bind(\.isPill))
+
+            Picker("Rows", selection: rowsBinding) {
+                ForEach(BarRows.allCases) { rows in
+                    Text(rows.displayName).tag(rows)
+                }
+            }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier("barRowsPicker")
         } header: {
             Text("Position & shape")
         } footer: {
-            Text(
-                "Floating puts the bar over the page; Bottom and Top give it a "
-                    + "row of its own. A pill is inset from the screen edges — turn "
-                    + "it off for a bar that runs the full width.")
+            Text(positionFooter)
         }
+    }
+
+    /// Built as a `String` for the same reason the navigation-helper footer is:
+    /// interpolation inside a `Form` this large is what tips the type checker.
+    private var positionFooter: String {
+        "Floating puts the bar over the page; Bottom and Top give it a row of "
+            + "its own. A pill is inset from the screen edges — turn it off for "
+            + "a bar that runs the full width. Two rows give the address a line "
+            + "to itself and the buttons a full-width row underneath, which "
+            + "raises a side from \(BarLayout.maxSlotItems) buttons to "
+            + "\(BarLayout.maxStackedSlotItems) at the cost of the height."
+    }
+
+    /// Rows go through `setRows`, not `bind`, because dropping back to one row
+    /// has to move the buttons that no longer fit rather than delete them.
+    private var rowsBinding: Binding<BarRows> {
+        Binding(
+            get: { current.rows },
+            set: { newValue in
+                guard current.rows != newValue else { return }
+                record()
+                var next = current
+                next.setRows(newValue)
+                state.settings.barLayout = next
+                Haptics.shared.fire(.layoutChange)
+            })
+    }
+
+    private var landscapeRowsBinding: Binding<BarRows?> {
+        Binding(
+            get: { current.landscape.rows },
+            set: { newValue in
+                record()
+                var next = current
+                next.landscape.rows = newValue
+                next.presetID = nil
+                state.settings.barLayout = next
+            })
     }
 
     // MARK: Fill & look
@@ -398,7 +441,8 @@ struct BarCustomizerView: View {
             Text("Buttons")
         } footer: {
             Text(
-                "Left and right hold \(BarLayout.maxSlotItems) each; the overflow "
+                "Left and right hold \(current.capacity(.left)) each at "
+                    + "\(current.rows.displayName) row\(current.rows == .one ? "" : "s"); the overflow "
                     + "menu holds \(BarLayout.maxOverflowItems). Hold a button to give "
                     + "it a second action on a long press. Erase is not in the list: "
                     + "in Focus mode it is always on the bar, which is the whole "
@@ -456,6 +500,13 @@ struct BarCustomizerView: View {
                     Text(rule.displayName).tag(BarAutoHide?.some(rule))
                 }
             }
+            Picker("Landscape rows", selection: landscapeRowsBinding) {
+                Text("Same").tag(BarRows?.none)
+                ForEach(BarRows.allCases) { rows in
+                    Text(rows.displayName).tag(BarRows?.some(rows))
+                }
+            }
+            .accessibilityIdentifier("barLandscapeRowsPicker")
         } header: {
             Text("Auto-hide")
         } footer: {
@@ -663,6 +714,13 @@ struct BarPreviewCanvas: View {
     var height: CGFloat = 148
     @Environment(\.zenPalette) private var palette
 
+    /// A two-row bar is most of a third taller, and a canvas that did not grow
+    /// with it would show the preview clipped — which is the one thing a
+    /// preview may not do.
+    private var canvasHeight: CGFloat {
+        height + CGFloat(layout.totalHeight(rows: layout.rows) - layout.height)
+    }
+
     var body: some View {
         ZStack(alignment: layout.position.isTop ? .top : .bottom) {
             ZenGradientView(
@@ -691,7 +749,7 @@ struct BarPreviewCanvas: View {
                     layout.position.isTop ? .top : .bottom,
                     CGFloat(layout.verticalOffset) + 10)
         }
-        .frame(height: height)
+        .frame(height: canvasHeight)
         .animation(.spring(response: 0.3, dampingFraction: 0.9), value: layout)
     }
 }

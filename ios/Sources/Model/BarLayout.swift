@@ -82,6 +82,33 @@ enum BarHeightStep: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
+/// How many lines the bar occupies (#008BA).
+///
+/// One is the bar as it has always been: address and buttons on one line,
+/// which caps a side at four glyphs before the URL stops being readable. Two
+/// gives the address a line of its own and the buttons a full-width row under
+/// it — which is a lot more room for buttons, at the cost of a taller bar.
+/// Stored as its raw line count so the JSON says `"rows": 2` rather than
+/// `"rows": "two"`.
+enum BarRows: Int, Codable, CaseIterable, Identifiable, Sendable {
+    case one = 1
+    case two = 2
+
+    var id: Int { rawValue }
+
+    var displayName: String { "\(rawValue)" }
+
+    /// How many glyphs a left or right slot holds at this row count. Four is
+    /// what fits beside a readable URL; a row of its own is most of a screen
+    /// width, so it takes nearly twice as many.
+    var slotCapacity: Int {
+        switch self {
+        case .one: return BarLayout.maxSlotItems
+        case .two: return BarLayout.maxStackedSlotItems
+        }
+    }
+}
+
 // MARK: - Contents
 
 enum BarLabelStyle: String, Codable, CaseIterable, Identifiable, Sendable {
@@ -203,20 +230,27 @@ enum BarAutoHide: String, Codable, CaseIterable, Identifiable, Sendable {
 struct BarLandscapeOverride: Codable, Equatable, Sendable {
     var position: BarPosition?
     var autoHide: BarAutoHide?
+    /// Landscape is where a two-row bar is least needed and costs most: the
+    /// window is short, and the width that made the second row necessary is
+    /// suddenly there on the first (#008BA). Optional like the rest, because
+    /// "collapse in landscape" and "always two rows" are different answers.
+    var rows: BarRows?
 
-    var isEmpty: Bool { position == nil && autoHide == nil }
+    var isEmpty: Bool { position == nil && autoHide == nil && rows == nil }
 
-    init(position: BarPosition? = nil, autoHide: BarAutoHide? = nil) {
+    init(position: BarPosition? = nil, autoHide: BarAutoHide? = nil, rows: BarRows? = nil) {
         self.position = position
         self.autoHide = autoHide
+        self.rows = rows
     }
 
-    private enum CodingKeys: String, CodingKey { case position, autoHide }
+    private enum CodingKeys: String, CodingKey { case position, autoHide, rows }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         position = try? c.decodeIfPresent(BarPosition.self, forKey: .position)
         autoHide = try? c.decodeIfPresent(BarAutoHide.self, forKey: .autoHide)
+        rows = try? c.decodeIfPresent(BarRows.self, forKey: .rows)
     }
 }
 
@@ -247,6 +281,16 @@ struct BarLayout: Codable, Equatable, Sendable {
     /// A slot holds a few glyphs before it stops being a bar and starts being a
     /// toolbar. Four is what fits beside a readable URL on a 6.1-inch phone.
     static let maxSlotItems = 4
+    /// With the buttons on a line of their own (#008BA) the constraint is the
+    /// screen rather than the URL: seven 44pt targets across a 6.1-inch phone,
+    /// which is the point at which they stop being comfortably hittable.
+    static let maxStackedSlotItems = 7
+    /// The gap between the address line and the button line.
+    static let stackedRowSpacing: Double = 2
+    /// The button line as a fraction of the address line. Shorter on purpose:
+    /// a glyph needs less height than a line of text with a favicon and a
+    /// badge beside it, and the whole cost of the second row is height.
+    static let stackedButtonRowFactor: Double = 0.7
     /// The overflow menu is a list, so it can afford more — but not unbounded,
     /// or it scrolls and stops being a menu.
     static let maxOverflowItems = 12
@@ -270,6 +314,8 @@ struct BarLayout: Codable, Equatable, Sendable {
     /// A pill is inset and rounded; full width runs edge to edge and squares
     /// off its outer corners.
     var isPill: Bool = true
+    /// One line, or the address on one and the buttons on another (#008BA).
+    var rows: BarRows = .one
 
     // Fill & look
     /// `nil` means "use the global Bar fill setting", which is where Liquid
@@ -336,6 +382,26 @@ struct BarLayout: Codable, Equatable, Sendable {
         (isLandscape ? landscape.autoHide : nil) ?? autoHide
     }
 
+    /// Row count for the current orientation (#008BA).
+    func rows(landscape isLandscape: Bool) -> BarRows {
+        (isLandscape ? landscape.rows : nil) ?? rows
+    }
+
+    /// The button line's height. Zero at one row, where there is no such line.
+    func buttonRowHeight(rows: BarRows) -> Double {
+        rows == .two ? height * BarLayout.stackedButtonRowFactor : 0
+    }
+
+    /// How tall the whole bar is — which is what every inset the page is given
+    /// has to be measured against, not `height`.
+    func totalHeight(rows: BarRows) -> Double {
+        guard rows == .two else { return height }
+        return height + buttonRowHeight(rows: rows) + BarLayout.stackedRowSpacing
+    }
+
+    /// How many glyphs a slot holds at this layout's row count.
+    func capacity(_ slot: BarSlot) -> Int { slot.capacity(rows: rows) }
+
     func slots(_ slot: BarSlot) -> [BarSlotItem] {
         switch slot {
         case .left: return leftSlots
@@ -351,7 +417,7 @@ struct BarLayout: Codable, Equatable, Sendable {
     // MARK: Mutation
 
     /// True when `slot` has room for one more.
-    func canAdd(to slot: BarSlot) -> Bool { slots(slot).count < slot.capacity }
+    func canAdd(to slot: BarSlot) -> Bool { slots(slot).count < capacity(slot) }
 
     /// Add an action, refusing rather than silently dropping when the slot is
     /// full — the editor turns that `false` into the shake-and-say-why.
@@ -404,6 +470,31 @@ struct BarLayout: Codable, Equatable, Sendable {
         presetID = nil
     }
 
+    /// Change the row count, moving anything that no longer fits rather than
+    /// dropping it.
+    ///
+    /// Going from two rows back to one takes a side from seven glyphs to four,
+    /// and silently deleting the other three would be the worst kind of
+    /// surprise — you would find out by looking for a button that is not there
+    /// any more. The overflow they no longer fit in is exactly what the More
+    /// menu is for, so they go there, in order, and only what will not fit
+    /// even *there* is lost.
+    mutating func setRows(_ next: BarRows) {
+        guard next != rows else { return }
+        rows = next
+        for slot in [BarSlot.left, BarSlot.right] {
+            let room = slot.capacity(rows: next)
+            let items = slots(slot)
+            guard items.count > room else { continue }
+            let displaced = Array(items.dropFirst(room))
+            mutate(slot) { $0 = Array($0.prefix(room)) }
+            for item in displaced where overflowSlots.count < BarSlot.overflow.capacity(rows: next) {
+                overflowSlots.append(item)
+            }
+        }
+        presetID = nil
+    }
+
     mutating func setGesture(_ action: BarAction, for gesture: BarGesture) {
         gestures[gesture] = action
         presetID = nil
@@ -442,8 +533,11 @@ struct BarLayout: Codable, Equatable, Sendable {
         copy.blurStrength = min(max(blurStrength, 0), 1)
         copy.urlFontSize = min(max(urlFontSize, Self.minURLFontSize), Self.maxURLFontSize)
         for slot in BarSlot.allCases {
+            // Read the room *before* the mutation: asking `copy` for it inside
+            // its own `mutate` is two overlapping accesses to one value.
+            let room = copy.capacity(slot)
             copy.mutate(slot) { items in
-                items = Array(items.filter { $0.action.fitsASlot }.prefix(slot.capacity))
+                items = Array(items.filter { $0.action.fitsASlot }.prefix(room))
             }
         }
         copy.gestures = gestures.filter { $0.value.fitsAGesture }
@@ -455,6 +549,7 @@ struct BarLayout: Codable, Equatable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case version, position, height, cornerRadius, horizontalMargin, verticalOffset, isPill
+        case rows
         case fill, customColor, customColorOpacity, blurStrength, showsBorder, showsShadow
         case urlFontSize, accentSource, fixedAccent, haptics, contents
         case leftSlots, rightSlots, overflowSlots, gestures, autoHide, landscape, presetID
@@ -470,6 +565,9 @@ struct BarLayout: Codable, Equatable, Sendable {
         horizontalMargin = c.lenient(.horizontalMargin, fallback.horizontalMargin)
         verticalOffset = c.lenient(.verticalOffset, fallback.verticalOffset)
         isPill = c.lenient(.isPill, fallback.isPill)
+        // Defaulted, so every layout written before #008BA reads back as the
+        // one-row bar it was.
+        rows = c.lenient(.rows, fallback.rows)
         fill = try? c.decodeIfPresent(BarFill.self, forKey: .fill)
         customColor = try? c.decodeIfPresent(ZenColor.self, forKey: .customColor)
         customColorOpacity = c.lenient(.customColorOpacity, fallback.customColorOpacity)
@@ -538,6 +636,7 @@ struct BarLayout: Codable, Equatable, Sendable {
         try c.encode(horizontalMargin, forKey: .horizontalMargin)
         try c.encode(verticalOffset, forKey: .verticalOffset)
         try c.encode(isPill, forKey: .isPill)
+        try c.encode(rows, forKey: .rows)
         try c.encodeIfPresent(fill, forKey: .fill)
         try c.encodeIfPresent(customColor, forKey: .customColor)
         try c.encode(customColorOpacity, forKey: .customColorOpacity)
@@ -588,12 +687,17 @@ enum BarSlot: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    var capacity: Int {
-        self == .overflow ? BarLayout.maxOverflowItems : BarLayout.maxSlotItems
+    /// How many glyphs this slot holds. A function of the row count since
+    /// #008BA: the More menu is a list and does not care, but a side on its
+    /// own line holds nearly twice what one sharing with the URL does.
+    func capacity(rows: BarRows) -> Int {
+        self == .overflow ? BarLayout.maxOverflowItems : rows.slotCapacity
     }
 
     /// "3 of 4" — spelled out, because "3/4" reads as three quarters.
-    func countLabel(_ used: Int) -> String { "\(used) of \(capacity)" }
+    func countLabel(_ used: Int, rows: BarRows) -> String {
+        "\(used) of \(capacity(rows: rows))"
+    }
 }
 
 extension BarLayout {
@@ -614,7 +718,7 @@ struct BarPreset: Identifiable, Sendable {
     let detail: String
     let layout: BarLayout
 
-    static let all: [BarPreset] = [.zen, .safari, .quiche, .minimal]
+    static let all: [BarPreset] = [.zen, .safari, .quiche, .stacked, .minimal]
 
     static func preset(id: String?) -> BarPreset? {
         guard let id else { return nil }
@@ -709,6 +813,45 @@ struct BarPreset: Identifiable, Sendable {
                 .longPress: .actionMenu, .doubleTap: .reloadStop,
             ]
             layout.autoHide = .onScroll
+        })
+
+    /// Two rows (#008BA): the address on its own line, and a full-width row of
+    /// buttons under it. The preset exists to make the option discoverable —
+    /// "Rows: 2" in the editor is a number, and this is what the number does.
+    static let stacked = BarPreset(
+        id: "stacked", name: "Stacked",
+        detail: "Two rows: the address above, a full row of buttons below.",
+        layout: make(id: "stacked") { layout in
+            layout.position = .bottomFloating
+            layout.rows = .two
+            layout.height = BarHeightStep.small.points
+            layout.cornerRadius = BarLayout.maxCornerRadius / 2
+            layout.horizontalMargin = 8
+            layout.contents = BarContents(
+                showsFavicon: true, showsSecurityBadge: true, label: .domain,
+                progress: .line, showsFindButton: false)
+            layout.leftSlots = [
+                BarSlotItem(.back), BarSlotItem(.forward), BarSlotItem(.reloadStop),
+                BarSlotItem(.sidebar, longPress: .spaceSwitcher), BarSlotItem(.newTab),
+            ]
+            layout.rightSlots = [
+                BarSlotItem(.share), BarSlotItem(.bookmark, longPress: .history),
+                BarSlotItem(.findInPage), BarSlotItem(.splitView),
+                BarSlotItem(.overflowMenu),
+            ]
+            layout.overflowSlots = [
+                BarSlotItem(.desktopSite), BarSlotItem(.glance), BarSlotItem(.compactToggle),
+                BarSlotItem(.focusMode), BarSlotItem(.layoutCycle), BarSlotItem(.passwords),
+                BarSlotItem(.history), BarSlotItem(.localServices), BarSlotItem(.settings),
+            ]
+            layout.gestures = [
+                .swipeUp: .sidebar, .swipeDown: .hideBar,
+                .swipeLeft: .nextTab, .swipeRight: .previousTab,
+                .longPress: .actionMenu, .doubleTap: .reloadStop,
+            ]
+            // Landscape has the width the second row was bought for, so it
+            // collapses back to one and gives the page the height.
+            layout.landscape = BarLandscapeOverride(rows: .one)
         })
 
     /// Nothing but the address and a way back to the tabs.

@@ -222,8 +222,8 @@ final class BarLayoutTests: XCTestCase {
     func testEveryPresetIsWithinItsOwnLimits() {
         for preset in BarPreset.all {
             let layout = preset.layout
-            XCTAssertLessThanOrEqual(layout.leftSlots.count, BarLayout.maxSlotItems, preset.name)
-            XCTAssertLessThanOrEqual(layout.rightSlots.count, BarLayout.maxSlotItems, preset.name)
+            XCTAssertLessThanOrEqual(layout.leftSlots.count, layout.capacity(.left), preset.name)
+            XCTAssertLessThanOrEqual(layout.rightSlots.count, layout.capacity(.right), preset.name)
             XCTAssertLessThanOrEqual(
                 layout.overflowSlots.count, BarLayout.maxOverflowItems, preset.name)
             XCTAssertEqual(layout, layout.normalised(), "\(preset.name) is not normalised")
@@ -569,7 +569,10 @@ final class BarSlotMutationTests: XCTestCase {
         XCTAssertEqual(
             BarSlot.overflow.title, "More menu",
             "the button is labelled More, so the editor should say More")
-        XCTAssertEqual(BarSlot.left.countLabel(3), "3 of 4")
+        XCTAssertEqual(BarSlot.left.countLabel(3, rows: .one), "3 of 4")
+        XCTAssertEqual(
+            BarSlot.left.countLabel(3, rows: .two), "3 of 7",
+            "a side on its own line holds more, and the header has to say so")
     }
 
     /// Pop out video joined the library with the video work (#008B0), so it can
@@ -578,5 +581,182 @@ final class BarSlotMutationTests: XCTestCase {
         XCTAssertTrue(BarAction.slotLibrary.contains(.popOutVideo))
         XCTAssertTrue(BarAction.gestureLibrary.contains(.popOutVideo))
         XCTAssertEqual(BarAction.popOutVideo.group, .page)
+    }
+}
+
+/// The two-line stacked bar (#008BA).
+///
+/// The row count is not a cosmetic flag: it changes how many buttons a slot
+/// holds and how much of the screen the bar takes, and both of those are read
+/// by code that has no idea it is looking at a two-row bar — the page's scroll
+/// insets, the editor's "3 of 4". Those are what this pins, plus the one
+/// destructive case: dropping back to one row with seven buttons on a side.
+final class BarRowsTests: XCTestCase {
+
+    private func encoded(_ layout: BarLayout) throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        return try encoder.encode(layout)
+    }
+
+    // MARK: Slot limits
+
+    func testASideHoldsMoreOnItsOwnLine() {
+        XCTAssertEqual(BarRows.one.slotCapacity, 4)
+        XCTAssertEqual(BarRows.two.slotCapacity, 7)
+        XCTAssertEqual(BarSlot.left.capacity(rows: .one), 4)
+        XCTAssertEqual(BarSlot.right.capacity(rows: .two), 7)
+    }
+
+    /// The More menu is a list; a second row of *buttons* tells it nothing.
+    func testTheOverflowMenuDoesNotCareAboutRows() {
+        for rows in BarRows.allCases {
+            XCTAssertEqual(BarSlot.overflow.capacity(rows: rows), BarLayout.maxOverflowItems)
+        }
+    }
+
+    func testTwoRowsLetsYouAddPastTheOneRowLimit() {
+        var layout = BarPreset.zen.layout
+        layout.leftSlots = []
+        layout.setRows(.two)
+        for _ in 0..<BarRows.two.slotCapacity {
+            XCTAssertTrue(layout.add(.share, to: .left))
+        }
+        XCTAssertFalse(layout.add(.share, to: .left), "the seventh is the last")
+        XCTAssertEqual(layout.leftSlots.count, 7)
+    }
+
+    func testNormalisingTrimsToTheRowCountsOwnLimit() {
+        var layout = BarPreset.zen.layout
+        layout.rows = .two
+        layout.leftSlots = Array(repeating: BarSlotItem(.back), count: 20)
+        XCTAssertEqual(layout.normalised().leftSlots.count, 7)
+
+        layout.rows = .one
+        XCTAssertEqual(layout.normalised().leftSlots.count, 4)
+    }
+
+    // MARK: Going back to one row
+
+    /// Silently deleting three buttons would be the worst kind of surprise —
+    /// you find out by looking for one that is not there. They go to the More
+    /// menu, in order, instead.
+    func testDroppingToOneRowMovesTheButtonsThatNoLongerFit() {
+        var layout = BarPreset.zen.layout
+        layout.leftSlots = []
+        layout.overflowSlots = []
+        layout.setRows(.two)
+        let actions: [BarAction] = [
+            .back, .forward, .reloadStop, .share, .bookmark, .copyURL, .findInPage,
+        ]
+        for action in actions { XCTAssertTrue(layout.add(action, to: .left)) }
+
+        layout.setRows(.one)
+        XCTAssertEqual(layout.leftSlots.map(\.action), [.back, .forward, .reloadStop, .share])
+        XCTAssertEqual(
+            layout.overflowSlots.map(\.action), [.bookmark, .copyURL, .findInPage],
+            "the displaced buttons should be in the More menu, in the order they were on the bar")
+    }
+
+    func testDroppingToOneRowIsANoOpWhenEverythingAlreadyFits() {
+        var layout = BarPreset.zen.layout
+        layout.setRows(.two)
+        let before = layout.overflowSlots
+        layout.setRows(.one)
+        XCTAssertEqual(layout.overflowSlots, before)
+    }
+
+    func testSettingTheSameRowCountChangesNothing() {
+        var layout = BarPreset.quiche.layout
+        let before = layout
+        layout.setRows(.one)
+        XCTAssertEqual(layout, before, "including the preset marker")
+    }
+
+    // MARK: Height
+
+    func testTwoRowsIsTallerByTheButtonLine() {
+        var layout = BarPreset.zen.layout
+        layout.height = 48
+        XCTAssertEqual(layout.totalHeight(rows: .one), 48)
+        XCTAssertEqual(layout.buttonRowHeight(rows: .one), 0)
+
+        let expected = 48 + 48 * BarLayout.stackedButtonRowFactor + BarLayout.stackedRowSpacing
+        XCTAssertEqual(layout.totalHeight(rows: .two), expected, accuracy: 0.001)
+        XCTAssertGreaterThan(layout.totalHeight(rows: .two), layout.totalHeight(rows: .one))
+    }
+
+    // MARK: Landscape
+
+    func testLandscapeCanCollapseBackToOneRow() {
+        var layout = BarPreset.zen.layout
+        layout.rows = .two
+        layout.landscape = BarLandscapeOverride(rows: .one)
+        XCTAssertEqual(layout.rows(landscape: false), .two)
+        XCTAssertEqual(layout.rows(landscape: true), .one)
+    }
+
+    func testWithNoLandscapeOverrideBothOrientationsAgree() {
+        var layout = BarPreset.zen.layout
+        layout.rows = .two
+        XCTAssertEqual(layout.rows(landscape: true), .two)
+        XCTAssertFalse(layout.landscape.isEmpty == false, "no override means empty")
+    }
+
+    // MARK: Codable
+
+    func testTheRowCountSurvivesARoundTrip() throws {
+        var layout = BarPreset.zen.layout
+        layout.setRows(.two)
+        layout.landscape = BarLandscapeOverride(position: .bottomDocked, rows: .one)
+        let restored = try JSONDecoder().decode(BarLayout.self, from: encoded(layout))
+        XCTAssertEqual(restored.rows, .two)
+        XCTAssertEqual(restored.landscape.rows, .one)
+        XCTAssertEqual(restored, layout.normalised())
+    }
+
+    /// The thing that would be discovered as "my bar got taller after an
+    /// update": a file written before #008BA has no `rows` key at all.
+    func testALayoutFromBeforeTheOptionReadsAsOneRow() throws {
+        let json = """
+            {"version":1,"position":"bottomFloating","height":48,"isPill":true}
+            """
+        let layout = try JSONDecoder().decode(BarLayout.self, from: Data(json.utf8))
+        XCTAssertEqual(layout.rows, .one)
+        XCTAssertNil(layout.landscape.rows)
+        XCTAssertEqual(layout.totalHeight(rows: layout.rows), 48)
+    }
+
+    func testAnUnreadableRowCountFallsBackRatherThanThrowing() throws {
+        let json = """
+            {"version":1,"rows":"three","landscape":{"rows":99}}
+            """
+        let layout = try JSONDecoder().decode(BarLayout.self, from: Data(json.utf8))
+        XCTAssertEqual(layout.rows, .one)
+        XCTAssertNil(layout.landscape.rows)
+    }
+
+    func testTheRowCountIsWrittenAsANumber() throws {
+        var layout = BarPreset.zen.layout
+        layout.setRows(.two)
+        let json = try XCTUnwrap(String(data: encoded(layout), encoding: .utf8))
+        XCTAssertTrue(json.contains("\"rows\":2"), "rows should read as a line count: \(json)")
+    }
+
+    // MARK: The preset
+
+    func testTheStackedPresetIsTwoRowsAndUsesTheRoom() {
+        let preset = BarPreset.stacked.layout
+        XCTAssertEqual(preset.rows, .two)
+        XCTAssertGreaterThan(preset.leftSlots.count, BarLayout.maxSlotItems - 1)
+        XCTAssertEqual(preset.landscape.rows, .one, "landscape has the width already")
+        XCTAssertEqual(preset, preset.normalised())
+    }
+
+    func testEditingTheRowCountClearsThePresetMarker() {
+        var layout = BarPreset.zen.layout
+        XCTAssertEqual(layout.presetID, "zen")
+        layout.setRows(.two)
+        XCTAssertNil(layout.presetID)
     }
 }

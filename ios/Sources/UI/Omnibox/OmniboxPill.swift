@@ -26,6 +26,9 @@ struct OmniboxPill: View {
     /// Full-screen layout, or a floating bar position, puts the bar over the
     /// page rather than in the flow.
     var isFloating: Bool = false
+    /// The window is wider than it is tall, which is what the layout's
+    /// landscape overrides — including the row count (#008BA) — key off.
+    var isLandscape: Bool = false
     /// The editor's live preview passes the layout being edited rather than the
     /// saved one, so every change shows before it is committed.
     var layoutOverride: BarLayout?
@@ -72,10 +75,39 @@ struct OmniboxPill: View {
         return fixed
     }
 
-    private var barHeight: CGFloat {
+    /// How many lines this bar draws (#008BA).
+    ///
+    /// A *pane* bar is always one: it is already the short version — an
+    /// indicator, an address and a close button — and spending a second row of
+    /// a split pane's height on chrome is the opposite of what split is for.
+    private var rows: BarRows {
+        isSecondaryPane ? .one : layout.rows(landscape: isLandscape)
+    }
+
+    private var isStacked: Bool { rows == .two }
+
+    /// The line the address sits on. The second line, when there is one, is
+    /// shorter — see `BarLayout.stackedButtonRowFactor`.
+    private var addressRowHeight: CGFloat {
         isSecondaryPane
             ? min(CGFloat(layout.height), ZenMetrics.paneBarHeight + 4)
             : CGFloat(layout.height)
+    }
+
+    private var buttonRowHeight: CGFloat {
+        isStacked ? CGFloat(layout.buttonRowHeight(rows: rows)) : 0
+    }
+
+    private var barHeight: CGFloat {
+        isSecondaryPane
+            ? addressRowHeight
+            : CGFloat(layout.totalHeight(rows: rows))
+    }
+
+    /// The height of a glyph's touch target. The stacked row is shorter than
+    /// the address row, so the glyphs shrink with it rather than overflowing.
+    private var glyphHeight: CGFloat {
+        isStacked ? max(24, buttonRowHeight - 2) : 36
     }
 
     private var fill: BarFill { layout.resolvedFill(default: state.settings.barFill) }
@@ -87,24 +119,48 @@ struct OmniboxPill: View {
     }
 
     var body: some View {
-        HStack(spacing: 6) {
-            leadingControls
-            addressArea
-            trailingControls
+        content
+            .padding(.horizontal, 6)
+            .frame(height: barHeight)
+            .background { progressFill }
+            .overlay(alignment: .bottom) { progressLine }
+            .zenBarChrome(
+                layout: layout, fill: fill, palette: palette, isInteractive: !isPreview,
+                height: barHeight
+            )
+            .opacity(isActivePane ? 1 : 0.82)
+            .modifier(
+                BarGestures(
+                    state: state, layout: layout, context: context, enabled: !isPreview,
+                    lastDrag: $lastBarDrag, overflow: { AnyView(overflowItems) }))
+    }
+
+    /// One line, or two.
+    ///
+    /// At two rows the buttons are laid out *evenly across the full width* —
+    /// every glyph takes an equal share — because a row of its own is a row's
+    /// worth of space and clumping them at the ends would waste it. The
+    /// left/right distinction survives as their order, which is what a person
+    /// who dragged a button to "the left" actually meant.
+    @ViewBuilder
+    private var content: some View {
+        if isStacked {
+            VStack(spacing: BarLayout.stackedRowSpacing) {
+                addressArea
+                    .frame(height: addressRowHeight)
+                HStack(spacing: 2) {
+                    leadingControls
+                    trailingControls
+                }
+                .frame(height: buttonRowHeight)
+            }
+        } else {
+            HStack(spacing: 6) {
+                leadingControls
+                addressArea
+                trailingControls
+            }
         }
-        .padding(.horizontal, 6)
-        .frame(height: barHeight)
-        .background { progressFill }
-        .overlay(alignment: .bottom) { progressLine }
-        .zenBarChrome(
-            layout: layout, fill: fill, palette: palette, isInteractive: !isPreview,
-            height: barHeight
-        )
-        .opacity(isActivePane ? 1 : 0.82)
-        .modifier(
-            BarGestures(
-                state: state, layout: layout, context: context, enabled: !isPreview,
-                lastDrag: $lastBarDrag, overflow: { AnyView(overflowItems) }))
     }
 
     // MARK: Slots
@@ -124,7 +180,7 @@ struct OmniboxPill: View {
                 .font(.system(size: 8, weight: .bold))
                 .foregroundStyle(
                     isActivePane ? accent.color : palette.text.withAlpha(0.3).color)
-                .frame(width: 22, height: 36)
+                .frame(width: 22, height: glyphHeight)
                 .accessibilityLabel(isActivePane ? "Active pane" : "Inactive pane")
         } else {
             ForEach(layout.leftSlots) { item in
@@ -224,7 +280,7 @@ struct OmniboxPill: View {
             .foregroundStyle(
                 isOn ? accent.color : palette.text.withAlpha(enabled ? 0.7 : 0.28).color
             )
-            .frame(width: 32, height: 36)
+            .modifier(SlotGlyphFrame(expands: isStacked, height: glyphHeight))
             .contentShape(Rectangle())
     }
 
@@ -501,6 +557,24 @@ struct OmniboxPill: View {
     private func fire(_ event: HapticEvent) {
         guard layout.haptics, !isPreview else { return }
         Haptics.shared.fire(event)
+    }
+}
+
+/// A slot glyph's frame. Fixed-width on one line, an equal share of the row on
+/// two — and a `ViewModifier` rather than a ternary inside `.frame`, because
+/// `.frame(width:)` and `.frame(maxWidth:)` are different modifiers and only a
+/// branch can choose between them.
+private struct SlotGlyphFrame: ViewModifier {
+    let expands: Bool
+    let height: CGFloat
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if expands {
+            content.frame(maxWidth: .infinity, minHeight: height, maxHeight: height)
+        } else {
+            content.frame(width: 32, height: height)
+        }
     }
 }
 

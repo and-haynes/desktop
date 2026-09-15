@@ -2054,6 +2054,54 @@ extension ScreenshotTests {
         }
     }
 
+    /// The two-line stacked bar (#008BA): the Rows control, the live preview
+    /// following it, and the real bar behind the sheet doing the same.
+    func testCaptureStackedBar() throws {
+        settle(4.0)
+        navigate(to: "zen-browser.app")
+
+        XCTAssertTrue(openSettingsRow("customizeBarRow"), "Customize bar row missing")
+        let rows = app.segmentedControls["barRowsPicker"].firstMatch
+        for _ in 0..<8 where !rows.exists || !rows.isHittable {
+            app.swipeUp()
+            settle(0.5)
+        }
+        XCTAssertTrue(rows.waitForExistence(timeout: 8), "the Rows picker is missing")
+        rows.buttons["2"].tap()
+        settle(1.5)
+        capture("47-bar-rows-editor")
+
+        // The preview is the real bar, so if it stacked, the bar stacked.
+        dismissSheet()
+        settle(2.0)
+        capture("47b-bar-rows-two")
+
+        // The preset is the other half of it: "Rows: 2" is a number, and the
+        // preset is what that number is for.
+        XCTAssertTrue(openSettingsRow("customizeBarRow"))
+        let stacked = app.buttons["barPreset-Stacked"].firstMatch
+        XCTAssertTrue(stacked.waitForExistence(timeout: 8), "the Stacked preset is missing")
+        stacked.tap()
+        settle(1.5)
+        dismissSheet()
+        settle(2.5)
+        capture("47c-bar-rows-preset")
+
+        // Every slot button on the second row has to still be reachable.
+        XCTAssertTrue(
+            app.buttons["barSlot-back"].waitForExistence(timeout: 6),
+            "the stacked preset's back button is missing from the bar")
+        XCTAssertTrue(app.buttons["barSlot-share"].exists)
+        XCTAssertTrue(moreButton.exists)
+
+        // Back to Zen so the next test starts from the documented default.
+        XCTAssertTrue(openSettingsRow("customizeBarRow"))
+        let zen = app.buttons["barPreset-Zen"].firstMatch
+        if zen.waitForExistence(timeout: 6) { zen.tap() }
+        settle(1.0)
+        dismissSheet()
+    }
+
     func testSplitPaneBarsFollowTheLayout() throws {
         settle(4.0)
         navigate(to: "example.com")

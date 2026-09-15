@@ -148,7 +148,7 @@ struct BarSlotEditor: View {
             HStack {
                 Text(slot.title)
                 Spacer()
-                Text(slot.countLabel(items.count))
+                Text(slot.countLabel(items.count, rows: layout.rows))
                     .monospacedDigit()
                     .foregroundStyle(
                         layout.canAdd(to: slot)
@@ -157,7 +157,7 @@ struct BarSlotEditor: View {
             }
         } footer: {
             if isRejecting(slot) {
-                Text("\(slot.title) is full — \(slot.capacity) is the most it holds.")
+                Text("\(slot.title) is full — \(layout.capacity(slot)) is the most it holds.")
                     .foregroundStyle(ZenTokens.warningColor.color)
             }
         }
