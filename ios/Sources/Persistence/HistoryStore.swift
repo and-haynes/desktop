@@ -119,6 +119,12 @@ final class HistoryStore: ObservableObject {
         persist()
     }
 
+    /// Wholesale replacement — what a sync merge produces.
+    func replaceAll(with newEntries: [HistoryEntry]) {
+        entries = newEntries
+        persist()
+    }
+
     private func persist() {
         file.save(entries)
     }
@@ -154,6 +160,12 @@ final class BookmarkStore: ObservableObject {
 
     func remove(_ bookmark: Bookmark) {
         bookmarks.removeAll { $0.id == bookmark.id }
+        file.save(bookmarks)
+    }
+
+    /// Wholesale replacement — what a sync merge produces.
+    func replaceAll(with newBookmarks: [Bookmark]) {
+        bookmarks = newBookmarks
         file.save(bookmarks)
     }
 }

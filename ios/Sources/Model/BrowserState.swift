@@ -528,6 +528,37 @@ final class BrowserState: ObservableObject {
 
     // MARK: Persistence
 
+    /// Replace the model wholesale — what a sync merge produces. Private to
+    /// the model's own file set: everything else goes through the operations
+    /// above, which keep the invariants.
+    func setSpaces(_ newSpaces: [Space]) { spaces = newSpaces }
+    func setTabs(_ newTabs: [Tab]) { tabs = newTabs }
+
+    /// After a wholesale replacement, make the selection point at something
+    /// that exists: the remembered tab if it survived, else the first tab in
+    /// the space, else a fresh one.
+    func repairSelection() {
+        let spaceIDs = Set(spaces.map(\.id))
+        let tabIDs = Set(tabs.map(\.id))
+        activeTabIDBySpace = activeTabIDBySpace.filter {
+            spaceIDs.contains($0.key) && tabIDs.contains($0.value)
+        }
+        if let active = activeSpaceID, !spaceIDs.contains(active) {
+            activeSpaceID = spaces.first?.id
+        }
+        if activeSpaceID == nil { activeSpaceID = spaces.first?.id }
+        guard let spaceID = activeSpaceID else { return }
+        if activeTabIDBySpace[spaceID] == nil {
+            if let first = tabs(kind: .normal, spaceID: spaceID).first
+                ?? tabs(kind: .pinned, spaceID: spaceID).first
+            {
+                activeTabIDBySpace[spaceID] = first.id
+            } else {
+                newTab(in: spaceID)
+            }
+        }
+    }
+
     func snapshot() -> SessionSnapshot {
         SessionSnapshot(
             spaces: spaces, tabs: tabs, activeSpaceID: activeSpaceID,

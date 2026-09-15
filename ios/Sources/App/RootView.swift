@@ -11,6 +11,7 @@ import SwiftUI
 
 struct RootView: View {
     @StateObject private var state: BrowserState
+    @StateObject private var sync: SyncService
     @StateObject private var pool = PoolBox()
     @Environment(\.colorScheme) private var systemScheme
     @Environment(\.horizontalSizeClass) private var sizeClass
@@ -21,11 +22,13 @@ struct RootView: View {
     @State private var compactHideTask: Task<Void, Never>?
 
     @MainActor
-    init(state: BrowserState? = nil) {
+    init(state: BrowserState? = nil, sync: SyncService? = nil) {
         // Built lazily inside the autoclosure so restoring the session
         // happens when the scene appears, not while the view tree is built.
         let restored = state
         _state = StateObject(wrappedValue: restored ?? BrowserState())
+        let service = sync
+        _sync = StateObject(wrappedValue: service ?? SyncService())
     }
 
     /// WebViewPool is not observable by design, so it is parked in a tiny
@@ -109,9 +112,26 @@ struct RootView: View {
             Haptics.shared.isScrolling = false
             scheduleCompactHide()
         }
+        .task {
+            // The service holds the browser weakly, so this is the one place
+            // the two are introduced.
+            sync.attach(to: state)
+            sync.start()
+        }
+        .onChange(of: state.tabs) { _, _ in
+            // Stamp the change journal at the moment the change happens, so an
+            // edit made offline carries an honest timestamp into the merge.
+            sync.noteLocalChange()
+        }
+        .onChange(of: state.spaces) { _, _ in sync.noteLocalChange() }
         .onChange(of: scenePhase) { _, phase in
             // Flush the session on the way out; a jetsam gives no warning.
             if phase != .active { state.saveNow() }
+            if phase == .active {
+                sync.start()
+            } else {
+                sync.applicationDidEnterBackground()
+            }
             // A haptic fired from a background task is a phantom buzz in
             // someone's pocket.
             Haptics.shared.isForeground = phase == .active
@@ -122,7 +142,7 @@ struct RootView: View {
                 .environment(\.zenPalette, palette)
         }
         .sheet(isPresented: $state.isSettingsPresented) {
-            SettingsSheet(state: state).environment(\.zenPalette, palette)
+            SettingsSheet(state: state, sync: sync).environment(\.zenPalette, palette)
         }
         .sheet(item: $shareItem) { url in
             ShareSheet(items: [url])
@@ -159,7 +179,7 @@ struct RootView: View {
     private var padLayout: some View {
         HStack(spacing: 0) {
             if showPadSidebar {
-                SidebarView(state: state)
+                SidebarView(state: state, sync: sync)
                     .frame(width: ZenMetrics.sidebarWidthPad)
                     .transition(.move(edge: .leading).combined(with: .opacity))
             }
@@ -188,7 +208,7 @@ struct RootView: View {
                             state.isSidebarVisible = false
                         }
                     }
-                SidebarView(state: state)
+                SidebarView(state: state, sync: sync)
                     .frame(width: ZenMetrics.sidebarWidthPhone)
                     .background {
                         Rectangle()

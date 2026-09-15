@@ -12,6 +12,7 @@ import SwiftUI
 
 struct SidebarView: View {
     @ObservedObject var state: BrowserState
+    @ObservedObject var sync: SyncService
     @Environment(\.zenPalette) private var palette
     @State private var editingSpace: Space?
     @State private var isCreatingSpace = false
@@ -65,6 +66,8 @@ struct SidebarView: View {
                 ForEach(state.normalTabs) { tab in
                     TabRowView(tab: tab, isActive: tab.id == state.activeTabID, state: state)
                 }
+
+                RemoteTabsSection(state: state, sync: sync)
             }
             .padding(.horizontal, ZenMetrics.sidebarPadding)
             .padding(.bottom, 12)

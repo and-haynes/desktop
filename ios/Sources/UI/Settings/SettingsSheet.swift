@@ -5,6 +5,7 @@ import SwiftUI
 
 struct SettingsSheet: View {
     @ObservedObject var state: BrowserState
+    @ObservedObject var sync: SyncService
     @Environment(\.dismiss) private var dismiss
     @Environment(\.zenPalette) private var palette
     @State private var editingSpace: Space?
@@ -96,6 +97,8 @@ struct SettingsSheet: View {
                         Toggle("Keep sidebar open", isOn: $state.settings.sidebarPinnedOnPad)
                     }
                 }
+
+                SyncSettingsSection(sync: sync)
 
                 Section("Spaces") {
                     ForEach(state.spaces) { space in
