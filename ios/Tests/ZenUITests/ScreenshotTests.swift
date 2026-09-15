@@ -1934,6 +1934,53 @@ extension ScreenshotTests {
     }
 
     /// The per-pane bars in split view follow the same layout (#00896).
+    /// Text size (#008B7): the More menu's smaller / larger row, the readout,
+    /// and the proof that the page actually changes size — the same site is
+    /// captured at 100 % and after three taps of Larger.
+    func testCaptureTextSize() throws {
+        settle(4.0)
+        navigate(to: "example.com")
+        capture("45-text-size-100")
+
+        revealChrome()
+        XCTAssertTrue(moreButton.waitForExistence(timeout: 8), "more menu missing")
+        moreButton.tap()
+        settle(1.2)
+        // The row itself: two buttons side by side, and the readout under them.
+        capture("45b-text-size-menu")
+        let larger = app.buttons["textSizeLarger"]
+        XCTAssertTrue(larger.waitForExistence(timeout: 5), "the Larger button is missing")
+        larger.tap()
+        settle(1.2)
+
+        // Two more steps, reopening the menu each time — a SwiftUI Menu closes
+        // on any tap inside it, which is the one place this differs from
+        // Safari's own AA row.
+        for _ in 0..<2 {
+            revealChrome()
+            moreButton.tap()
+            settle(1.0)
+            let button = app.buttons["textSizeLarger"]
+            guard button.waitForExistence(timeout: 4) else { break }
+            button.tap()
+            settle(1.0)
+        }
+        capture("45c-text-size-150")
+
+        // And the readout, which is also the reset: the label carries the
+        // percentage, so finding it proves the level stuck.
+        revealChrome()
+        moreButton.tap()
+        settle(1.2)
+        let readout = app.buttons["textSizeReadout"]
+        XCTAssertTrue(readout.waitForExistence(timeout: 5), "the readout is missing")
+        XCTAssertTrue(
+            readout.label.contains("%"), "the readout should say a percentage: \(readout.label)")
+        readout.tap()
+        settle(1.5)
+        capture("45d-text-size-reset")
+    }
+
     func testSplitPaneBarsFollowTheLayout() throws {
         settle(4.0)
         navigate(to: "example.com")

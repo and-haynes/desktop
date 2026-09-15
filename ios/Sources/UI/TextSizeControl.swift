@@ -207,5 +207,11 @@ extension WKWebView {
         let next = PageZoom.clamp(zoom)
         guard abs(pageZoom - next) > 0.0001 else { return }
         pageZoom = next
+        // `pageZoom` is a real zoom, not a text-only reflow, so a page with a
+        // fixed-width column becomes wider than the window and WebKit leaves
+        // the horizontal offset wherever the growth put it — which reads as
+        // the page having jumped sideways. Pin it back to the left edge; the
+        // page is still scrollable by hand from there.
+        scrollView.contentOffset.x = 0
     }
 }
