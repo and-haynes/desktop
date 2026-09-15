@@ -65,7 +65,12 @@ final class FxAOAuthTests: XCTestCase {
         XCTAssertEqual(components.host, "accounts.firefox.com")
         XCTAssertEqual(components.path, "/authorization")
         XCTAssertEqual(items["client_id"], "1b1a3e44c54fbb58")
-        XCTAssertEqual(items["redirect_uri"], "urn:ietf:wg:oauth:native:1")
+        // Verified against Mozilla's own endpoint on 2026-09-15: a `urn:` or
+        // custom-scheme redirect is answered with "Bad Request: Invalid Query
+        // Parameters", and this one with the sign-in form. See SyncConfig.
+        XCTAssertEqual(
+            items["redirect_uri"],
+            "https://accounts.firefox.com/oauth/success/1b1a3e44c54fbb58")
         XCTAssertEqual(items["response_type"], "code")
         XCTAssertEqual(items["code_challenge_method"], "S256")
         XCTAssertEqual(items["code_challenge"], request.pkce.challenge)
@@ -84,17 +89,55 @@ final class FxAOAuthTests: XCTestCase {
             request.ephemeralKey.publicKey.rawRepresentation)
     }
 
-    /// The registered redirect is a `urn:`, which URLComponents will not parse
-    /// as hierarchical — so the callback parser reads the query itself.
-    func testParsesCodeFromNonHierarchicalCallback() throws {
+    func testParsesCodeFromTheRegisteredRedirect() throws {
+        let url = URL(
+            string:
+                "https://accounts.firefox.com/oauth/success/1b1a3e44c54fbb58?code=abc123&state=xyz"
+        )!
+        XCTAssertEqual(
+            try FxAOAuthClient.authorizationCode(fromCallback: url, expectedState: "xyz"),
+            "abc123")
+    }
+
+    /// A native-app redirect is a non-hierarchical URI that URLComponents
+    /// declines to parse a query out of. The parser reads the raw string, so
+    /// this keeps working if the registered redirect ever becomes one again.
+    func testParsesCodeFromANonHierarchicalCallback() throws {
         let url = URL(string: "urn:ietf:wg:oauth:native:1?code=abc123&state=xyz")!
         XCTAssertEqual(
             try FxAOAuthClient.authorizationCode(fromCallback: url, expectedState: "xyz"),
             "abc123")
     }
 
+    /// The sign-in web view loads exactly one origin. This is the whole
+    /// mitigation for not being able to use the system sheet, so it is checked
+    /// rather than trusted.
+    func testSignInWebViewOriginAllowList() {
+        for allowed in [
+            "https://accounts.firefox.com/authorization?x=1",
+            "https://api.accounts.firefox.com/v1/account/login",
+            "https://accounts.cdn.mozilla.net/style.css",
+            "about:blank",
+        ] {
+            XCTAssertTrue(
+                FxASignInOriginPolicy.isAllowed(URL(string: allowed)!), allowed)
+        }
+        for refused in [
+            "https://accounts-firefox.com.evil.example/authorization",
+            "http://accounts.firefox.com/authorization",
+            "https://example.com/phish",
+            "javascript:alert(1)",
+        ] {
+            XCTAssertFalse(
+                FxASignInOriginPolicy.isAllowed(URL(string: refused)!), refused)
+        }
+    }
+
     func testRejectsMismatchedState() {
-        let url = URL(string: "urn:ietf:wg:oauth:native:1?code=abc123&state=attacker")!
+        let url = URL(
+            string:
+                "https://accounts.firefox.com/oauth/success/1b1a3e44c54fbb58?code=abc123&state=attacker"
+        )!
         XCTAssertThrowsError(
             try FxAOAuthClient.authorizationCode(fromCallback: url, expectedState: "ours"))
     }
@@ -102,7 +145,8 @@ final class FxAOAuthTests: XCTestCase {
     func testSurfacesServerError() {
         let url = URL(
             string:
-                "urn:ietf:wg:oauth:native:1?error=access_denied&error_description=Not%20today&state=xyz"
+                "https://accounts.firefox.com/oauth/success/1b1a3e44c54fbb58"
+                + "?error=access_denied&error_description=Not%20today&state=xyz"
         )!
         XCTAssertThrowsError(
             try FxAOAuthClient.authorizationCode(fromCallback: url, expectedState: "xyz")
@@ -112,7 +156,8 @@ final class FxAOAuthTests: XCTestCase {
     }
 
     func testMissingCodeIsAnError() {
-        let url = URL(string: "urn:ietf:wg:oauth:native:1?state=xyz")!
+        let url = URL(
+            string: "https://accounts.firefox.com/oauth/success/1b1a3e44c54fbb58?state=xyz")!
         XCTAssertThrowsError(
             try FxAOAuthClient.authorizationCode(fromCallback: url, expectedState: "xyz"))
     }

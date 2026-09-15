@@ -314,6 +314,66 @@ final class ScreenshotTests: XCTestCase {
         settle(1.5)
     }
 
+    /// Settings → Sync (#00892). Captures the signed-out section and the
+    /// sign-in sheet opening.
+    ///
+    /// The flow stops at Mozilla's own page: completing a sign-in needs a real
+    /// account and a real password, which a screenshot run has neither of. The
+    /// sheet appearing is the part this can prove, and it is the part that
+    /// would break first — `ASWebAuthenticationSession` refuses to start if the
+    /// callback scheme is not one it will match.
+    func testCaptureSyncSettings() throws {
+        let suffix = UIDevice.current.userInterfaceIdiom == .pad ? "-ipad" : ""
+        settle(4.0)
+
+        XCTAssertTrue(openSettings(), "could not open Settings")
+
+        // A SwiftUI Form is a collection view; swiping the app as a whole
+        // lands on the omnibox behind the sheet, which opens the sidebar.
+        let sheet = app.collectionViews.firstMatch
+        let signIn = app.descendants(matching: .any)["syncSignInButton"].firstMatch
+        for _ in 0..<10 {
+            if signIn.exists && signIn.isHittable { break }
+            if sheet.exists { sheet.swipeUp() } else { app.swipeUp() }
+            settle(0.5)
+        }
+        if !signIn.exists {
+            try? Data(app.debugDescription.utf8)
+                .write(to: outputDirectory.appendingPathComponent("sync-tree.txt"))
+        }
+        XCTAssertTrue(
+            signIn.waitForExistence(timeout: 8), "the Sync section is missing from Settings")
+        capture("28-sync-settings\(suffix)")
+
+        signIn.tap()
+        // Our own sheet, loading accounts.firefox.com. The password field is
+        // Mozilla's page inside a web view that loads exactly one origin and is
+        // thrown away with the sheet — see SyncConfig for why it is not the
+        // system sign-in sheet.
+        let cancel = app.buttons["syncSignInCancel"].firstMatch
+        XCTAssertTrue(
+            cancel.waitForExistence(timeout: 10),
+            "the sign-in sheet did not open")
+        settle(10.0)
+        capture("29-sync-signin\(suffix)")
+
+        // The page having rendered Mozilla's form rather than an error is the
+        // one thing a screenshot run can say about the client id, the scopes
+        // and the redirect without an account to sign in with.
+        XCTAssertTrue(
+            app.staticTexts["Enter your email"].waitForExistence(timeout: 12)
+                || app.webViews.firstMatch.exists,
+            "accounts.firefox.com did not render the sign-in form — the "
+                + "authorization request was rejected")
+
+        // Leave the sheet closed, or every screenshot after this one is of it.
+        if cancel.exists, cancel.isHittable { cancel.tap() }
+        settle(1.5)
+        dismissSheet()
+
+        try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-SYNC"))
+    }
+
     /// The new-tab strip (#0089F): full width, pinned below the tab list, and
     /// it actually makes a tab.
     func testCaptureNewTabStrip() throws {

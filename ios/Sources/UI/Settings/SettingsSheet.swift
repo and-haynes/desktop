@@ -158,6 +158,20 @@ struct SettingsSheet: View {
                     Button("Done") { dismiss() }
                 }
             }
+            // The sign-in sheet is presented here rather than inside
+            // SyncSettingsSection: a `.sheet` attached to a Section inside a
+            // Form never gets a presentation context, and silently does
+            // nothing.
+            .sheet(
+                item: Binding(
+                    get: { sync.pendingSignIn },
+                    set: { if $0 == nil { sync.cancelSignIn() } })
+            ) { request in
+                FxASignInSheet(
+                    request: request,
+                    onCallback: { url in Task { await sync.completeSignIn(callback: url) } },
+                    onCancel: { sync.cancelSignIn() })
+            }
             .sheet(item: $editingSpace) { SpaceEditorView(state: state, space: $0) }
             .sheet(isPresented: $isCreatingSpace) { SpaceEditorView(state: state, space: nil) }
         }

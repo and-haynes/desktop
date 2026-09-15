@@ -112,6 +112,13 @@ network and takes minutes, where the unit tests take under a second.
 | 11 | **Keyboard shortcuts** | Done | ⌘T, ⌘W, ⌘L, ⌃Tab / ⌃⇧Tab, ⇧⌘S, ⇧⌘E, plus ⌘F and ⌃⇧← / ⌃⇧→. Each fires a selection tick, because a hardware keyboard gives no other confirmation the chord was caught. |
 | 12 | **Share sheet** | Done | From the omnibox overflow menu. |
 | 12 | **Find in page** | Partial | Uses WKWebView's `find(_:configuration:)`. `WKFindResult` reports only found/not-found, so there is no "3 of 12" counter. |
+| 13 | **Firefox Sync** — Mozilla account | Done | OAuth + PKCE with scoped-keys delivery: an ephemeral P-256 key goes up as `keys_jwk`, the returned `keys_jwe` comes back down as the oldsync key. Mozilla's server accepts the request and serves the sign-in form; **no sign-in has been completed** — see *Sync: first run*. |
+| 13 | Token server and Hawk | Done | `token.services.mozilla.com/1.0/sync/1.5` with `X-KeyID`, then Hawk on every storage request. Checked against the Hawk specification's own vectors. |
+| 13 | Sync 1.5 storage | Done | `info/collections`, `meta/global`, `crypto/keys`, `X-If-Unmodified-Since` on every write, the batch protocol past 100 records or 1 MB, offset paging, backoff. |
+| 13 | **Zen spaces engine** | Done | Zen's own `spaces` collection at engine version 3, in the desktop's record schema — space, tab and layout records, with containers, folders and split groups held rather than deleted. |
+| 13 | Bookmarks | Partial | Leaf-level, into Mobile Bookmarks. Desktop folders are held, and their contents appear here unfiled — Zen for iOS has no bookmark folders to put them in. |
+| 13 | Open tabs | Done | Ours published; other devices' shown in the sidebar under "Other devices", tap to open here. |
+| 13 | History | Done | Additive merge — last-writer-wins on history would delete evidence of a visit. |
 | 12 | **Reader mode** | **TODO** | WebKit exposes no reader/readability API to third-party apps. Implementing it means injecting a Readability port and rendering the result ourselves. |
 
 ### Also not done
@@ -144,9 +151,18 @@ ios/
     Web/                   WebEngine (per-space data stores, LRU pool), WebView
     Services/              Haptics — the semantic event table and the
                            UIKit / Core Haptics backend behind it
+    Sync/                  Crypto/    — HKDF, AES-CBC, the BSO payload format,
+                                        Hawk, the scoped-key JWE, PKCE
+                           Account/   — FxA OAuth, the sign-in sheet and its
+                                        origin allow-list, the token server,
+                                        the keychain
+                           Storage/   — the Sync 1.5 client and its records
+                           Engines/   — spaces, bookmarks, tabs, history,
+                                        clients, and the shadow they diff against
+                           SyncService — one sync, start to finish
     UI/                    Sidebar/, Omnibox/, Glance/, Split/, History/,
                            Settings/, plus NewTabPage and FindBar
-  Tests/ZenTests/          210 unit tests
+  Tests/ZenTests/          335 unit tests
   Tests/ZenUITests/        the screenshot driver
 ```
 
@@ -173,6 +189,195 @@ whenever its tab leaves the view tree — including when you merely open a sheet
 **Cookie isolation per space** replaces Zen's Firefox containers. Upstream notes
 that two spaces sharing container 0 also share storage; giving every space its
 own `WKWebsiteDataStore(forIdentifier:)` (iOS 17+) is strictly stronger.
+
+## Sync
+
+Zen on the desktop syncs through Firefox Sync, and it registers **its own
+engine** to do it: a `spaces` collection at engine version 3, whose records are
+projections of the sidebar — one per space, one per synced tab, and a single
+`layout` record holding the space order and the essentials order. The phone
+speaks that collection, in that schema, so both ends see the same spaces rather
+than two parallel sets.
+
+Everything is Swift. There is no `application-services`, no Rust, and still no
+third-party dependency: CryptoKit for HMAC, SHA-256, AES-GCM and P-256, and
+CommonCrypto for the one thing CryptoKit deliberately does not offer — AES-CBC,
+which Sync 1.5's record format predates the advice against.
+
+### What crosses the wire
+
+| Collection | Direction | Notes |
+|---|---|---|
+| `spaces` | both | Zen's own engine. Spaces, their pinned tabs and the essentials grid. Ordinary tabs only if you ask (below). |
+| `bookmarks` | both | Leaf level, into Mobile Bookmarks. |
+| `tabs` | both | Ours published; other devices' read and shown, never adopted. |
+| `history` | both | Additive merge. |
+| `clients` | out | One record, so this phone appears in the account's device list. |
+
+Things the desktop has and a phone does not — Firefox containers, tab folders,
+live folders, split-view groups — arrive, are **held**, and go back out
+untouched. A record this build cannot draw is not a record it may delete.
+
+### Sync: first run
+
+You will need the Mozilla account Zen uses on the desktop. Nothing below has
+been done against a real account yet (see *What is not tested*), so treat the
+first run as a test rather than as a migration: it is worth signing in on the
+phone **before** you have anything on it you would miss.
+
+1. **Check the desktop end is on.** Zen → Settings → Sync, and make sure the
+   *Workspaces* switch is on. That is `services.sync.engine.spaces`; without it
+   the desktop never writes the collection and the phone will sync a perfectly
+   healthy set of nothing.
+2. On the phone, **Settings → Sync → Sign in to a Mozilla account**.
+3. A sheet titled **Mozilla account** opens on `accounts.firefox.com` — the
+   origin is printed along its bottom edge, and the page under it is Mozilla's,
+   not ours. Enter the account email and password. **The page will say
+   Firefox, not Zen**: Mozilla does not issue OAuth client ids to third-party
+   browsers, so this signs in as an unofficial client using Firefox for iOS's
+   public id (Andy's decision, ticket `#00893`).
+4. Approve the two things it asks for: your profile, and Firefox Sync.
+5. The sheet closes on its own and the first sync starts. The status row under
+   the account says what is happening and, once it is done, when.
+6. **Check it worked from the desktop**: your phone should appear in the
+   account's device list, and Zen's synced-tabs view should show its tabs.
+   On the phone, a space you only have on the desktop should appear in the
+   space switcher.
+
+If step 4 or 5 fails, the status row carries the reason rather than a generic
+"sync failed" — quote it on the ticket.
+
+**Afterwards**, *Sync options* has the per-engine switches, the device name
+other devices see, and two recoveries:
+
+- **Reset sync data on this device** forgets what this phone believes the
+  server holds and makes the next sync a full one. It deletes nothing from the
+  account, and it is the right first move for "these two do not agree".
+- **Sign out** removes the account's keys from the phone. Your spaces, tabs and
+  bookmarks stay on it, and stay in the account.
+
+**"Also sync ordinary tabs"** is Zen's own `zen.spaces-sync.normal-tabs`, off
+here as it is there. The spaces engine otherwise carries pinned and essential
+tabs only — the ones that are *meant* to be the same everywhere. Turning it on
+makes every tab on both machines a synced record, which is a filing cabinet
+rather than a browser; turning it back off does not delete them.
+
+### Where the data is, and who can read it
+
+Records are encrypted on this device before they are uploaded. The sync key
+never reaches Mozilla: it is delivered as an OAuth **scoped key**, sealed in a
+JWE addressed to an ephemeral P-256 key pair generated on the phone for that
+one sign-in and thrown away afterwards. Mozilla's servers hold ciphertext.
+
+The refresh token and the sync key live in the keychain as
+`AfterFirstUnlockThisDeviceOnly` — after first unlock so a sync can run without
+the phone being awake, `ThisDeviceOnly` so neither is ever in an iCloud or
+encrypted-iTunes backup. Everything else (which engines are on, when we last
+synced, what the server is believed to hold) is ordinary JSON in Application
+Support, because losing it costs a full re-sync rather than an account.
+
+### How the merge decides
+
+Outgoing records are a *diff*, not a dump: each record's payload is hashed, and
+only the ones whose hash differs from what the server last acknowledged go up.
+A sync that changes nothing writes nothing, which is the property that keeps
+this off the battery.
+
+When both ends changed the same record, the later change wins. "Later" is
+decided against a **change journal** stamped when the browser changes rather
+than when the network comes back — so an edit made on the tube carries the time
+it actually happened into the merge an hour later, instead of losing to a
+desktop edit made after it.
+
+Applying an incoming record records *its* hash as the new known state. That one
+detail makes the merge self-healing: a faithful materialisation re-projects to
+the same hash and says nothing, while a lossy one re-uploads the local truth on
+the next pass rather than drifting silently. It is also why the desktop's
+gradient-dot fields (`algorithm`, `lightness`, the picker's pixel `position`)
+are retained verbatim and merged back into our projection — without that, the
+two ends would trade lossy copies of the same theme for ever.
+
+### What is not tested
+
+**No sign-in has ever been completed.** There is no Mozilla account on this
+machine and no password to type into one.
+
+What *has* been checked against Mozilla's live servers: the authorization
+request is **accepted**, and the sheet renders the real sign-in form headed
+"Continue to Firefox Sync" (`docs/screenshots/29-sync-signin.png`). That covers
+the client id, the `oldsync` scope, the PKCE challenge, `access_type=offline`
+and `keys_jwk` — a wrong value in any of them is answered with *Bad Request:
+Invalid Query Parameters* instead, which is how the redirect problem below was
+found.
+
+Still untested:
+
+- **Everything after the password field.** The authorization code, the token
+  exchange, the real `keys_jwe`, the first `X-KeyID`, the token server, and any
+  request to a real storage node.
+- **`keys_jwe` from the real server.** The JWE code is tested by sealing and
+  opening with a locally generated key pair, which covers the Concat KDF, the
+  A256GCM AAD and the JWK encoding — but not FxA's exact header fields.
+- **Whether Mozilla's *consent* step grants `oldsync` to this client id.** The
+  scope is accepted on the request; whether the token comes back with it is on
+  the other side of the password.
+- **Hawk against a real server**, a real 412 race between two devices, a real
+  `X-Weave-Backoff`.
+- **An actual desktop Zen.** The record schema here is derived from
+  `ZenSpacesSyncModel.sys.mjs` and asserted field by field in
+  `ZenSpacesRecordTests`, but no record written by this app has yet been read
+  by a Firefox.
+
+### Why sign-in is a web view and not the system sheet
+
+`ASWebAuthenticationSession` is the right way to do this — the password goes
+into Safari's process, not ours — and it cannot be used here. It matches the
+callback by **scheme**, and Mozilla's authorization endpoint rejects every
+redirect that is not `http(s)`. Checked on 2026-09-15 by loading the
+authorization URL in the simulator's Safari:
+
+| `redirect_uri` | Result |
+|---|---|
+| `urn:ietf:wg:oauth:native:1` | Bad Request: Invalid Query Parameters |
+| `zen://fxa-callback` | Bad Request: Invalid Query Parameters |
+| `https://accounts.firefox.com/oauth/success/<client id>` | the sign-in form |
+| omitted | the sign-in form |
+
+![FxA rejecting a urn: redirect](docs/screenshots/29b-fxa-rejects-urn-redirect.png)
+
+So the redirect has to be an `https:` URL, which is precisely what the system
+sheet cannot intercept. Firefox for iOS has the same constraint with the same
+client id and solves it the same way: run the flow in its own `WKWebView` and
+watch for a navigation to `/oauth/success/<client id>?code=…`.
+
+That is what this does, with the mitigations that are available: an
+**ephemeral** data store, so no account cookie outlives the sheet and the
+browser's own cookies are invisible to it; an **origin allow-list**, so a
+redirect anywhere but Mozilla is refused rather than rendered; no injected
+script and no message handler. The origin is printed along the bottom of the
+sheet.
+
+It is still weaker than the system sheet, because "we promise not to read the
+field" is weaker than "we cannot". **The way to get that back is an OAuth
+client id of Zen's own with a Zen scheme registered** — `usesSystemAuthSession`
+and `redirectURI` in `SyncConfig.swift` are the only two lines that would
+change. Worth a decision.
+
+What *is* tested, and how: HKDF against RFC 5869's vectors, PKCE against
+RFC 7636's, Hawk against the two vectors in its own specification, and the
+BSO payload format against a vector generated with OpenSSL — so what that one
+proves is that our padding, our base64-text HMAC and our hex casing agree with
+a standard implementation byte for byte, not merely with themselves. Above
+that, a whole sync runs in `SyncEndToEndTests` against an in-memory Sync 1.5
+server that stores opaque payloads and never decrypts, which means every
+assertion there went through our own encryption *and* our own decryption.
+
+### Sync in Settings
+
+| | |
+|---|---|
+| ![The Sync section in Settings](docs/screenshots/28-sync-settings.png) | ![The Mozilla account sign-in sheet, showing Mozilla's real form](docs/screenshots/29-sync-signin.png) |
+| Settings → Sync, signed out | The sign-in sheet on Mozilla's live server: the request is accepted and the real form loads |
 
 ### Deliberate divergences from upstream
 

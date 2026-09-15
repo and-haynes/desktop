@@ -25,6 +25,7 @@ struct SyncSettingsSection: View {
         } footer: {
             Text(footerText)
         }
+
     }
 
     // MARK: Signed out
@@ -32,7 +33,7 @@ struct SyncSettingsSection: View {
     private var signInRow: some View {
         Button {
             Haptics.shared.fire(.tabSelect)
-            Task { await sync.signIn() }
+            Task { await sync.beginSignIn() }
         } label: {
             HStack(spacing: 10) {
                 Image(systemName: "person.crop.circle.badge.plus")

@@ -94,6 +94,7 @@
 		EDCF068803ADEC573CE28C5C /* ContentArea.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B9ECBBC9BB0FBB16B024CA2 /* ContentArea.swift */; };
 		F278A134AA5D89D8DB34B1CF /* ZenSpacesRecordTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F59C0B0AEBCD61A88DBBE0CA /* ZenSpacesRecordTests.swift */; };
 		F3638E19ECD10178B6D512D5 /* WebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06CA2FAE5D6C9580B01E013C /* WebView.swift */; };
+		F4228906535C0A6EF43ECC40 /* FxASignInWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78783A37D10FD767886DE578 /* FxASignInWebView.swift */; };
 		F4BE296D6EFC1B54C9E01515 /* HapticsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2971FAB4405F536C1C76DDA /* HapticsTests.swift */; };
 		F58099A6CC5B8EE3C77186B9 /* URLDetectorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FD8CD4DF4B3F44BB275D8F1 /* URLDetectorTests.swift */; };
 		F864FDA07CE3E804116B4B92 /* FindBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5B86DDB786B902B992ABB0C /* FindBar.swift */; };
@@ -156,6 +157,7 @@
 		7688B6E1EA8ADB19B677A426 /* SpaceEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceEditorView.swift; sourceTree = "<group>"; };
 		773B35E2BE0EA1C9632F70C5 /* MockSyncServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockSyncServer.swift; sourceTree = "<group>"; };
 		782C96F203ECA8E99702C663 /* LoadFailureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadFailureTests.swift; sourceTree = "<group>"; };
+		78783A37D10FD767886DE578 /* FxASignInWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FxASignInWebView.swift; sourceTree = "<group>"; };
 		7A028A06BB923202DE6744D2 /* SyncConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncConfig.swift; sourceTree = "<group>"; };
 		7BAFD832A24640A112AF65B1 /* SyncState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncState.swift; sourceTree = "<group>"; };
 		7CD8A99FDFE15B58CCBE1B30 /* SyncKeyBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncKeyBundle.swift; sourceTree = "<group>"; };
@@ -424,6 +426,7 @@
 			children = (
 				FF2B26FF99A304C19DF8AD0A /* FxAOAuthClient.swift */,
 				2C24A78870613BD5C97D2F5F /* FxASignInFlow.swift */,
+				78783A37D10FD767886DE578 /* FxASignInWebView.swift */,
 				EC08A4BC3855A5AA2E951949 /* SyncAccountStore.swift */,
 				AC256C195E53895E27297696 /* TokenServerClient.swift */,
 			);
@@ -658,6 +661,7 @@
 				F864FDA07CE3E804116B4B92 /* FindBar.swift in Sources */,
 				CEECED300963669E945BAFC0 /* FxAOAuthClient.swift in Sources */,
 				68FB18087F8F785E6D826F3F /* FxASignInFlow.swift in Sources */,
+				F4228906535C0A6EF43ECC40 /* FxASignInWebView.swift in Sources */,
 				E66D6B0D3739FD864E9BCDAB /* GlanceView.swift in Sources */,
 				0FE72F1601819433E87CB438 /* HKDF.swift in Sources */,
 				F983E91334952520FB66C91D /* HTTPTransport.swift in Sources */,

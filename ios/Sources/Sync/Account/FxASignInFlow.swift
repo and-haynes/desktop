@@ -1,12 +1,16 @@
 //  FxASignInFlow.swift
 //  The sign-in sheet.
 //
-//  `ASWebAuthenticationSession` is the only way to do this that a security
-//  reviewer would sign off on: the password is typed into Safari's own process,
-//  not into a WKWebView this app can read, and the session cookie is shared
-//  with Safari so someone already signed in to accounts.firefox.com only has to
-//  tap Continue. We do *not* ask for `prefersEphemeralWebBrowserSession`, for
-//  exactly that reason.
+//  This is the path we would rather be on — the password is typed into Safari's
+//  own process, not into a web view this app could read — and it is **not the
+//  one in use**. `ASWebAuthenticationSession` matches a callback by scheme, and
+//  Mozilla's authorization endpoint rejects every redirect that is not
+//  `http(s)`; the evidence is at the top of `SyncConfig.swift`.
+//
+//  It is kept, compiled and behind `SyncConfig.usesSystemAuthSession`, because
+//  the day Zen has an OAuth client id of its own with a Zen scheme registered,
+//  this file and two constants are the whole change. Deleting it would mean
+//  rediscovering all of that.
 
 #if canImport(AuthenticationServices)
     import AuthenticationServices

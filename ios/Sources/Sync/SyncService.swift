@@ -54,9 +54,15 @@ final class SyncService: ObservableObject {
 
     private var state: SyncStateFile
     private var signInFlow: FxASignInFlow?
+    /// Non-nil while the sign-in sheet should be up. The view observes it.
+    @Published private(set) var pendingSignIn: FxAAuthorizationRequest?
     private var syncTask: Task<Void, Never>?
     private var timer: Timer?
     private var lastAttemptAt: Date?
+    /// Engines whose `meta/global` version is newer than the one we speak.
+    /// Their records may mean something else entirely, so they are skipped
+    /// rather than merged.
+    private var unsupportedEngines: Set<String> = []
 
     /// Injected so tests can drive the clock and the network.
     private let now: @Sendable () -> Date
@@ -91,37 +97,32 @@ final class SyncService: ObservableObject {
 
     // MARK: Sign in / out
 
-    func signIn() async {
+    /// Step one: build the authorization request and put the sheet up. The
+    /// view layer owns the presentation — `SyncService` is not a view, and a
+    /// service that reaches for the key window to present something is a
+    /// service that cannot be tested.
+    func beginSignIn(email: String? = nil) async {
         guard !status.isBusy else { return }
         status = .signingIn
-        let flow = FxASignInFlow()
-        signInFlow = flow
         do {
             // Discovery first: Mozilla moves hosts, and a stale constant is a
             // sign-in that fails for no visible reason.
             endpoints = await FxAOAuthClient.discoverEndpoints(transport: transport)
             let client = FxAOAuthClient(endpoints: endpoints, transport: transport)
-            let tokens = try await flow.signIn(client: client)
-            guard let scopedKey = tokens.scopedKey else {
-                throw SyncError.scopedKeyMissing
+
+            if SyncConfig.usesSystemAuthSession {
+                // Only reachable with a client id whose redirect is a custom
+                // scheme — see SyncConfig. Kept working so the better path is
+                // one constant away.
+                let flow = FxASignInFlow()
+                signInFlow = flow
+                let tokens = try await flow.signIn(client: client, email: email)
+                signInFlow = nil
+                try await adopt(tokens: tokens, client: client)
+                return
             }
 
-            var secrets = SyncSecrets()
-            secrets.refreshToken = tokens.refreshToken
-            secrets.accessToken = tokens.accessToken
-            secrets.accessTokenExpiresAt = tokens.expiresAt
-            secrets.scopedKey = scopedKey
-            self.secrets.save(secrets)
-
-            let profile = try? await client.profile(accessToken: tokens.accessToken)
-            account = SyncAccountSummary(
-                email: profile?.email, displayName: profile?.displayName, signedInAt: now())
-            state.account = account
-            state.lastError = nil
-            persist()
-            status = preferences.enabled ? .idle : .paused
-            signInFlow = nil
-            syncNow(reason: .signIn)
+            pendingSignIn = try client.authorizationRequest(email: email)
         } catch let error as SyncError {
             signInFlow = nil
             status = error == .cancelled ? .signedOut : .failed(error.localizedDescription)
@@ -131,7 +132,55 @@ final class SyncService: ObservableObject {
         }
     }
 
+    /// Step two: the sheet saw a navigation to the redirect. Exchange the code
+    /// and, if that works, we are signed in.
+    func completeSignIn(callback: URL) async {
+        guard let request = pendingSignIn else { return }
+        pendingSignIn = nil
+        status = .signingIn
+        do {
+            let client = FxAOAuthClient(endpoints: endpoints, transport: transport)
+            let code = try FxAOAuthClient.authorizationCode(
+                fromCallback: callback, expectedState: request.state)
+            let tokens = try await client.exchange(code: code, request: request)
+            try await adopt(tokens: tokens, client: client)
+        } catch let error as SyncError {
+            status = error == .cancelled ? .signedOut : .failed(error.localizedDescription)
+        } catch {
+            status = .failed(error.localizedDescription)
+        }
+    }
+
+    func cancelSignIn() {
+        pendingSignIn = nil
+        signInFlow?.cancel()
+        signInFlow = nil
+        status = isSignedIn ? (preferences.enabled ? .idle : .paused) : .signedOut
+    }
+
+    private func adopt(tokens: FxAOAuthTokens, client: FxAOAuthClient) async throws {
+        guard let scopedKey = tokens.scopedKey else { throw SyncError.scopedKeyMissing }
+
+        var secrets = SyncSecrets()
+        secrets.refreshToken = tokens.refreshToken
+        secrets.accessToken = tokens.accessToken
+        secrets.accessTokenExpiresAt = tokens.expiresAt
+        secrets.scopedKey = scopedKey
+        self.secrets.save(secrets)
+
+        // The profile is decoration; a failure here is not a failed sign-in.
+        let profile = try? await client.profile(accessToken: tokens.accessToken)
+        account = SyncAccountSummary(
+            email: profile?.email, displayName: profile?.displayName, signedInAt: now())
+        state.account = account
+        state.lastError = nil
+        persist()
+        status = preferences.enabled ? .idle : .paused
+        syncNow(reason: .signIn)
+    }
+
     func signOut() async {
+        pendingSignIn = nil
         syncTask?.cancel()
         syncTask = nil
         stopTimer()
@@ -329,16 +378,19 @@ final class SyncService: ObservableObject {
         self.secrets.save(secrets)
 
         // 6. Engines, in order.
-        if preferences.isEnabled(SpacesEngine.collection) {
+        func shouldSync(_ collection: String) -> Bool {
+            preferences.isEnabled(collection) && !unsupportedEngines.contains(collection)
+        }
+        if shouldSync(SpacesEngine.collection) {
             try await syncSpaces(storage: storage, keys: keys, info: info)
         }
-        if preferences.isEnabled(BookmarksEngine.collection) {
+        if shouldSync(BookmarksEngine.collection) {
             try await syncBookmarks(storage: storage, keys: keys, info: info)
         }
-        if preferences.isEnabled(TabsEngine.collection) {
+        if shouldSync(TabsEngine.collection) {
             try await syncTabs(storage: storage, keys: keys, info: info)
         }
-        if preferences.isEnabled(HistoryEngine.collection) {
+        if shouldSync(HistoryEngine.collection) {
             try await syncHistory(storage: storage, keys: keys, info: info)
         }
         try await syncClients(storage: storage, keys: keys, info: info)
@@ -362,16 +414,32 @@ final class SyncService: ObservableObject {
         }
 
         // A changed account-level syncID means the whole account was reset.
+        let isFirstSyncWithThisAccount = state.shadow.storageSyncID.isEmpty
         if state.shadow.storageSyncID != meta.syncID {
             state.shadow.collections = [:]
             state.shadow.storageSyncID = meta.syncID
         }
 
+        // On the first sync with an account, the account's engine choices win.
+        // Publishing ours instead would let a phone silently turn off an
+        // engine the desktop had deliberately declined.
+        if isFirstSyncWithThisAccount && !meta.declined.isEmpty {
+            adoptDeclined(meta.declined)
+        }
+
+        unsupportedEngines = []
         var changed = false
         for (name, version) in SyncConfig.engineVersions {
             if let engine = meta.engines[name] {
-                // A changed engine syncID, or a version we do not speak, means
-                // start that collection again from nothing.
+                // An engine version we do not speak is not ours to sync: the
+                // records may mean something else entirely. Skip that
+                // collection rather than corrupt it.
+                if engine.version > version {
+                    unsupportedEngines.insert(name)
+                    continue
+                }
+                // A changed engine syncID means start that collection again
+                // from nothing.
                 if state.shadow[name].syncID != engine.syncID {
                     var shadow = state.shadow[name]
                     shadow.reset(syncID: engine.syncID)
@@ -398,6 +466,16 @@ final class SyncService: ObservableObject {
                 collection: "meta", id: "global",
                 payload: try meta.json.serializedString(), unmodifiedSince: modified)
         }
+    }
+
+    private func adoptDeclined(_ declined: [String]) {
+        var adopted = preferences
+        let set = Set(declined)
+        adopted.syncSpaces = !set.contains(SpacesEngine.collection)
+        adopted.syncBookmarks = !set.contains(BookmarksEngine.collection)
+        adopted.syncTabs = !set.contains(TabsEngine.collection)
+        adopted.syncHistory = !set.contains(HistoryEngine.collection)
+        preferences = adopted
     }
 
     // MARK: Spaces

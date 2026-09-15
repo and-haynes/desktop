@@ -68,8 +68,11 @@ struct FxAOAuthTokens: Equatable, Sendable, Codable {
 }
 
 /// The authorization request, kept together because the verifier and the
-/// ephemeral key have to survive until the code comes back.
-struct FxAAuthorizationRequest: Sendable {
+/// ephemeral key have to survive until the code comes back. `Identifiable` so
+/// it can drive a `.sheet(item:)` — a new request is a new sheet.
+struct FxAAuthorizationRequest: Sendable, Identifiable {
+    var id: String { state }
+
     let url: URL
     let state: String
     let pkce: PKCEChallenge
@@ -141,9 +144,10 @@ struct FxAOAuthClient: Sendable {
     /// Pull `code` out of the redirect, checking `state` first. A mismatched
     /// state means someone else's authorization is being replayed at us.
     static func authorizationCode(fromCallback url: URL, expectedState: String) throws -> String {
-        // The registered redirect is `urn:ietf:wg:oauth:native:1?code=…`, which
-        // URLComponents will not parse as hierarchical — so read the query off
-        // the raw string rather than trusting `components.queryItems`.
+        // Read the query off the raw string rather than through URLComponents:
+        // a native-app redirect may be a non-hierarchical URI (`urn:…?code=…`),
+        // which URLComponents declines to parse a query out of, and this has to
+        // keep working if the registered redirect ever changes back to one.
         let raw = url.absoluteString
         let query = raw.split(separator: "?", maxSplits: 1).dropFirst().first.map(String.init)
         var pairs: [String: String] = [:]

@@ -17,14 +17,37 @@
 //  · The redirect URI must be one that id already has registered — we cannot
 //    add ours — which is why `redirectURI` below is not a Zen scheme.
 //
-//  ## The redirect, and why it is a `urn:`
+//  ## The redirect, and why sign-in is a web view rather than
+//  `ASWebAuthenticationSession`
 //
-//  Firefox for iOS registers `urn:ietf:wg:oauth:native:1` (RFC 8252's "private
-//  URI" placeholder for a native app) and intercepts it inside its own
-//  WKWebView. `ASWebAuthenticationSession` matches the callback by *scheme*,
-//  so we hand it `urn`. If a future iOS stops matching non-hierarchical
-//  schemes this is the one line to change, and `SyncSignInError` surfaces the
-//  failure rather than hanging.
+//  `ASWebAuthenticationSession` matches a callback by **scheme**, so it needs a
+//  redirect like `zen://fxa`. Mozilla's authorization endpoint will not accept
+//  one. Verified on 2026-09-15 by loading the authorization URL in the
+//  simulator's Safari (`ios/docs/screenshots/29b-sync-signin-page.png`):
+//
+//      redirect_uri=urn:ietf:wg:oauth:native:1  → Bad Request: Invalid Query Parameters
+//      redirect_uri=zen://fxa-callback          → Bad Request: Invalid Query Parameters
+//      redirect_uri=https://accounts.firefox.com/oauth/success/<client id>
+//                                               → the sign-in form
+//      (redirect_uri omitted)                   → the sign-in form
+//
+//  Everything else in the request — this client id, the `oldsync` scope, the
+//  PKCE challenge, `access_type=offline` and `keys_jwk` — is accepted; only the
+//  scheme is the problem. So the redirect has to be an `https:` URL, and an
+//  `https:` URL is exactly what `ASWebAuthenticationSession` cannot intercept.
+//
+//  Firefox for iOS has the same constraint with the same client id and solves
+//  it the same way: it runs the flow in its own `WKWebView` and watches for a
+//  navigation to `/oauth/success/<client id>?code=…`. We do that too, in an
+//  **ephemeral** data store so no account cookie outlives the sheet.
+//
+//  The trade-off is real and belongs on the record: the password is typed into
+//  a web view this process owns rather than into Safari's. Zen never touches
+//  the field — the view loads exactly one origin and is thrown away — but "we
+//  promise not to look" is weaker than "we cannot look", which is what the
+//  system sheet gives. The way to get that back is a client id of our own with
+//  a Zen scheme registered; `usesSystemAuthSession` below is the one line to
+//  flip if Mozilla ever issues one.
 
 import Foundation
 
@@ -33,11 +56,19 @@ enum SyncConfig {
     /// Firefox for iOS's public OAuth client id — see the note above.
     static let oauthClientID = "1b1a3e44c54fbb58"
 
-    /// Registered against that client id. Not ours to choose.
-    static let redirectURI = "urn:ietf:wg:oauth:native:1"
+    /// Registered against that client id, and not ours to choose. FxA's own
+    /// "success" page: the code arrives as a query on a navigation to it.
+    static let redirectURI = "https://accounts.firefox.com/oauth/success/\(oauthClientID)"
 
-    /// What `ASWebAuthenticationSession` matches the callback on.
-    static let redirectScheme = "urn"
+    /// Whether to use the system sign-in sheet. `false` because the redirect
+    /// above is `https:` and `ASWebAuthenticationSession` matches by scheme —
+    /// see the note at the top of this file. With a client id of our own and a
+    /// Zen scheme registered, this and `redirectURI` are the only two lines
+    /// that change.
+    static let usesSystemAuthSession = false
+
+    /// Only meaningful when `usesSystemAuthSession` is true.
+    static let redirectScheme = "zen"
 
     /// `profile` for the display name and avatar, `oldsync` for the data. The
     /// scoped key we need is attached to the second.
