@@ -19,11 +19,6 @@ struct RootView: View {
     @State private var shareItem: URL?
     /// Countdown that puts the compact bar away after scrolling stops.
     @State private var compactHideTask: Task<Void, Never>?
-    /// The window's top safe-area inset, measured once at the root. With the
-    /// status bar hidden the content ignores that inset, so the web view needs
-    /// the number explicitly to keep a page's own header out from under the
-    /// Dynamic Island.
-    @State private var safeAreaTop: CGFloat = 0
 
     @MainActor
     init(state: BrowserState? = nil) {
@@ -63,15 +58,11 @@ struct RootView: View {
     }
 
     var body: some View {
-        GeometryReader { proxy in
-            ZStack {
-                background
-                layout
-                compactGrabber
-                overlays
-            }
-            .onAppear { safeAreaTop = proxy.safeAreaInsets.top }
-            .onChange(of: proxy.safeAreaInsets.top) { _, top in safeAreaTop = top }
+        ZStack {
+            background
+            layout
+            compactGrabber
+            overlays
         }
         .environment(\.zenPalette, palette)
         // Applied at the *root* so it holds across every layout, the sheets and
@@ -215,25 +206,24 @@ struct RootView: View {
     }
 
     /// With the status bar hidden there is nothing left in the top band but
-    /// empty gradient, so the page takes it back. `.container` rather than
-    /// `.all` keeps the keyboard pushing the layout, and releasing only the
-    /// *top* edge leaves the horizontal insets intact — which is exactly where
-    /// the Dynamic Island intrudes in landscape.
+    /// empty gradient, so the page takes it back and runs to the very top
+    /// edge. `.container` rather than `.all` keeps the keyboard pushing the
+    /// layout, and releasing only the *top* edge leaves the horizontal insets
+    /// intact — which is exactly where the Dynamic Island intrudes in
+    /// landscape.
+    ///
+    /// The island itself is hardware and simply sits over the page, as it does
+    /// over video, photos and maps. The alternative — insetting the page by the
+    /// island's height — needs a strip in the page's own background colour to
+    /// look like anything but a black slab, and WebKit will not tell us that
+    /// colour while the web view is transparent (which it must be, so the space
+    /// gradient shows through before a page paints).
     private var reclaimsTopEdge: Bool { !state.settings.showStatusBar }
-
-    /// The island is hardware: hiding the status bar does not shrink the top
-    /// safe area on a device that has one. So the card runs to the very top
-    /// while the *page* is inset by that same amount, and a site's own header
-    /// still starts below the pill instead of behind it.
-    private var webTopInset: CGFloat { reclaimsTopEdge ? safeAreaTop : 0 }
 
     private var content: some View {
         VStack(spacing: 0) {
             if let space = state.activeSpace {
-                ContentArea(
-                    state: state, space: space, pool: pool.pool,
-                    topContentInset: webTopInset
-                )
+                ContentArea(state: state, space: space, pool: pool.pool)
                 .padding(.horizontal, ZenMetrics.splitGap)
                 .padding(.top, reclaimsTopEdge ? 0 : ZenMetrics.splitGap)
                 .ignoresSafeArea(.container, edges: reclaimsTopEdge ? .top : [])

@@ -227,40 +227,62 @@ final class ScreenshotTests: XCTestCase {
     }
 
     /// The status bar is hidden by default (#00899). Captures the default,
-    /// proves the Settings toggle brings it back, and puts it away again so the
-    /// session does not carry the change into the next test.
+    /// proves the Settings toggle brings it back and that the choice sticks,
+    /// then puts it away again so the session does not carry the change into
+    /// the next test.
     func testCaptureStatusBar() throws {
         let suffix = UIDevice.current.userInterfaceIdiom == .pad ? "-ipad" : ""
         settle(4.0)
         capture("24-status-bar-hidden\(suffix)")
 
-        XCTAssertTrue(setShowStatusBar(true), "could not turn the status bar on")
+        XCTAssertTrue(
+            flipShowStatusBar(from: "0", to: "1"), "the toggle would not turn the status bar on")
         settle(2.0)
         capture("24b-status-bar-shown\(suffix)")
 
-        XCTAssertTrue(setShowStatusBar(false), "the choice did not persist, or would not go back")
+        XCTAssertTrue(
+            flipShowStatusBar(from: "1", to: "0"),
+            "the choice did not persist, or would not go back")
         settle(2.0)
         capture("24c-status-bar-hidden-again\(suffix)")
         try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-STATUSBAR"))
     }
 
-    /// Drive the Settings toggle to a known state. Returns false if the toggle
-    /// was not where it should be, or was already the value asked for (which
-    /// would mean the previous step did not take).
-    private func setShowStatusBar(_ on: Bool) -> Bool {
-        guard tapMenuItem(matching: "label CONTAINS[c] 'Settings'") else { return false }
-        settle(1.5)
+    /// Open Settings, check the toggle reads `from` (which is what proves the
+    /// previous step stuck), flip it, wait for `to`, and close the sheet.
+    private func flipShowStatusBar(from: String, to: String) -> Bool {
+        guard openSettings() else { return false }
         let toggle = app.switches["showStatusBarToggle"].firstMatch
-        guard toggle.waitForExistence(timeout: 8) else { return false }
-        guard (toggle.value as? String) == (on ? "0" : "1") else { return false }
+        guard toggle.waitForExistence(timeout: 10) else {
+            dismissSheet()
+            return false
+        }
+        guard (toggle.value as? String) == from else {
+            dismissSheet()
+            return false
+        }
         // A SwiftUI Form toggle's accessibility frame is the whole row, and its
         // centre is dead space between the label and the switch — tapping there
         // does nothing. Aim at the switch.
         toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
-        settle(1.2)
-        let settled = (toggle.value as? String) == (on ? "1" : "0")
+        // SwiftUI updates the accessibility value a frame or two after the tap;
+        // reading it once turns that into a flake.
+        var flipped = false
+        for _ in 0..<10 {
+            if (toggle.value as? String) == to {
+                flipped = true
+                break
+            }
+            settle(0.4)
+        }
         dismissSheet()
-        return settled
+        return flipped
+    }
+
+    private func openSettings() -> Bool {
+        guard tapMenuItem(matching: "label CONTAINS[c] 'Settings'") else { return false }
+        settle(1.5)
+        return true
     }
 
     /// Done, or a pull-down if the toolbar button is not reachable — a sheet
@@ -270,7 +292,7 @@ final class ScreenshotTests: XCTestCase {
         if done.waitForExistence(timeout: 4), done.isHittable {
             done.tap()
         } else {
-            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.12))
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.14))
                 .press(
                     forDuration: 0.05,
                     thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.95)))
