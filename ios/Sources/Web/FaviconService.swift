@@ -20,7 +20,11 @@ enum FaviconService {
     @MainActor
     static func prefetchMissing(for state: BrowserState) async {
         let pending = state.tabs
-            .filter { $0.faviconData == nil && !$0.isNewTabPage && $0.url.host != nil }
+            .filter {
+                $0.faviconData == nil && !$0.isNewTabPage && $0.url.host != nil
+                    // Focus tabs must generate no app-level traffic.
+                    && !state.isEphemeral($0.spaceID)
+            }
             .sorted { lhs, rhs in
                 // essential < pinned < normal
                 func rank(_ kind: TabKind) -> Int {

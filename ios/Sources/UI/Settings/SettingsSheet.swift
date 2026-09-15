@@ -134,6 +134,27 @@ struct SettingsSheet: View {
                 }
 
                 Section {
+                    Toggle(
+                        "Focus mode",
+                        isOn: Binding(
+                            get: { state.isFocusMode },
+                            set: { _ in
+                                NotificationCenter.default.post(
+                                    name: .zenToggleFocusMode, object: nil)
+                            }))
+                    Toggle(
+                        "Require Face ID to return",
+                        isOn: $state.settings.focusRequiresBiometrics)
+                } header: {
+                    Text("Focus")
+                } footer: {
+                    Text(
+                        "Focus opens a private, throwaway session with tracker and ad "
+                            + "blocking and third-party cookies off. Nothing is written to "
+                            + "history or session restore, and leaving Focus erases it.")
+                }
+
+                Section {
                     NavigationLink {
                         TrustedCertificatesView(store: state.trustedCertificates)
                     } label: {
@@ -161,6 +182,7 @@ struct SettingsSheet: View {
                     shortcut("Toggle sidebar", "⇧⌘E")
                     shortcut("Find in page", "⌘F")
                     shortcut("Cycle layout", "⇧⌘F")
+                    shortcut("Focus mode", "⇧⌘P")
                     shortcut("Next / previous space", "⌃⇧→ / ⌃⇧←")
                 }
 

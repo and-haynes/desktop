@@ -18,16 +18,18 @@ struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var shareItem: URL?
-    /// The compact bar's three-state machine (#008AF). Owned here because only
-    /// the root sees the page-scroll notifications and the grabber at once.
-    @StateObject private var compactBar = CompactBarController()
-    /// The window's safe-area insets, measured once at the root. The content
+    /// Countdown that puts the compact bar away after scrolling stops.
+    @State private var compactHideTask: Task<Void, Never>?
+    /// The window's top safe-area inset, measured once at the root. The content
     /// ignores the safe area in two of the three layouts, so the web view needs
-    /// the numbers explicitly to keep the page's own header out from under the
-    /// clock — and the island is hardware, so the top one stays whatever the
-    /// status bar is doing (#008A9).
+    /// the number explicitly to keep the page's own header out from under the
+    /// clock.
     @State private var safeAreaTop: CGFloat = 0
     @State private var safeAreaBottom: CGFloat = 0
+    @State private var focusToastTask: Task<Void, Never>?
+    /// Set when the app leaves the foreground while Focus is on, so returning
+    /// can demand authentication.
+    @State private var focusNeedsUnlockOnReturn = false
 
     @MainActor
     init(state: BrowserState? = nil, sync: SyncService? = nil) {
@@ -57,24 +59,16 @@ struct RootView: View {
     private var palette: ZenPalette { state.palette(systemDark: systemScheme == .dark) }
     private var isPad: Bool { sizeClass == .regular }
 
-    /// What the bar is showing. `expanded` whenever compact mode's toolbar
-    /// half is off, so every view below reads one value and never the setting.
-    private var barPhase: CompactBarPhase {
-        guard state.settings.compactModeEnabled, state.settings.compactHidesToolbar else {
-            return .expanded
-        }
-        return compactBar.phase
-    }
-
-    /// Compact mode has the chrome away — anything short of the full bar.
+    /// Compact mode hides the chrome until an edge gesture reveals it.
     private var chromeHidden: Bool {
-        state.settings.compactModeEnabled && compactBar.phase != .expanded
+        state.settings.compactModeEnabled && !state.compactRevealed
     }
     private var sidebarHidden: Bool {
         chromeHidden && state.settings.compactHidesSidebar
     }
-    /// Nothing at all where the bar is: the pill still counts as chrome.
-    private var toolbarHidden: Bool { barPhase == .hidden }
+    private var toolbarHidden: Bool {
+        chromeHidden && state.settings.compactHidesToolbar
+    }
 
     private var layoutMode: BrowserLayout { state.settings.layout }
 
@@ -107,7 +101,34 @@ struct RootView: View {
             // fetch them so the sidebar is not a column of monograms.
             Task { await FaviconService.prefetchMissing(for: state) }
         }
-        .modifier(RootNotifications(state: state, pool: pool.pool, compactBar: compactBar))
+        .onReceive(NotificationCenter.default.publisher(for: .zenReloadActiveTab)) { _ in
+            guard let tabID = state.activeTabID else { return }
+            // An unloaded tab has no view to reload; selecting it rebuilds one.
+            if let view = pool.pool.existing(for: tabID) {
+                // A failed load has nothing committed, so reload() is a no-op;
+                // clearing the guard lets the URL be requested again.
+                if state.tab(id: tabID)?.loadFailure != nil {
+                    view.lastRequestedURL = nil
+                    state.updateTab(tabID) { $0.loadFailure = nil }
+                } else {
+                    view.reload()
+                }
+            } else {
+                state.select(tabID)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .zenHideRevealedChrome)) { _ in
+            hideChrome()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .zenPageScrollBegan)) { _ in
+            // Nothing may buzz during a scroll — see `Haptics.isScrolling`.
+            Haptics.shared.isScrolling = true
+            revealChromeWhileScrolling()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .zenPageScrollEnded)) { _ in
+            Haptics.shared.isScrolling = false
+            scheduleCompactHide()
+        }
         .task {
             // The service holds the browser weakly, so this is the one place
             // the two are introduced.
@@ -120,9 +141,26 @@ struct RootView: View {
             sync.noteLocalChange()
         }
         .onChange(of: state.spaces) { _, _ in sync.noteLocalChange() }
-        .modifier(CompactBarBridge(state: state, controller: compactBar))
         .onReceive(NotificationCenter.default.publisher(for: .zenCycleLayout)) { _ in
             cycleLayout()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .zenToggleFocusMode)) { _ in
+            Task { await toggleFocusMode() }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .zenFocusErased)) { note in
+            // Tear down the content processes behind the erased tabs. Dropping
+            // the model alone would leave live web views holding the session.
+            let ids = (note.userInfo?["tabs"] as? [String])?.compactMap(UUID.init(uuidString:))
+            for id in ids ?? [] { pool.pool.unload(id) }
+        }
+        .onChange(of: state.focusToast) { _, message in
+            guard message != nil else { return }
+            focusToastTask?.cancel()
+            focusToastTask = Task {
+                try? await Task.sleep(for: .seconds(2.6))
+                guard !Task.isCancelled else { return }
+                withAnimation(.easeOut(duration: 0.25)) { state.focusToast = nil }
+            }
         }
         .onChange(of: scenePhase) { _, phase in
             // Flush the session on the way out; a jetsam gives no warning.
@@ -136,6 +174,21 @@ struct RootView: View {
             // someone's pocket.
             Haptics.shared.isForeground = phase == .active
             if phase == .active { Haptics.shared.prepare(Self.warmEvents) }
+            switch phase {
+            case .active:
+                if focusNeedsUnlockOnReturn {
+                    focusNeedsUnlockOnReturn = false
+                    // Fail open when the device cannot authenticate at all —
+                    // being locked out of your own tabs is a worse outcome.
+                    if FocusLock.isAvailable { state.focusLocked = true }
+                }
+            case .inactive, .background:
+                if state.isFocusMode && state.settings.focusRequiresBiometrics {
+                    focusNeedsUnlockOnReturn = true
+                }
+            @unknown default:
+                break
+            }
         }
         .sheet(isPresented: $state.isHistorySheetPresented) {
             HistorySheet(state: state, history: state.history, bookmarks: state.bookmarks)
@@ -264,3 +317,373 @@ struct RootView: View {
                 if !layoutMode.barFloats { bottomBar }
             }
             if layoutMode.barFloats { bottomBar }
+        }
+        .animation(.spring(response: 0.34, dampingFraction: 0.86), value: layoutMode)
+    }
+
+    @ViewBuilder
+    private var contentArea: some View {
+        if let space = state.activeSpace {
+            ContentArea(
+                state: state, space: space, pool: pool.pool,
+                topContentInset: webTopInset, bottomContentInset: webBottomInset,
+                rounded: layoutMode.framesContent
+            )
+            .padding(.horizontal, layoutMode.framesContent ? ZenMetrics.splitGap : 0)
+            .padding(
+                .top,
+                layoutMode.framesContent && !reclaimsTopEdge ? ZenMetrics.splitGap : 0)
+            // `.container` rather than `.all`: the page should run under the
+            // status bar, but the keyboard must still push the layout. Only the
+            // top edge is released, so the horizontal insets the island takes
+            // in landscape stay.
+            .ignoresSafeArea(.container, edges: topEdgesIgnored)
+            .animation(.easeInOut(duration: 0.25), value: state.settings.showStatusBar)
+            // Tapping the page puts a revealed compact toolbar away again.
+            // Simultaneous so it never swallows a tap meant for the page.
+            .simultaneousGesture(
+                TapGesture().onEnded { hideChrome() },
+                including: state.compactRevealed ? .all : .subviews)
+        }
+    }
+
+    private var topEdgesIgnored: Edge.Set {
+        switch layoutMode {
+        case .card: return reclaimsTopEdge ? .top : []
+        case .edgeToEdge: return .top
+        case .fullScreen: return [.top, .bottom]
+        }
+    }
+
+    /// The web view draws under the status bar in two of the three layouts, so
+    /// give its scroll view an explicit top inset — the page's own header would
+    /// otherwise sit under the clock. `contentInsetAdjustmentBehavior` stays
+    /// `.never` so this is the only thing moving the content.
+    ///
+    /// With the status bar hidden (the default, #00899) there is no clock to
+    /// keep clear of, and the strip an inset opens up cannot be painted in the
+    /// page's own colour — so the page simply has the edge, and the island sits
+    /// over it.
+    private var webTopInset: CGFloat {
+        guard layoutMode.ignoresTopSafeArea, state.settings.showStatusBar else { return 0 }
+        return safeAreaTop
+    }
+
+    /// Full screen puts the bar over the page, so the last screenful would be
+    /// permanently covered without a matching bottom inset.
+    private var webBottomInset: CGFloat {
+        guard layoutMode.barFloats, !toolbarHidden else { return 0 }
+        return ZenMetrics.omniboxPillHeight + safeAreaBottom + 12
+    }
+
+    private var bottomBar: some View {
+        VStack(spacing: 8) {
+            if state.isFindBarVisible {
+                FindBar(state: state, pool: pool.pool)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+            if !toolbarHidden {
+                OmniboxPill(
+                    state: state, isFloating: layoutMode.barFloats
+                ) { shareItem = state.activeTab?.url }
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.top, 8)
+        .padding(.bottom, layoutMode.barFloats ? safeAreaBottom + 4 : 4)
+        .animation(.easeInOut(duration: ZenTokens.hiddenToolbarTransition), value: toolbarHidden)
+        .animation(.easeInOut(duration: 0.2), value: state.isFindBarVisible)
+    }
+
+    // MARK: Overlays
+
+    @ViewBuilder
+    private var overlays: some View {
+        if let glanceID = state.glanceTabID, let tab = state.tab(id: glanceID),
+            let space = state.activeSpace
+        {
+            GlanceView(tab: tab, space: space, state: state, pool: pool.pool)
+                .environment(\.zenPalette, palette)
+                .transition(.opacity)
+                .zIndex(2)
+        }
+
+        if state.isOmniboxOpen {
+            OmniboxOverlay(state: state)
+                .environment(\.zenPalette, palette)
+                .zIndex(3)
+        }
+
+        if let message = state.focusToast {
+            VStack {
+                Spacer()
+                FocusToast(message: message)
+                    .padding(.bottom, ZenMetrics.omniboxPillHeight + 28)
+            }
+            .transition(.move(edge: .bottom).combined(with: .opacity))
+            .allowsHitTesting(false)
+            .zIndex(4)
+        }
+
+        // Above everything, including the omnibox — the point is that nothing
+        // from the session is readable until the owner authenticates.
+        if state.focusLocked {
+            FocusLockScreen(state: state)
+                .environment(\.zenPalette, palette)
+                .transition(.opacity)
+                .zIndex(5)
+        }
+    }
+
+    // MARK: Compact-mode grabber
+
+    /// Upstream reveals the hidden chrome when the pointer comes within 10px of
+    /// a screen edge. The touch translation of that — a tap strip along the
+    /// bottom — sits exactly where the iOS home gesture lives and loses every
+    /// race with it. So the reveal is an explicit target instead: a drag-handle
+    /// pill just above the home indicator, tapped or pulled up.
+    @ViewBuilder
+    private var compactGrabber: some View {
+        if chromeHidden {
+            VStack {
+                Spacer()
+                Capsule()
+                    .fill(palette.text.withAlpha(0.75).color)
+                    .frame(
+                        width: ZenMetrics.compactGrabberWidth,
+                        height: ZenMetrics.compactGrabberHeight)
+                    // The page behind can be any colour, and a bare 35%-alpha
+                    // pill simply vanished against a light one. A material pad
+                    // behind it gives the handle something to sit on, the way
+                    // a system sheet grabber does.
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
+                    .background {
+                        Capsule()
+                            .fill(.ultraThinMaterial)
+                            .overlay { Capsule().fill(palette.brandingBG.withAlpha(0.35).color) }
+                    }
+                    .overlay {
+                        Capsule().strokeBorder(palette.borderContrast.color, lineWidth: 0.5)
+                    }
+                    .clipShape(Capsule())
+                    .shadow(color: .black.opacity(0.28), radius: 6, y: 2)
+                    // A 6pt pill is not a touch target; 44pt is.
+                    .frame(height: ZenMetrics.compactGrabberHitHeight)
+                    .frame(maxWidth: .infinity)
+                    .contentShape(Rectangle())
+                    .onTapGesture { revealChrome() }
+                    .gesture(
+                        DragGesture(minimumDistance: 8)
+                            .onChanged { _ in Haptics.shared.prepare(.grabberDrag) }
+                            .onEnded { value in
+                                // Pull up to reveal; a downward flick is the
+                                // user reaching for the home gesture.
+                                if value.translation.height < -8 {
+                                    Haptics.shared.fire(.grabberDrag)
+                                    revealChrome()
+                                }
+                            }
+                    )
+                    .accessibilityLabel("Show toolbar")
+                    .accessibilityAddTraits(.isButton)
+            }
+            .transition(.opacity)
+            .zIndex(1)
+        }
+    }
+
+    /// The grabber's deliberate reveal: no countdown, it stays until the page
+    /// is tapped or scrolled.
+    private func revealChrome() {
+        compactHideTask?.cancel()
+        compactHideTask = nil
+        Haptics.shared.fire(.compactBarShow)
+        withAnimation(
+            .spring(response: ZenMetrics.compactAnimationDuration * 2, dampingFraction: 1)
+        ) {
+            state.compactRevealed = true
+        }
+    }
+
+    /// Scrolling brings the bar back for as long as you keep scrolling. Each
+    /// scroll event restarts the countdown, so a long flick does not flicker.
+    private func revealChromeWhileScrolling() {
+        guard state.settings.compactModeEnabled else { return }
+        compactHideTask?.cancel()
+        compactHideTask = nil
+        guard !state.compactRevealed else { return }
+        withAnimation(.easeOut(duration: ZenTokens.hiddenToolbarTransition)) {
+            state.compactRevealed = true
+        }
+    }
+
+    /// Start the fade-out countdown. Cancelled by any further scrolling, so
+    /// the bar only goes when the page has actually settled.
+    private func scheduleCompactHide() {
+        guard state.settings.compactModeEnabled, state.compactRevealed else { return }
+        compactHideTask?.cancel()
+        let delay = max(0.2, state.settings.compactHideDelay)
+        compactHideTask = Task {
+            try? await Task.sleep(for: .seconds(delay))
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeInOut(duration: ZenTokens.hiddenToolbarTransition)) {
+                state.compactRevealed = false
+            }
+        }
+    }
+
+    /// The reveal is momentary: tapping the page or scrolling puts it back.
+    /// There is no auto-hide timer — a deliberate reveal should not time out.
+    private func hideChrome() {
+        compactHideTask?.cancel()
+        compactHideTask = nil
+        guard state.compactRevealed else { return }
+        Haptics.shared.fire(.compactBarHide)
+        withAnimation(.easeInOut(duration: ZenTokens.hiddenToolbarTransition)) {
+            state.compactRevealed = false
+        }
+    }
+
+    private func readSafeArea(_ proxy: GeometryProxy) {
+        safeAreaTop = proxy.safeAreaInsets.top
+        safeAreaBottom = proxy.safeAreaInsets.bottom
+    }
+
+    /// Entering Focus compiles the blocklist *before* creating the first tab —
+    /// a tab made without it would load trackers on its first navigation, which
+    /// is exactly the promise the mode makes.
+    @MainActor
+    private func toggleFocusMode() async {
+        if state.isFocusMode {
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.9)) {
+                state.exitFocusMode()
+            }
+            pool.pool.focusBlocklist = nil
+            return
+        }
+        pool.pool.focusBlocklist = await ContentBlocker.focusRuleList()
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.9)) {
+            state.enterFocusMode()
+        }
+    }
+
+    /// Advance the layout cycle. Shared by the overflow menu and Cmd-Shift-F.
+    private func cycleLayout() {
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+            state.settings.layout = state.settings.layout.next
+        }
+    }
+
+    /// Which edge the reveal swipe starts from, and which way a dismiss swipe
+    /// goes, both follow `sidebarEdge` — the gesture always opens toward the
+    /// drawer's actual edge and closes back toward it.
+    private var drawerEdgeSwipe: some Gesture {
+        let edge = state.settings.sidebarEdge
+        return DragGesture(minimumDistance: 20)
+            .onChanged { _ in Haptics.shared.prepare(.sidebarSnap) }
+            .onEnded { value in
+                guard abs(value.translation.width) > abs(value.translation.height) else { return }
+                let opens: Bool
+                let closes: Bool
+                switch edge {
+                case .leading:
+                    opens = value.startLocation.x < 24 && value.translation.width > 40
+                    closes = value.translation.width < -40
+                case .trailing:
+                    opens =
+                        value.startLocation.x > UIScreen.main.bounds.width - 24
+                        && value.translation.width < -40
+                    closes = value.translation.width > 40
+                }
+                if opens {
+                    Haptics.shared.fire(.sidebarSnap)
+                    withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) {
+                        state.isSidebarVisible = true
+                    }
+                } else if state.isSidebarVisible && closes {
+                    Haptics.shared.fire(.sidebarSnap)
+                    withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) {
+                        state.isSidebarVisible = false
+                    }
+                }
+            }
+    }
+
+    // MARK: Hardware keyboard (iPad)
+
+    /// Invisible buttons carrying `.keyboardShortcut`. SwiftUI has no way to
+    /// declare a shortcut without a control, so they live in the background
+    /// with zero size.
+    private var keyboardShortcuts: some View {
+        ZStack {
+            shortcutButton("t", modifiers: .command) {
+                state.newTab()
+                state.isOmniboxOpen = true
+            }
+            shortcutButton("w", modifiers: .command) {
+                if let tabID = state.activeTabID { state.closeTab(tabID) }
+            }
+            shortcutButton("l", modifiers: .command) {
+                state.omniboxText = state.activeTab.map(OmniboxPill.editableText) ?? ""
+                state.isOmniboxOpen = true
+            }
+            shortcutButton("f", modifiers: .command) { state.isFindBarVisible = true }
+            shortcutButton("f", modifiers: [.command, .shift]) { cycleLayout() }
+            shortcutButton("p", modifiers: [.command, .shift]) {
+                Task { await toggleFocusMode() }
+            }
+            shortcutButton("s", modifiers: [.command, .shift]) {
+                withAnimation(.spring(response: 0.3, dampingFraction: 1)) { state.toggleSplit() }
+            }
+            shortcutButton("e", modifiers: [.command, .shift]) {
+                withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) {
+                    state.isSidebarVisible.toggle()
+                    if state.settings.sidebarPinnedOnPad && isPad {
+                        state.settings.sidebarPinnedOnPad = false
+                    }
+                }
+            }
+            shortcutButton(.tab, modifiers: .control) { state.cycleTab(by: 1) }
+            shortcutButton(.tab, modifiers: [.control, .shift]) { state.cycleTab(by: -1) }
+            shortcutButton(.rightArrow, modifiers: [.control, .shift]) {
+                withAnimation { state.cycleSpace(by: 1) }
+            }
+            shortcutButton(.leftArrow, modifiers: [.control, .shift]) {
+                withAnimation { state.cycleSpace(by: -1) }
+            }
+        }
+        .opacity(0)
+        .frame(width: 0, height: 0)
+        .accessibilityHidden(true)
+    }
+
+    /// Every shortcut here changes what is on screen, and a hardware keyboard
+    /// gives no other confirmation that the chord was caught.
+    private func shortcutButton(
+        _ key: KeyEquivalent, modifiers: EventModifiers, action: @escaping () -> Void
+    ) -> some View {
+        Button("") {
+            Haptics.shared.fire(.shortcut)
+            action()
+        }
+        .keyboardShortcut(key, modifiers: modifiers)
+    }
+}
+
+/// UIActivityViewController, for the share sheet.
+struct ShareSheet: UIViewControllerRepresentable {
+    let items: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
+}
+
+/// `sheet(item:)` needs Identifiable; a URL is a perfectly good identity.
+extension URL: @retroactive Identifiable {
+    public var id: String { absoluteString }
+}

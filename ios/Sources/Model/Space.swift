@@ -61,6 +61,18 @@ struct Space: Identifiable, Codable, Equatable, Sendable {
         ]
     }
 
+    /// Focus mode's own space. Purple, as Firefox Focus is, so there is never
+    /// a question about which mode you are in. Created fresh on every entry —
+    /// its `dataStoreID` is what backs the ephemeral WebKit store, so a new id
+    /// is a new cookie jar.
+    static func focusSpace() -> Space {
+        Space(
+            name: "Focus", icon: "eye.slash.fill", isSymbol: true,
+            theme: ZenGradientGenerator.theme(
+                seed: ZenColor(hueDegrees: 282, saturation: 96, lightness: 58),
+                harmony: .singleAnalogous))
+    }
+
     /// Icons offered by the space editor when the owner does not want an emoji.
     static let symbolChoices: [String] = [
         "house.fill", "briefcase.fill", "book.fill", "cart.fill", "heart.fill",

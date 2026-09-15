@@ -22,7 +22,9 @@ struct WebView: UIViewRepresentable {
     }
 
     func makeUIView(context: Context) -> ZenWebView {
-        let view = pool.webView(for: tab, space: space, desktop: state.settings.preferDesktopSite)
+        let view = pool.webView(
+            for: tab, space: space, desktop: state.settings.preferDesktopSite,
+            ephemeral: state.isEphemeral(tab.spaceID))
         attach(view, context: context)
         if view.url == nil && !tab.isNewTabPage {
             context.coordinator.load(tab.url, in: view)
@@ -169,7 +171,10 @@ struct WebView: UIViewRepresentable {
                 if let url { tab.url = url }
             }
             if let url, !title.isEmpty || url.host != nil {
-                state.history.record(url: url, title: title)
+                // Goes through the state so the Focus-mode gate is applied in
+                // exactly one place.
+                state.recordVisit(
+                    url: url, title: title, spaceID: state.tab(id: tabID)?.spaceID)
             }
 
             // Best-effort scroll restore, once, after the document settles.
@@ -433,6 +438,10 @@ struct WebView: UIViewRepresentable {
 
         private func fetchFavicon(_ webView: WKWebView) {
             guard let tabID, let pageURL = webView.url, let host = pageURL.host else { return }
+            // The favicon fetch is an app-level URLSession request: it bypasses
+            // the ephemeral store and the blocklist, so in Focus it would be a
+            // request to the host that the mode promised not to make.
+            guard !state.isEphemeral(state.tab(id: tabID)?.spaceID) else { return }
             let js = """
                 (function () {
                   var links = document.querySelectorAll(

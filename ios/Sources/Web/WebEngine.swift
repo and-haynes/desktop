@@ -22,6 +22,10 @@ enum WebEngine {
     /// Cached so that two tabs in one space genuinely share a session.
     private static var stores: [UUID: WKWebsiteDataStore] = [:]
 
+    /// Focus mode's store. `nonPersistent()` writes nothing to disk, and a
+    /// fresh one is a genuinely fresh session — which is what "Erase" means.
+    static func ephemeralDataStore() -> WKWebsiteDataStore { .nonPersistent() }
+
     static func dataStore(for space: Space) -> WKWebsiteDataStore {
         if let existing = stores[space.dataStoreID] { return existing }
         // `forIdentifier:` traps on the all-zero UUID, and a private-mode store
@@ -55,9 +59,15 @@ enum WebEngine {
         + "(KHTML, like Gecko) Version/17.0 Safari/605.1.15 Zen/0.1"
 
     @MainActor
-    static func configuration(for space: Space, desktop: Bool) -> WKWebViewConfiguration {
+    static func configuration(
+        for space: Space, desktop: Bool, ephemeral: Bool = false,
+        blocklist: WKContentRuleList? = nil
+    ) -> WKWebViewConfiguration {
         let config = WKWebViewConfiguration()
-        config.websiteDataStore = dataStore(for: space)
+        config.websiteDataStore = ephemeral ? ephemeralDataStore() : dataStore(for: space)
+        if let blocklist {
+            config.userContentController.add(blocklist)
+        }
         config.defaultWebpagePreferences.preferredContentMode = desktop ? .desktop : .mobile
         config.applicationNameForUserAgent = "Zen/0.1"
         config.suppressesIncrementalRendering = false
@@ -136,11 +146,18 @@ final class WebViewPool {
     func isLoaded(_ tabID: UUID) -> Bool { views[tabID] != nil }
 
     /// Get or create the web view backing a tab, evicting as needed.
-    func webView(for tab: Tab, space: Space, desktop: Bool) -> ZenWebView {
+    /// Compiled Focus blocklist, set before Focus mode creates any tab.
+    var focusBlocklist: WKContentRuleList?
+
+    func webView(for tab: Tab, space: Space, desktop: Bool, ephemeral: Bool = false)
+        -> ZenWebView
+    {
         touch(tab.id)
         if let existing = views[tab.id] { return existing }
 
-        let config = WebEngine.configuration(for: space, desktop: desktop)
+        let config = WebEngine.configuration(
+            for: space, desktop: desktop, ephemeral: ephemeral,
+            blocklist: ephemeral ? focusBlocklist : nil)
         let view = ZenWebView(frame: .zero, configuration: config)
         view.tabID = tab.id
         view.customUserAgent = desktop ? WebEngine.desktopUserAgent : WebEngine.mobileUserAgent

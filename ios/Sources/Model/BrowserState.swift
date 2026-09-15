@@ -69,6 +69,17 @@ final class BrowserState: ObservableObject {
     let trustedCertificates: TrustedCertificateStore
     private let session: SessionStore
 
+    /// The ephemeral Focus space, when Focus mode is on. Deliberately *not*
+    /// persisted: it is in `spaces` so every sidebar and tab code path works
+    /// unchanged, and filtered out again at snapshot time.
+    @Published private(set) var focusSpaceID: UUID?
+    /// Where to return when Focus is left.
+    private var spaceBeforeFocus: UUID?
+    /// Transient confirmation banner ("Your browsing history has been erased").
+    @Published var focusToast: String?
+    /// Focus content is covered until the owner re-authenticates.
+    @Published var focusLocked: Bool = false
+
     /// A TLS challenge waiting on the owner. Exactly one at a time: a second
     /// one while a sheet is up is rejected rather than queued, because the page
     /// that raised it is already blocked and will retry.
@@ -139,6 +150,13 @@ final class BrowserState: ObservableObject {
     /// Single-label hostnames the user has actually visited. A bare word in
     /// the omnibox that matches one navigates instead of searching.
     var knownSingleLabelHosts: Set<String> { history.singleLabelHosts }
+
+    var isFocusMode: Bool { focusSpaceID != nil }
+
+    /// True for tabs whose content must never touch disk.
+    func isEphemeral(_ spaceID: UUID?) -> Bool {
+        spaceID != nil && spaceID == focusSpaceID
+    }
 
     var activeSpace: Space? {
         spaces.first { $0.id == activeSpaceID } ?? spaces.first
@@ -415,8 +433,13 @@ final class BrowserState: ObservableObject {
     }
 
     /// Removing a space takes its tabs with it; essentials survive because they
-    /// belong to no space. The last space cannot be removed.
+    /// belong to no space. The last space cannot be removed, and Focus is left
+    /// via its own toggle so that the erase always runs.
     func removeSpace(_ spaceID: UUID) {
+        guard spaceID != focusSpaceID else {
+            exitFocusMode()
+            return
+        }
         guard spaces.count > 1, let index = spaces.firstIndex(where: { $0.id == spaceID })
         else { return }
         tabs.removeAll { $0.spaceID == spaceID && !$0.kind.isGlobal }
@@ -540,6 +563,80 @@ final class BrowserState: ObservableObject {
         splitSecondaryTabID = tabID
     }
 
+    // MARK: Focus mode
+
+    /// Record a visit unless we are in Focus. Every navigation goes through
+    /// here rather than calling the store directly, so there is exactly one
+    /// place this rule can be got wrong.
+    func recordVisit(url: URL, title: String, spaceID: UUID?) {
+        guard !isEphemeral(spaceID) else { return }
+        history.record(url: url, title: title)
+    }
+
+    /// Enter Focus: a fresh ephemeral space, switched to immediately.
+    @discardableResult
+    func enterFocusMode() -> Space? {
+        guard !isFocusMode else { return activeSpace }
+        spaceBeforeFocus = activeSpaceID
+        let space = Space.focusSpace()
+        focusSpaceID = space.id
+        spaces.append(space)
+        activeSpaceID = space.id
+        newTab(in: space.id)
+        return space
+    }
+
+    /// Erase everything in Focus and start over, without leaving the mode.
+    /// The space keeps its identity but gets a new `dataStoreID`, so the next
+    /// web view is backed by a brand-new ephemeral store.
+    func eraseFocus(announce: Bool = true) {
+        guard let focusID = focusSpaceID else { return }
+        let doomed = Set(tabs.filter { $0.spaceID == focusID }.map(\.id))
+        tabs.removeAll { doomed.contains($0.id) }
+        activeTabIDBySpace[focusID] = nil
+        if let glance = glanceTabID, doomed.contains(glance) { glanceTabID = nil }
+        if let split = splitSecondaryTabID, doomed.contains(split) { splitSecondaryTabID = nil }
+
+        if let index = spaces.firstIndex(where: { $0.id == focusID }) {
+            spaces[index].dataStoreID = UUID()
+        }
+        NotificationCenter.default.post(
+            name: .zenFocusErased, object: nil,
+            userInfo: ["tabs": doomed.map(\.uuidString)])
+
+        newTab(in: focusID)
+        if announce { focusToast = "Your browsing history has been erased" }
+    }
+
+    /// Leaving Focus erases too — that is the whole contract.
+    func exitFocusMode() {
+        guard let focusID = focusSpaceID else { return }
+        eraseFocus(announce: false)
+
+        let doomed = Set(tabs.filter { $0.spaceID == focusID }.map(\.id))
+        tabs.removeAll { doomed.contains($0.id) }
+        NotificationCenter.default.post(
+            name: .zenFocusErased, object: nil,
+            userInfo: ["tabs": doomed.map(\.uuidString)])
+
+        spaces.removeAll { $0.id == focusID }
+        activeTabIDBySpace[focusID] = nil
+        focusSpaceID = nil
+        focusLocked = false
+
+        let destination = spaceBeforeFocus.flatMap { id in
+            spaces.contains(where: { $0.id == id }) ? id : nil
+        }
+        activeSpaceID = destination ?? spaces.first?.id
+        spaceBeforeFocus = nil
+        focusToast = "Your browsing history has been erased"
+        scheduleSave()
+    }
+
+    func toggleFocusMode() {
+        if isFocusMode { exitFocusMode() } else { enterFocusMode() }
+    }
+
     // MARK: TLS challenges
 
     func presentCertificateChallenge(_ challenge: PendingCertificateChallenge) {
@@ -591,10 +688,24 @@ final class BrowserState: ObservableObject {
         }
     }
 
+    /// Focus leaves no trace: its space, its tabs and its selection are all
+    /// stripped before anything reaches disk.
     func snapshot() -> SessionSnapshot {
-        SessionSnapshot(
-            spaces: spaces, tabs: tabs, activeSpaceID: activeSpaceID,
-            activeTabIDBySpace: activeTabIDBySpace, settings: settings)
+        guard let focusID = focusSpaceID else {
+            return SessionSnapshot(
+                spaces: spaces, tabs: tabs, activeSpaceID: activeSpaceID,
+                activeTabIDBySpace: activeTabIDBySpace, settings: settings)
+        }
+        var persistedSelection = activeTabIDBySpace
+        persistedSelection[focusID] = nil
+        return SessionSnapshot(
+            spaces: spaces.filter { $0.id != focusID },
+            tabs: tabs.filter { $0.spaceID != focusID },
+            // Never restore into Focus.
+            activeSpaceID: activeSpaceID == focusID
+                ? (spaceBeforeFocus ?? spaces.first { $0.id != focusID }?.id)
+                : activeSpaceID,
+            activeTabIDBySpace: persistedSelection, settings: settings)
     }
 
     func scheduleSave() {

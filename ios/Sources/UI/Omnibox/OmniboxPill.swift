@@ -88,7 +88,10 @@ struct OmniboxPill: View {
                 .buttonStyle(ZenPressStyle())
                 .accessibilityLabel("Close split pane")
             } else {
-                if let tab, !tab.isNewTabPage {
+                if state.isFocusMode {
+                    // Focus's signature control: always there, never buried.
+                    FocusEraseButton(state: state)
+                } else if let tab, !tab.isNewTabPage {
                     bookmarkButton(tab)
                 }
                 menuButton
@@ -248,6 +251,14 @@ struct OmniboxPill: View {
                     systemImage: "rectangle.compress.vertical")
             }
 
+            Button {
+                NotificationCenter.default.post(name: .zenToggleFocusMode, object: nil)
+            } label: {
+                Label(
+                    state.isFocusMode ? "Leave Focus (erases)" : "Focus Mode",
+                    systemImage: state.isFocusMode ? "eye.slash.fill" : "eye.slash")
+            }
+
             // Shows where you are and moves you on — the cycle is short enough
             // that a submenu of three would be more taps, not fewer.
             Button {
@@ -298,4 +309,11 @@ extension Notification.Name {
     static let zenPopOutVideo = Notification.Name("zen.popOutVideo")
     /// Advance the layout cycle. RootView owns the transition animation.
     static let zenCycleLayout = Notification.Name("zen.cycleLayout")
+    /// Every Focus tab has been torn down; the pool must drop their web views
+    /// so no content process outlives the erase. `userInfo["tabs"]` is the list
+    /// of tab ids as strings.
+    static let zenFocusErased = Notification.Name("zen.focusErased")
+    /// Enter or leave Focus. RootView owns it, because entering has to compile
+    /// the blocklist before any Focus tab is created.
+    static let zenToggleFocusMode = Notification.Name("zen.toggleFocusMode")
 }

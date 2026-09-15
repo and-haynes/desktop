@@ -4,6 +4,10 @@ Zen Browser's interface, rebuilt natively on WebKit.
 
 ![The vertical tab sidebar with spaces, essentials and pinned tabs](docs/screenshots/02-sidebar.png)
 
+> **This is the `experimental` branch.** It carries three features desktop Zen
+> does not have — see [Experimental additions](#experimental-additions). The
+> `ios` branch is the faithful translation of Zen desktop only.
+
 ## Why this is not Gecko
 
 Desktop Zen is a Firefox fork, so it renders with Gecko. Neither half of that
@@ -68,6 +72,34 @@ cp "$(xcrun simctl get_app_container booted com.morton.zen.uitests.xctrunner dat
 It is deliberately *not* part of `-scheme Zen`'s test action: it needs the
 network and takes minutes, where the unit tests take under a second.
 
+## Experimental additions
+
+Three things on this branch are **not ports of a Zen desktop feature**. They
+are ideas that only make sense on a phone, or that Zen has never had:
+
+| Ticket | Addition | What it is |
+|---|---|---|
+| **#00887** | Layout cycle | Three states — card, edge to edge, full screen — cycled from the overflow menu or ⇧⌘F. Desktop chrome always frames the content; a phone screen is small enough that the frame is a real cost. |
+| **#00888** | Focus mode | An ephemeral private session modelled on the Firefox Focus app: its own `WKWebsiteDataStore.nonPersistent()`, nothing written to history or session restore, tracker/ad blocking via a compiled `WKContentRuleList`, third-party cookies blocked, a prominent Erase button, and a purple theme so the mode is unmistakable. Optionally locked behind Face ID on return from the background. |
+| **#00889** | LAN certificate approval | A calm, specific prompt for self-signed certificates on home-network hosts, instead of the same red interstitial a public site gets. Approvals are remembered per host *and* SHA-256 fingerprint; a changed certificate re-prompts. |
+
+Everything else in this README is shared with `ios`.
+
+### The Focus blocklist — provenance
+
+`Resources/Blocklist/focus-blocklist.json` is a **starter list, not a complete
+one**. It is roughly 200 hand-picked domains that appear across the public
+lists — EasyList, EasyPrivacy and Disconnect.me's tracker categories — chosen
+for breadth of coverage per entry rather than exhaustiveness: the large ad
+exchanges, the analytics and session-replay vendors, the identity brokers and
+the mobile attribution SDKs. It is compiled by WebKit into a rule list, so the
+app never sees the requests it blocks.
+
+It is deliberately *not* a maintained feed. A real deployment should pull a
+current list on a schedule; a few hundred static entries will drift, and a
+tracker not in the file is not blocked. The final rule blocks third-party
+cookies outright, scoped to third-party loads so first-party logins survive.
+
 ## Feature matrix
 
 | # | Feature | State | Notes |
@@ -94,17 +126,11 @@ network and takes minutes, where the unit tests take under a second.
 | 4 | Search engine choice | Done | DuckDuckGo (default), Google, Bing, Startpage, Ecosia. Startpage has no public autocomplete endpoint and borrows DuckDuckGo's. |
 | 4 | Desktop/mobile user agent | Done | Global setting; applied per web view at creation. |
 | — | **Haptics** (#00897) | Done | One service, one semantic-event table, four levels (Off / Subtle / Normal / Rich, default Normal). Impacts, selection ticks and notifications for ~30 moments, plus Core Haptics patterns for three. Never during a scroll, never backgrounded, never twice for one action. Tested through a recording backend. |
-<<<<<<< HEAD
 | — | **Video and pop-out** (#008B0) | Done | Inline playback, element full screen, AirPlay and Picture in Picture are all enabled in one place (`WebEngine.applyMediaPolicy`), and a page decides for itself when to start playing — `mediaTypesRequiringUserActionForPlayback` was `.audio`, which reads as the polite setting and in fact breaks muted autoplay. `UIBackgroundModes: audio` plus an `AVAudioSession` in `.playback`/`.moviePlayback` keep media going when backgrounded or locked; the session is claimed on the first page that plays and released by the last, never at launch. **Pop out video** in the overflow and page context menus picks the page's most relevant `<video>` — playing first, then largest visible — and asks for PiP. Cross-origin `<iframe>` embeds are out of reach; YouTube's mobile site is same-origin and works. **The iOS Simulator has no Picture in Picture at all** (`document.pictureInPictureEnabled` is false), so the request is gated on `webkitSupportsPresentationMode` rather than on the method existing — otherwise it reports success for a call that silently does nothing — and the floating window itself can only be verified on hardware. |
 | — | **Hidden status bar** (#00899, #008A9) | Done | Off by default with a Settings toggle. It takes away the clock, the signal and the battery — and nothing else. The Dynamic Island is hardware, iOS still reports a top safe-area inset for it, and the content card still starts below that inset; the setting is not an input to the layout at all (`PageTopInsets`). |
 | 5 | **Compact mode** (#008AF) | Done | Keeps Zen's two independent toggles (hide sidebar / hide toolbar), persisted. Three bar states rather than two: the full bar falls to a **pill** — favicon and domain, nothing else — once the page has been still for the hide delay (3 s by default), and then to nothing. Scrolling brings back the pill and only the pill; a **tap** on the pill is the one thing that expands the full bar. Swiping up from either opens the tab drawer, alongside the existing swipe right. |
 | 5 | Reveal | Done | A drag-handle grabber above the home indicator (36×6pt pill, 44pt hit area): tap or pull up to reveal, tap the page or scroll to hide. Upstream reveals on *hover* within 10px of an edge; the touch translation of that sat on top of the iOS home gesture and lost, so it is an explicit target instead. |
-=======
-| — | **Hidden status bar** (#00899) | Done | Off by default with a Settings toggle. The page then runs to the very top edge; the Dynamic Island is hardware and sits over it. |
-| 5 | **Compact mode** | Done | Keeps Zen's two independent toggles (hide sidebar / hide toolbar), persisted. |
-| 5 | Reveal | Done | A drag-handle grabber above the home indicator (36×6pt pill, 44pt hit area): tap or pull up to reveal, tap the page or scroll to hide. Upstream reveals on *hover* within 10px of an edge; the touch translation of that sat on top of the iOS home gesture and lost, so it is an explicit target instead. Visible in full-screen layout too. |
 | — | **Layout cycle** | Done | Three states cycled from the overflow menu or ⇧⌘F, persisted: **card** (Zen's inset frame), **edge to edge** (page to the very top, bar in flow), **full screen** (page everywhere, bar floating with no backing material). The web view's scroll insets and scroll-to-top follow the state. |
->>>>>>> 87c9061 (experimental: three-state browser layout cycle (#00887))
 | 6 | **Split view** — two panes | Done | Side by side when wide (iPad, landscape iPhone), stacked when tall. Draggable divider with the same 7%-of-parent minimum. Focused pane gets the 2px accent outline. |
 | 6 | 3–4 panes, grid/hsep layouts | **TODO** | Upstream's `MAX_TABS = 4` with a nested split tree. The model holds one secondary pane; extending it means replacing `splitSecondaryTabID` with a node tree. |
 | 7 | **Glance** | Done | Long-press a link → "Open in Glance", or from a tab row's context menu. Card over a dimmed page with close / expand-to-tab / split-out. |
@@ -131,6 +157,9 @@ network and takes minutes, where the unit tests take under a second.
 | 14 | **Passwords** — iOS Password AutoFill | Done | Not a feature so much as a suppression audit: no custom `inputAccessoryView`, no emptied `inputAssistantItem`, no user scripts in page content, persistent per-space stores. Verified in the simulator against a local https fixture, showing the same `SystemInputAssistantView` / `kb-autofill-key` Safari shows. See *Passwords*. |
 | 14 | Passkeys (WebAuthn) | Done | WebKit's own; Zen neither sees nor stores them. The platform authenticator answers `false` in a simulator. |
 | 14 | A password manager of Zen's own | **Not on this branch** | iOS gives a third-party browser no way to be one for other apps. A native 1Password Connect / Vaultwarden panel *inside* Zen is being tried on `experimental` (#008AD). |
+| — | **Focus mode** (#00888) | Done | Ephemeral space on a non-persistent data store, no history or session writes, compiled blocklist, third-party cookies blocked, Erase button + toast, purple theme. ⇧⌘P or the overflow menu. |
+| — | Focus: Face ID lock | Partial | Locks on return from the background when enabled in Settings. Fails *open* where no authentication is configured — the simulator cannot do biometrics, so this path is exercised only as "unavailable → do not lock". |
+| — | **LAN certificates** (#00889) | Done | Friendly prompt for local hosts with homelab-shaped TLS failures; stern flow otherwise. Trusted list in Settings with swipe-to-forget. |
 | 12 | **Reader mode** | **TODO** | WebKit exposes no reader/readability API to third-party apps. Implementing it means injecting a Readability port and rendering the result ourselves. |
 
 ### Also not done
