@@ -566,6 +566,30 @@ final class ScreenshotTests: XCTestCase {
         return flipped
     }
 
+    /// Flip any Form toggle by identifier, aiming at the switch rather than the
+    /// row's centre — see `flipShowStatusBar` for why the centre does nothing.
+    @discardableResult
+    func flipToggle(_ identifier: String, to wanted: String) -> Bool {
+        let toggle = app.switches[identifier].firstMatch
+        guard toggle.waitForExistence(timeout: 8) else { return false }
+        guard (toggle.value as? String) != wanted else { return true }
+        // Settings is taller than a phone: a row that merely *exists* — and
+        // even one XCUITest calls hittable — can be half off the bottom edge,
+        // and the aimed tap below then lands on nothing. `isHittable` is not
+        // enough of a test; the row has to be clear of the edge.
+        let window = app.windows.firstMatch.frame
+        for _ in 0..<8 where toggle.frame.maxY > window.maxY - 80 {
+            app.swipeUp()
+            settle(0.5)
+        }
+        toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+        for _ in 0..<10 {
+            if (toggle.value as? String) == wanted { return true }
+            settle(0.4)
+        }
+        return false
+    }
+
     func openSettings() -> Bool {
         guard tapMenuItem(matching: "label CONTAINS[c] 'Settings'") else { return false }
         settle(1.5)
@@ -1979,6 +2003,55 @@ extension ScreenshotTests {
         readout.tap()
         settle(1.5)
         capture("45d-text-size-reset")
+    }
+
+    /// The navigation helper (#008B9): off until you ask for it, then four
+    /// round buttons that fade in while the page is moving. Proves the two
+    /// claims that matter — that they appear on a scroll, and that Page Down
+    /// actually moves the page.
+    func testCaptureNavigationHelper() throws {
+        settle(4.0)
+        XCTAssertTrue(openSettings(), "settings missing")
+        XCTAssertTrue(
+            app.switches["navigationHelperToggle"].waitForExistence(timeout: 8),
+            "the helper toggle is missing")
+        XCTAssertTrue(flipToggle("navigationHelperToggle", to: "1"), "could not switch it on")
+        capture("46-nav-helper-settings")
+        dismissSheet()
+
+        // A page long enough to have somewhere to go.
+        navigate(to: "en.wikipedia.org/wiki/Zen")
+        settle(3.0)
+
+        // They are not there until the page moves — which is also what keeps
+        // them out of the way of the first scroll gesture.
+        XCTAssertFalse(
+            app.buttons["navHelper-pageDown"].isHittable,
+            "the helper should not be on screen before the page has moved")
+
+        app.swipeUp()
+        settle(0.6)
+        capture("46b-nav-helper-visible")
+
+        let pageDown = app.buttons["navHelper-pageDown"]
+        XCTAssertTrue(pageDown.waitForExistence(timeout: 4), "page down missing after a scroll")
+        pageDown.tap()
+        settle(1.4)
+        pageDown.tap()
+        settle(1.4)
+        capture("46c-nav-helper-paged")
+
+        let top = app.buttons["navHelper-top"]
+        XCTAssertTrue(top.exists, "scroll to top missing")
+        top.tap()
+        settle(1.6)
+        capture("46d-nav-helper-back-to-top")
+
+        // Leave the setting off so the next run starts from the default.
+        if openSettings() {
+            flipToggle("navigationHelperToggle", to: "0")
+            dismissSheet()
+        }
     }
 
     func testSplitPaneBarsFollowTheLayout() throws {

@@ -18,6 +18,10 @@ struct ContentArea: View {
     var bottomContentInset: CGFloat = 0
     /// Card layout rounds and clips the page; the other two do not.
     var rounded: Bool = true
+    /// The page-stepping buttons (#008B9). Drawn over the *active* pane, so a
+    /// split shows them against the page they will actually move — and so they
+    /// sit inside whatever room the layout has left the content.
+    @ObservedObject var navigationHelper: NavigationHelperController
     @Environment(\.zenPalette) private var palette
 
     var body: some View {
@@ -41,6 +45,21 @@ struct ContentArea: View {
             }
         }
         .animation(.spring(response: 0.3, dampingFraction: 1), value: state.splitSecondaryTabID)
+    }
+
+    /// Only the pane you are in gets the helper: two sets of four buttons in a
+    /// split would be eight targets over two pages, and only one of them could
+    /// be the one you meant.
+    @ViewBuilder
+    private func helperOverlay(_ tabID: UUID) -> some View {
+        if tabID == state.activeTabID {
+            NavigationHelperStack(state: state, helper: navigationHelper, tabID: tabID)
+                // The floating bar's inset is already the measure of how much
+                // of the page it covers, so the buttons clear it without
+                // knowing anything about where the bar is.
+                .padding(.bottom, bottomContentInset + 12)
+                .padding(.top, topContentInset + 12)
+        }
     }
 
     @ViewBuilder
@@ -77,6 +96,7 @@ struct ContentArea: View {
                     }
                 }
             }
+            .overlay { helperOverlay(tabID) }
             // A tab's identity must be stable or SwiftUI recycles the
             // representable across tabs and you get the wrong page.
             .id(tab.id)

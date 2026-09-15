@@ -58,6 +58,13 @@ struct ZenSettings: Codable, Equatable, Sendable {
     /// Page zoom for a site that has no opinion of its own (#008B7). 1.0 is
     /// 100 %; `PageZoom` owns the ladder and the clamping.
     var defaultPageZoom: Double = PageZoom.standard
+    /// The four page-stepping buttons that appear while the page is scrolling
+    /// (#008B9). Off by default: they cover somebody's content, and a browser
+    /// should not decide for them that they page rather than flick.
+    var navigationHelperEnabled: Bool = false
+    /// Which edge they sit on, or nil for automatic — which is the opposite of
+    /// `sidebarEdge`. See `resolvedNavigationHelperSide`.
+    var navigationHelperSide: SidebarEdge?
 
     init() {}
 
@@ -72,6 +79,7 @@ struct ZenSettings: Codable, Equatable, Sendable {
         case preferDesktopSite, sidebarPinnedOnPad, appearance, compactHideDelay, hapticLevel
         case showStatusBar, sidebarEdge, layout, focusRequiresBiometrics, barFill, sepiaTintsPages
         case barLayout, defaultPageZoom
+        case navigationHelperEnabled, navigationHelperSide
     }
 
     init(from decoder: Decoder) throws {
@@ -121,6 +129,13 @@ struct ZenSettings: Codable, Equatable, Sendable {
         defaultPageZoom = PageZoom.clamp(
             try c.decodeIfPresent(Double.self, forKey: .defaultPageZoom)
                 ?? fallback.defaultPageZoom)
+        navigationHelperEnabled =
+            try c.decodeIfPresent(Bool.self, forKey: .navigationHelperEnabled)
+            ?? fallback.navigationHelperEnabled
+        // Genuinely optional: nil is "automatic", which is a different answer
+        // from either edge, so it must not fall back to one.
+        navigationHelperSide = try? c.decodeIfPresent(
+            SidebarEdge.self, forKey: .navigationHelperSide)
     }
 }
 

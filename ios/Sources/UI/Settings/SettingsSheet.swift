@@ -18,6 +18,7 @@ struct SettingsSheet: View {
             Form {
                 appearanceSection
                 textSizeSection
+                navigationHelperSection
 
                 Section {
                     Picker("Haptics", selection: $state.settings.hapticLevel) {
@@ -355,6 +356,44 @@ struct SettingsSheet: View {
                     + "Larger are in the More menu on the bar, and on ⌘− / ⌘+ "
                     + "with a keyboard; ⌘0 puts a site back to this default.")
         }
+    }
+
+    /// The four page-stepping buttons (#008B9). The side offers Automatic
+    /// first because that is the answer most people want and none of them
+    /// would think to ask for: the edge *opposite* the sidebar, where the
+    /// thumb is not already busy.
+    @ViewBuilder
+    private var navigationHelperSection: some View {
+        Section {
+            Toggle("Navigation helper", isOn: $state.settings.navigationHelperEnabled)
+                .accessibilityIdentifier("navigationHelperToggle")
+            Picker("Side", selection: $state.settings.navigationHelperSide) {
+                Text("Automatic").tag(SidebarEdge?.none)
+                ForEach(SidebarEdge.allCases) { edge in
+                    Text(edge.displayName).tag(SidebarEdge?.some(edge))
+                }
+            }
+            .pickerStyle(.segmented)
+            .disabled(!state.settings.navigationHelperEnabled)
+            .accessibilityIdentifier("navigationHelperSidePicker")
+        } header: {
+            Text("Navigation helper")
+        } footer: {
+            Text(navigationHelperFooter)
+        }
+    }
+
+    /// Built as a `String` rather than inline in the `Text`: string
+    /// interpolation inside a `Form` this large is what tips the type checker
+    /// over, and the error it gives names no cause.
+    private var navigationHelperFooter: String {
+        let side = state.settings.resolvedNavigationHelperSide.displayName
+        return "Page up, page down, top and bottom, as four small buttons that "
+            + "fade in while the page is scrolling and fade out once it settles "
+            + "— on the same delay as compact mode, so the chrome and the "
+            + "buttons go together. A page step is one screenful less a little "
+            + "overlap, so you keep your place. Automatic puts them on the edge "
+            + "opposite the sidebar; right now that is " + side + "."
     }
 
     /// The sign-in sheet's three outcomes. Kept out of the body so the Form's

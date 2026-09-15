@@ -25,6 +25,10 @@ struct RootView: View {
     /// Compact mode's three-state machine (#008AF). Owned here because only
     /// the root sees the page-scroll notifications and the grabber at once.
     @StateObject private var compactBar = CompactBarController()
+    /// The page-stepping buttons' own show/hide machine (#008B9). Owned here
+    /// for the same reason the compact bar is: only the root sees the
+    /// page-scroll notifications.
+    @StateObject private var navigationHelper = NavigationHelperController()
     /// The window's top safe-area inset, measured once at the root. The content
     /// ignores the safe area in two of the three layouts, so the web view needs
     /// the number explicitly to keep the page's own header out from under the
@@ -303,7 +307,11 @@ struct RootView: View {
     /// so far (#008B7). Its own layer for the same reason the sheets are:
     /// `body` is already as long an expression as the type checker will solve.
     private var pageChrome: some View {
-        sheets.modifier(PageZoomBridge(state: state, pool: pool.pool))
+        sheets
+            .modifier(PageZoomBridge(state: state, pool: pool.pool))
+            .modifier(
+                NavigationHelperBridge(
+                    state: state, helper: navigationHelper, pool: pool.pool))
     }
 
     /// The sheets, in one layer of their own.
@@ -500,7 +508,8 @@ struct RootView: View {
             ContentArea(
                 state: state, space: space, pool: pool.pool,
                 topContentInset: webTopInset, bottomContentInset: webBottomInset,
-                rounded: layoutMode.framesContent
+                rounded: layoutMode.framesContent,
+                navigationHelper: navigationHelper
             )
             .padding(.horizontal, layoutMode.framesContent ? ZenMetrics.splitGap : 0)
             .padding(
@@ -515,7 +524,10 @@ struct RootView: View {
             // Tapping the page puts a revealed compact toolbar away again.
             // Simultaneous so it never swallows a tap meant for the page.
             .simultaneousGesture(
-                TapGesture().onEnded { hideChrome() },
+                TapGesture().onEnded {
+                    hideChrome()
+                    navigationHelper.pageTapped()
+                },
                 including: state.compactBarPhase != .hidden ? .all : .subviews)
         }
     }
