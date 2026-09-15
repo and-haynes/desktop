@@ -66,7 +66,13 @@ final class BrowserState: ObservableObject {
 
     let history: HistoryStore
     let bookmarks: BookmarkStore
+    let trustedCertificates: TrustedCertificateStore
     private let session: SessionStore
+
+    /// A TLS challenge waiting on the owner. Exactly one at a time: a second
+    /// one while a sheet is up is rejected rather than queued, because the page
+    /// that raised it is already blocked and will retry.
+    @Published var pendingCertificateChallenge: PendingCertificateChallenge?
 
     // MARK: Lifecycle
 
@@ -74,11 +80,13 @@ final class BrowserState: ObservableObject {
         session: SessionStore = SessionStore(),
         history: HistoryStore? = nil,
         bookmarks: BookmarkStore? = nil,
+        trustedCertificates: TrustedCertificateStore? = nil,
         restore: Bool = true
     ) {
         self.session = session
         self.history = history ?? HistoryStore()
         self.bookmarks = bookmarks ?? BookmarkStore()
+        self.trustedCertificates = trustedCertificates ?? TrustedCertificateStore()
         if restore, let snapshot = session.load(), !snapshot.spaces.isEmpty {
             apply(snapshot)
         } else {
@@ -530,6 +538,24 @@ final class BrowserState: ObservableObject {
         guard tabID != activeTabID else { return }
         splitFraction = 0.5
         splitSecondaryTabID = tabID
+    }
+
+    // MARK: TLS challenges
+
+    func presentCertificateChallenge(_ challenge: PendingCertificateChallenge) {
+        guard pendingCertificateChallenge == nil else {
+            // Never drop the handler — answer it rather than leaving the load
+            // hanging forever behind an already-open sheet.
+            challenge.resolve(.reject)
+            return
+        }
+        pendingCertificateChallenge = challenge
+    }
+
+    func resolveCertificateChallenge(_ disposition: PendingCertificateChallenge.Disposition) {
+        guard let challenge = pendingCertificateChallenge else { return }
+        pendingCertificateChallenge = nil
+        challenge.resolve(disposition)
     }
 
     // MARK: Persistence

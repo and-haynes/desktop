@@ -147,6 +147,14 @@ struct RootView: View {
         .sheet(item: $shareItem) { url in
             ShareSheet(items: [url])
         }
+        .sheet(item: $state.pendingCertificateChallenge) { challenge in
+            CertificateSheet(
+                challenge: challenge,
+                onTrust: { state.resolveCertificateChallenge(.trust) },
+                onReject: { state.resolveCertificateChallenge(.reject) }
+            )
+            .environment(\.zenPalette, palette)
+        }
         .background { keyboardShortcuts }
     }
 

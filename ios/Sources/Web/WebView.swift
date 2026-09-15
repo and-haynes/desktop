@@ -257,6 +257,71 @@ struct WebView: UIViewRepresentable {
             return nil
         }
 
+        // MARK: TLS server trust
+
+        /// Homelab devices serve their own certificates; a browser that cannot
+        /// reach them is not much use on a home network. Evaluate the trust
+        /// ourselves, accept silently when the owner has already approved this
+        /// exact certificate, and otherwise hand it to the UI — holding the
+        /// completion handler until they answer.
+        func webView(
+            _ webView: WKWebView, didReceive challenge: URLAuthenticationChallenge,
+            completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) ->
+                Void
+        ) {
+            guard
+                challenge.protectionSpace.authenticationMethod
+                    == NSURLAuthenticationMethodServerTrust,
+                let trust = challenge.protectionSpace.serverTrust
+            else {
+                completionHandler(.performDefaultHandling, nil)
+                return
+            }
+
+            let host = challenge.protectionSpace.host
+
+            // A certificate the system is happy with needs no ceremony.
+            guard let failure = ServerTrustEvaluator.failureReason(for: trust, host: host) else {
+                completionHandler(.performDefaultHandling, nil)
+                return
+            }
+            guard let fingerprint = ServerTrustEvaluator.leafFingerprint(of: trust) else {
+                completionHandler(.cancelAuthenticationChallenge, nil)
+                return
+            }
+
+            let isLocal = LANHost.isLocalNetwork(host)
+            let verdict = state.trustedCertificates.verdict(host: host, fingerprint: fingerprint)
+
+            if case .trusted = verdict {
+                // Already approved, same certificate: proceed without asking.
+                completionHandler(.useCredential, URLCredential(trust: trust))
+                return
+            }
+
+            var previous: TrustedCertificate?
+            if case .changed(let earlier) = verdict { previous = earlier }
+
+            let pending = PendingCertificateChallenge(
+                host: host, fingerprint: fingerprint, failure: failure,
+                isLocalNetwork: isLocal, previousCertificate: previous
+            ) { [weak state] disposition in
+                switch disposition {
+                case .trust:
+                    // Only LAN approvals are remembered across launches —
+                    // clicking through a public-site warning should not become
+                    // a permanent hole.
+                    if isLocal {
+                        state?.trustedCertificates.trust(host: host, fingerprint: fingerprint)
+                    }
+                    completionHandler(.useCredential, URLCredential(trust: trust))
+                case .reject:
+                    completionHandler(.cancelAuthenticationChallenge, nil)
+                }
+            }
+            state.presentCertificateChallenge(pending)
+        }
+
         // MARK: Long-press link menu
 
         /// Add "Open in Glance" to WebKit's own link context menu, and "Pop Out

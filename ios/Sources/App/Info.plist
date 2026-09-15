@@ -63,9 +63,19 @@
 	</array>
 	<key>NSAppTransportSecurity</key>
 	<dict>
-		<key>NSAllowsArbitraryLoads</key>
+		<!-- A browser has to be able to load whatever the owner types, including
+		     the plain-HTTP admin pages homelab boxes still serve. Scoped to web
+		     content so the app's own URLSession traffic (favicons, search
+		     suggestions) still gets ATS. -->
+		<key>NSAllowsArbitraryLoadsInWebContent</key>
+		<true/>
+		<!-- Required for .lan / .local / RFC1918 destinations alongside the
+		     local-network permission prompt below. -->
+		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Zen needs local network access to open sites hosted on devices in your home, such as a router admin page or a home server.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 </dict>

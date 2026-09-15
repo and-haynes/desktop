@@ -133,6 +133,25 @@ struct SettingsSheet: View {
                     }
                 }
 
+                Section {
+                    NavigationLink {
+                        TrustedCertificatesView(store: state.trustedCertificates)
+                    } label: {
+                        HStack {
+                            Label("LAN Certificates", systemImage: "checkmark.shield")
+                            Spacer()
+                            Text("\(state.trustedCertificates.certificates.count)")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                } header: {
+                    Text("Home network")
+                } footer: {
+                    Text(
+                        "Devices on your home network usually sign their own certificates. "
+                            + "Ones you have approved are listed here; swipe to forget.")
+                }
+
                 Section("Keyboard shortcuts") {
                     shortcut("New tab", "⌘T")
                     shortcut("Close tab", "⌘W")
