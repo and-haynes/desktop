@@ -262,6 +262,10 @@ struct SettingsSheet: View {
             .accessibilityIdentifier("appearancePicker")
             Toggle("Show status bar", isOn: $state.settings.showStatusBar)
                 .accessibilityIdentifier("showStatusBarToggle")
+            if state.settings.appearance == .sepia {
+                Toggle("Tint pages", isOn: $state.settings.sepiaTintsPages)
+                    .accessibilityIdentifier("sepiaTintPagesToggle")
+            }
         } header: {
             Text("Appearance")
         } footer: {
@@ -269,7 +273,10 @@ struct SettingsSheet: View {
                 "Follow System uses the space's own colours to decide light or dark "
                     + "where the theme is strongly tinted, as Zen does. The status "
                     + "bar is hidden by default so the page gets the whole screen; "
-                    + "the Dynamic Island is hardware and stays either way.")
+                    + "the Dynamic Island is hardware and stays either way. Sepia "
+                    + "warms the chrome; Tint pages extends that over the web itself, "
+                    + "which is off by default because it is a filter over somebody "
+                    + "else's design.")
         }
     }
 

@@ -57,6 +57,11 @@ struct RootView: View {
     ]
 
     private var palette: ZenPalette { state.palette(systemDark: systemScheme == .dark) }
+
+    /// The page tint only applies in Sepia — the setting is meaningless
+    /// anywhere else, and leaving it armed would warm every page the moment
+    /// someone switched back.
+    private var tintsPages: Bool { palette.isSepia && state.settings.sepiaTintsPages }
     private var isPad: Bool { sizeClass == .regular }
 
     /// Compact mode hides the chrome until an edge gesture reveals it.
@@ -97,6 +102,7 @@ struct RootView: View {
         .onAppear {
             Haptics.shared.prepare(Self.warmEvents)
             pool.pool.state = state
+            pool.pool.sepiaTintsPages = tintsPages
             // A restored session has icons for nothing it has not yet loaded;
             // fetch them so the sidebar is not a column of monograms.
             Task { await FaviconService.prefetchMissing(for: state) }
@@ -161,6 +167,9 @@ struct RootView: View {
                 guard !Task.isCancelled else { return }
                 withAnimation(.easeOut(duration: 0.25)) { state.focusToast = nil }
             }
+        }
+        .onChange(of: tintsPages) { _, tint in
+            pool.pool.sepiaTintsPages = tint
         }
         .onChange(of: scenePhase) { _, phase in
             // Flush the session on the way out; a jetsam gives no warning.
@@ -238,6 +247,15 @@ struct RootView: View {
                 ZenGradientView(theme: space.theme, isDark: palette.isDark)
                     .id(space.id)
                     .transition(.opacity)
+                // Sepia keeps the space's gradient — it is still how you tell
+                // one space from another — but pulls it most of the way to
+                // paper. A vivid purple wash behind warm paper chrome would
+                // undo the whole point of the scheme.
+                if palette.isSepia {
+                    ZenTokens.sepiaPaper.withAlpha(0.82).color
+                        .ignoresSafeArea()
+                        .allowsHitTesting(false)
+                }
             } else {
                 palette.mainBrowserBackground.color.ignoresSafeArea()
             }

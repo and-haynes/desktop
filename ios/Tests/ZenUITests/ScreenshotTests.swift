@@ -1161,6 +1161,55 @@ final class ScreenshotTests: XCTestCase {
         try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-NAMED"))
     }
 
+    /// Sepia (#00890): warm paper chrome, and the optional page tint.
+    func testCaptureSepia() throws {
+        let suffix = UIDevice.current.userInterfaceIdiom == .pad ? "-ipad" : ""
+        settle(4.0)
+        navigate(to: "zen-browser.app")
+
+        XCTAssertTrue(setAppearance("Sepia"), "could not switch to Sepia")
+        settle(2.0)
+        capture("17-sepia\(suffix)")
+
+        // The sidebar and the new tab page are chrome too.
+        if UIDevice.current.userInterfaceIdiom != .pad { openSidebar() }
+        capture("17b-sepia-sidebar\(suffix)")
+        if UIDevice.current.userInterfaceIdiom != .pad { closeSidebar() }
+
+        // …and the page tint, which is off until asked for.
+        XCTAssertTrue(
+            tapMenuItem(matching: "label CONTAINS[c] 'Settings'"), "settings menu item missing")
+        settle(1.5)
+        let tint = app.switches["sepiaTintPagesToggle"].firstMatch
+        XCTAssertTrue(
+            tint.waitForExistence(timeout: 8), "the page tint toggle only exists in Sepia")
+        XCTAssertEqual(tint.value as? String, "0", "the page tint must be off by default")
+        tint.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+        settle(1.0)
+        dismissSheet()
+        settle(2.5)
+        capture("17c-sepia-tinted-page\(suffix)")
+
+        // Put it back so the next test starts from the documented default.
+        _ = setAppearance("Follow System")
+        try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-SEPIA"))
+    }
+
+    /// Pick an appearance from the inline picker in Settings.
+    private func setAppearance(_ name: String) -> Bool {
+        guard tapMenuItem(matching: "label CONTAINS[c] 'Settings'") else { return false }
+        settle(1.5)
+        let row = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", name)).firstMatch
+        guard row.waitForExistence(timeout: 8) else {
+            dismissSheet()
+            return false
+        }
+        row.tap()
+        settle(1.0)
+        dismissSheet()
+        return true
+    }
+
     // MARK: The documented states
 
     func testCaptureAllStates() throws {

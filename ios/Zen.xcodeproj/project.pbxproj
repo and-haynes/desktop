@@ -46,6 +46,7 @@
 		508BFA96B5CF670C7E44DD59 /* ZenApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E314F1A113B5A944AA437E9 /* ZenApp.swift */; };
 		52754347A4EE689C839BF1B5 /* AppearanceModeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CC1263F0FF95AC80F83EDCB /* AppearanceModeTests.swift */; };
 		52D2889E3A1A18B197B46215 /* SearchEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6F50C30E6017F5CE0A3A949 /* SearchEngine.swift */; };
+		5731C9F9D5D7B75417242CC6 /* SepiaAppearanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD6A2F487DD82BAC47DCC018 /* SepiaAppearanceTests.swift */; };
 		577B82B19A735DEC410CC6DE /* SuggestionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C856C6784CFBBAC153B6D5C /* SuggestionEngine.swift */; };
 		5785FD4568159BBA320E5BDF /* SyncState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BAFD832A24640A112AF65B1 /* SyncState.swift */; };
 		5C2B8C351A95340A2F15A1BF /* ZenSpacesRecords.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EF927EF7B88CDA97759FFF1 /* ZenSpacesRecords.swift */; };
@@ -89,6 +90,7 @@
 		A8CD78D5F722693F189F6F8B /* WebEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1EA773520486C401C1B3FDA /* WebEngine.swift */; };
 		AA57230D44D6BDDB17DB8D95 /* ContentBlocker.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD0ADABE9F93D3BB49D2C777 /* ContentBlocker.swift */; };
 		AEF649A69239786AB1D0BD15 /* RecentColorsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C98CBB864CCA46E7EE6DDAAE /* RecentColorsStore.swift */; };
+		B26DDA522200E302DFF30818 /* SepiaPageTint.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDF2D00B73B4DF7EE752DC9E /* SepiaPageTint.swift */; };
 		B8C0AC2A453AF455DD41C648 /* ColorParsing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C89A165A5B3DE33E6C03E0B /* ColorParsing.swift */; };
 		B9A8D252A256882924FC680C /* BrowserState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4297C472C3DEAD2D96846B2E /* BrowserState.swift */; };
 		BB92AC29304BA8F348D2C469 /* SyncShadow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70871EF5ED7E073C4BA499AF /* SyncShadow.swift */; };
@@ -239,6 +241,7 @@
 		C5B86DDB786B902B992ABB0C /* FindBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FindBar.swift; sourceTree = "<group>"; };
 		C616F8839759C7CC58339DBB /* ZenUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = ZenUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C98CBB864CCA46E7EE6DDAAE /* RecentColorsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentColorsStore.swift; sourceTree = "<group>"; };
+		CD6A2F487DD82BAC47DCC018 /* SepiaAppearanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SepiaAppearanceTests.swift; sourceTree = "<group>"; };
 		CEEEA5047438DAA8F1415FDC /* SessionStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStoreTests.swift; sourceTree = "<group>"; };
 		CFF3EA739DDD841F4DF4C81E /* SessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStore.swift; sourceTree = "<group>"; };
 		D06FE302E103E94A2B0B70FE /* JSONValue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONValue.swift; sourceTree = "<group>"; };
@@ -263,6 +266,7 @@
 		F6A799DF7C2A9E74E14156EE /* LANHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LANHost.swift; sourceTree = "<group>"; };
 		F8C6A8FF7B9236996859D02C /* HistoryEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryEngine.swift; sourceTree = "<group>"; };
 		FD2B41BF8055939CD99B474A /* NamedColorLibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NamedColorLibraryView.swift; sourceTree = "<group>"; };
+		FDF2D00B73B4DF7EE752DC9E /* SepiaPageTint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SepiaPageTint.swift; sourceTree = "<group>"; };
 		FDF6169CBA2E26D24C26E444 /* TrustedCertificateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrustedCertificateStore.swift; sourceTree = "<group>"; };
 		FE1AF5E02B5EB27129E3FECE /* HistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryStore.swift; sourceTree = "<group>"; };
 		FF2B26FF99A304C19DF8AD0A /* FxAOAuthClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FxAOAuthClient.swift; sourceTree = "<group>"; };
@@ -409,6 +413,7 @@
 				AD0ADABE9F93D3BB49D2C777 /* ContentBlocker.swift */,
 				D6168CC3146B1806766E7BCE /* FaviconService.swift */,
 				850C5604A63AB2C192CAF79A /* LoadFailure.swift */,
+				FDF2D00B73B4DF7EE752DC9E /* SepiaPageTint.swift */,
 				B1EA773520486C401C1B3FDA /* WebEngine.swift */,
 				06CA2FAE5D6C9580B01E013C /* WebView.swift */,
 			);
@@ -554,6 +559,7 @@
 				9B97537F2DDF9B5798D7318A /* SchemePrefillTests.swift */,
 				61F848AA634ABBCD5B5552B8 /* SecurityBadgeTests.swift */,
 				F46B5E6DC096FDFE0832321E /* SecurityTests.swift */,
+				CD6A2F487DD82BAC47DCC018 /* SepiaAppearanceTests.swift */,
 				CEEEA5047438DAA8F1415FDC /* SessionStoreTests.swift */,
 				BFF22D092304CD764C2207B1 /* SidebarEdgeTests.swift */,
 				4C65A277A318CDBE5EC6A092 /* SingleWordInputTests.swift */,
@@ -802,6 +808,7 @@
 				52D2889E3A1A18B197B46215 /* SearchEngine.swift in Sources */,
 				678382BB47757C63472894C2 /* SecurityBadge.swift in Sources */,
 				D5C158BABDD0F6010AC1B9B8 /* SecurityDetailSheet.swift in Sources */,
+				B26DDA522200E302DFF30818 /* SepiaPageTint.swift in Sources */,
 				F87A3F320E95CFB5DBECCA5E /* SessionStore.swift in Sources */,
 				C7213ED0F664C55E58ED8A0C /* SettingsSheet.swift in Sources */,
 				77A4DD4AEE444A1E1D1B3A40 /* SidebarEdge.swift in Sources */,
@@ -867,6 +874,7 @@
 				EEEC641FDA6E1E752A175E06 /* SchemePrefillTests.swift in Sources */,
 				EBFCBE191E5F56835A65EA01 /* SecurityBadgeTests.swift in Sources */,
 				145E698CD3DF26C2497B756A /* SecurityTests.swift in Sources */,
+				5731C9F9D5D7B75417242CC6 /* SepiaAppearanceTests.swift in Sources */,
 				8524DB2323656F48E3577C84 /* SessionStoreTests.swift in Sources */,
 				3E5A93BF3120DBFDCA78D87E /* SidebarEdgeTests.swift in Sources */,
 				0CD45EF1788BE3348216DE6C /* SingleWordInputTests.swift in Sources */,

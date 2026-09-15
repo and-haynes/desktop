@@ -61,7 +61,7 @@ enum WebEngine {
     @MainActor
     static func configuration(
         for space: Space, desktop: Bool, ephemeral: Bool = false,
-        blocklist: WKContentRuleList? = nil
+        blocklist: WKContentRuleList? = nil, sepiaTint: Bool = false
     ) -> WKWebViewConfiguration {
         let config = WKWebViewConfiguration()
         config.websiteDataStore = ephemeral ? ephemeralDataStore() : dataStore(for: space)
@@ -71,6 +71,12 @@ enum WebEngine {
         config.defaultWebpagePreferences.preferredContentMode = desktop ? .desktop : .mobile
         config.applicationNameForUserAgent = "Zen/0.1"
         config.suppressesIncrementalRendering = false
+        if sepiaTint {
+            // At document end, so a new page comes up already warm instead of
+            // flashing white and then tinting.
+            config.userContentController.addUserScript(
+                SepiaPageTint.userScript(enabled: true))
+        }
         // Long-press link targets come from WKUIDelegate's
         // contextMenuConfigurationForElement, so no script injection is needed.
         applyMediaPolicy(to: config)
@@ -149,6 +155,19 @@ final class WebViewPool {
     /// Compiled Focus blocklist, set before Focus mode creates any tab.
     var focusBlocklist: WKContentRuleList?
 
+    /// Sepia's page tint. New views get it as a user script; live ones are
+    /// updated in place, because a settings toggle should change what is on
+    /// screen rather than what the *next* page looks like.
+    var sepiaTintsPages: Bool = false {
+        didSet {
+            guard sepiaTintsPages != oldValue else { return }
+            let source = SepiaPageTint.script(enabled: sepiaTintsPages)
+            for view in views.values {
+                view.evaluateJavaScript(source, completionHandler: nil)
+            }
+        }
+    }
+
     func webView(for tab: Tab, space: Space, desktop: Bool, ephemeral: Bool = false)
         -> ZenWebView
     {
@@ -157,7 +176,7 @@ final class WebViewPool {
 
         let config = WebEngine.configuration(
             for: space, desktop: desktop, ephemeral: ephemeral,
-            blocklist: ephemeral ? focusBlocklist : nil)
+            blocklist: ephemeral ? focusBlocklist : nil, sepiaTint: sepiaTintsPages)
         let view = ZenWebView(frame: .zero, configuration: config)
         view.tabID = tab.id
         view.customUserAgent = desktop ? WebEngine.desktopUserAgent : WebEngine.mobileUserAgent

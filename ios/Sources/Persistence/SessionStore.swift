@@ -44,6 +44,10 @@ struct ZenSettings: Codable, Equatable, Sendable {
     var layout: BrowserLayout = .card
     /// What sits behind the floating URL bar. Default Liquid Glass.
     var barFill: BarFill = .liquidGlass
+    /// Sepia only: warm the *pages* too, not just the chrome. Off by default —
+    /// a CSS filter over someone else's design is a blunt instrument, and it
+    /// is their choice whether to want it (#00890).
+    var sepiaTintsPages: Bool = false
     /// Require Face ID / passcode to return to a Focus session after the app
     /// has been in the background.
     var focusRequiresBiometrics: Bool = false
@@ -59,7 +63,7 @@ struct ZenSettings: Codable, Equatable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case searchEngine, compactModeEnabled, compactHidesSidebar, compactHidesToolbar
         case preferDesktopSite, sidebarPinnedOnPad, appearance, compactHideDelay, hapticLevel
-        case showStatusBar, sidebarEdge, layout, focusRequiresBiometrics, barFill
+        case showStatusBar, sidebarEdge, layout, focusRequiresBiometrics, barFill, sepiaTintsPages
     }
 
     init(from decoder: Decoder) throws {
@@ -97,6 +101,8 @@ struct ZenSettings: Codable, Equatable, Sendable {
             try c.decodeIfPresent(SidebarEdge.self, forKey: .sidebarEdge) ?? fallback.sidebarEdge
         layout = try c.decodeIfPresent(BrowserLayout.self, forKey: .layout) ?? fallback.layout
         barFill = try c.decodeIfPresent(BarFill.self, forKey: .barFill) ?? fallback.barFill
+        sepiaTintsPages =
+            try c.decodeIfPresent(Bool.self, forKey: .sepiaTintsPages) ?? fallback.sepiaTintsPages
         focusRequiresBiometrics =
             try c.decodeIfPresent(Bool.self, forKey: .focusRequiresBiometrics)
             ?? fallback.focusRequiresBiometrics

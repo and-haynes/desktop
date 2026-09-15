@@ -12,6 +12,9 @@ enum AppearanceMode: String, Codable, CaseIterable, Identifiable, Sendable {
     case light
     /// `zen.view.window.scheme = 0`
     case dark
+    /// Not a Zen desktop scheme. Warm paper chrome derived by the same
+    /// `color-mix` chain from a paper/ink pair instead of a grey one (#00890).
+    case sepia
 
     var id: String { rawValue }
 
@@ -20,6 +23,7 @@ enum AppearanceMode: String, Codable, CaseIterable, Identifiable, Sendable {
         case .system: return "Follow System"
         case .light: return "Light"
         case .dark: return "Dark"
+        case .sepia: return "Sepia"
         }
     }
 
@@ -28,6 +32,7 @@ enum AppearanceMode: String, Codable, CaseIterable, Identifiable, Sendable {
         case .system: return "circle.lefthalf.filled"
         case .light: return "sun.max"
         case .dark: return "moon"
+        case .sepia: return "book.closed"
         }
     }
 
@@ -36,8 +41,18 @@ enum AppearanceMode: String, Codable, CaseIterable, Identifiable, Sendable {
         switch self {
         case .system: return nil
         case .light: return .light
+        // Sepia is a light scheme: the system controls inside our sheets have
+        // to render light or they fight the paper.
+        case .sepia: return .light
         case .dark: return .dark
         }
+    }
+
+    /// Which branding pair the palette derives from.
+    func surfaceBase(systemDark: Bool, spacePrefersDark: Bool?) -> ZenSurfaceBase {
+        if self == .sepia { return .sepia }
+        return isDark(systemDark: systemDark, spacePrefersDark: spacePrefersDark)
+            ? .dark : .light
     }
 
     /// Resolve to the boolean `ZenPalette` wants.
@@ -47,7 +62,7 @@ enum AppearanceMode: String, Codable, CaseIterable, Identifiable, Sendable {
     /// person who picked Light meant it.
     func isDark(systemDark: Bool, spacePrefersDark: Bool?) -> Bool {
         switch self {
-        case .light: return false
+        case .light, .sepia: return false
         case .dark: return true
         case .system: return spacePrefersDark ?? systemDark
         }
