@@ -24,7 +24,10 @@ final class MockSyncServer: HTTPTransport, @unchecked Sendable {
     private let lock = NSLock()
     private var collections: [String: [String: Stored]] = [:]
     private var collectionModified: [String: Double] = [:]
-    private var clock: Double = 1_700_000_000.00
+    /// Server-assigned timestamps start at "now": a real storage server's
+    /// clock agrees with the client's, and tests that assume otherwise pass
+    /// for reasons that would not survive contact with one.
+    private var clock: Double = (Date().timeIntervalSince1970 * 100).rounded() / 100
     private var batches: [String: [BasicStorageObject]] = [:]
 
     /// Queued (status, headers) overrides — pop one per request. Used to test

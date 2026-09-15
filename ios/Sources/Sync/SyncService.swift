@@ -202,14 +202,19 @@ final class SyncService: ObservableObject {
     /// merge uses later, and "now" is the honest answer even offline.
     func noteLocalChange() {
         guard isSignedIn, preferences.syncSpaces, let browser else { return }
+        // Each piece is copied out and written back rather than passed as
+        // `&state.shadow.…`: two inout arguments derived from the same stored
+        // property overlap, and Swift's exclusivity checking traps on it.
         var shadow = state.shadow[SpacesEngine.collection]
+        var identities = state.shadow.identities
+        var symbols = state.shadow.spaceSymbolShadow
         SpacesEngine.journalLocalChanges(
-            state: browser.spacesState, shadow: &shadow,
-            identities: &state.shadow.identities,
-            symbolShadow: &state.shadow.spaceSymbolShadow,
-            syncNormalTabs: preferences.syncNormalTabs,
+            state: browser.spacesState, shadow: &shadow, identities: &identities,
+            symbolShadow: &symbols, syncNormalTabs: preferences.syncNormalTabs,
             now: now().timeIntervalSince1970)
         state.shadow[SpacesEngine.collection] = shadow
+        state.shadow.identities = identities
+        state.shadow.spaceSymbolShadow = symbols
         persist()
     }
 
@@ -402,13 +407,19 @@ final class SyncService: ObservableObject {
     ) async throws {
         guard let browser, let bundle = keys.bundle(for: SpacesEngine.collection) else { return }
         var shadow = state.shadow[SpacesEngine.collection]
+        var identities = state.shadow.identities
+        var symbols = state.shadow.spaceSymbolShadow
+        defer {
+            state.shadow[SpacesEngine.collection] = shadow
+            state.shadow.identities = identities
+            state.shadow.spaceSymbolShadow = symbols
+        }
 
         // Stamp anything that changed while we were away, so the merge below
         // compares honest timestamps.
         var local = browser.spacesState
         SpacesEngine.journalLocalChanges(
-            state: local, shadow: &shadow, identities: &state.shadow.identities,
-            symbolShadow: &state.shadow.spaceSymbolShadow,
+            state: local, shadow: &shadow, identities: &identities, symbolShadow: &symbols,
             syncNormalTabs: preferences.syncNormalTabs, now: now().timeIntervalSince1970)
 
         // Down.
@@ -419,9 +430,8 @@ final class SyncService: ObservableObject {
                 newer: shadow.lastModified)
             if !fetched.records.isEmpty {
                 SpacesEngine.applyIncoming(
-                    fetched.records, to: &local, shadow: &shadow,
-                    identities: &state.shadow.identities,
-                    symbolShadow: &state.shadow.spaceSymbolShadow)
+                    fetched.records, to: &local, shadow: &shadow, identities: &identities,
+                    symbolShadow: &symbols)
                 browser.applySyncedSpacesState(local)
                 local = browser.spacesState
             }
@@ -430,8 +440,7 @@ final class SyncService: ObservableObject {
 
         // Up.
         let outgoing = SpacesEngine.outgoing(
-            from: local, shadow: shadow, identities: &state.shadow.identities,
-            symbolShadow: &state.shadow.spaceSymbolShadow,
+            from: local, shadow: shadow, identities: &identities, symbolShadow: &symbols,
             syncNormalTabs: preferences.syncNormalTabs)
 
         var records = outgoing.records
@@ -453,8 +462,7 @@ final class SyncService: ObservableObject {
             shadow.lastModified = max(shadow.lastModified, result.modified)
         }
 
-        state.shadow[SpacesEngine.collection] = shadow
-        state.shadow.identities.prune(
+        identities.prune(
             keepingLocal: Set(local.spaces.map(\.id)).union(local.tabs.map(\.id)))
     }
 
@@ -467,6 +475,11 @@ final class SyncService: ObservableObject {
             return
         }
         var shadow = state.shadow[BookmarksEngine.collection]
+        var identities = state.shadow.identities
+        defer {
+            state.shadow[BookmarksEngine.collection] = shadow
+            state.shadow.identities = identities
+        }
 
         let remoteModified = info[BookmarksEngine.collection] ?? 0
         if remoteModified > shadow.lastModified {
@@ -475,15 +488,14 @@ final class SyncService: ObservableObject {
                 newer: shadow.lastModified)
             let result = BookmarksEngine.applyIncoming(
                 fetched.records, into: browser.bookmarks.bookmarks, shadow: &shadow,
-                identities: &state.shadow.identities)
+                identities: &identities)
             browser.bookmarks.applySynced(
                 added: result.added, updated: result.updated, removedIDs: result.removedIDs)
             shadow.lastModified = max(shadow.lastModified, fetched.modified)
         }
 
         let outgoing = BookmarksEngine.outgoing(
-            bookmarks: browser.bookmarks.bookmarks, shadow: shadow,
-            identities: &state.shadow.identities)
+            bookmarks: browser.bookmarks.bookmarks, shadow: shadow, identities: &identities)
         var records = outgoing.records
         records += outgoing.tombstones.map(SpacesEngine.tombstoneRecord(id:))
         if !records.isEmpty {
@@ -496,7 +508,6 @@ final class SyncService: ObservableObject {
             }
             shadow.lastModified = max(shadow.lastModified, result.modified)
         }
-        state.shadow[BookmarksEngine.collection] = shadow
     }
 
     // MARK: Tabs
@@ -609,6 +620,26 @@ final class SyncService: ObservableObject {
         state.remoteTabs = remoteTabs
         file.save(state)
     }
+
+    /// Adopt an account without running the OAuth flow. Only a test can
+    /// reach this: a real sign-in has to go through ASWebAuthenticationSession,
+    /// which needs a human and a password.
+    func adoptAccountForTesting(_ summary: SyncAccountSummary) {
+        account = summary
+        state.account = summary
+        status = preferences.enabled ? .idle : .paused
+    }
+
+    /// Run one sync and wait for it to finish. The app fires and forgets;
+    /// a test cannot, and neither can a pull-to-refresh.
+    func syncAndWait(reason: SyncReason = .manual) async {
+        syncNow(reason: reason)
+        await syncTask?.value
+    }
+
+    /// Read-only access to the persisted shadow, for tests and for the
+    /// Settings screen's diagnostics.
+    var shadow: SyncShadow { state.shadow }
 
     /// Exposed for the Settings screen's "Reset sync data on this device".
     func forgetSyncState() {
