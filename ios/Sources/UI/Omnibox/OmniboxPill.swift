@@ -416,6 +416,9 @@ struct OmniboxPill: View {
     /// customisable as what is on the bar.
     @ViewBuilder
     private var overflowItems: some View {
+        // Not a slot: text size is a *control*, two buttons on one row, and
+        // the slot system only knows how to draw single glyphs (#008B7).
+        TextSizeMenuSection(state: state, zoom: state.pageZoom, tabID: tabID)
         ForEach(layout.overflowSlots) { item in
             if item.action == .layoutCycle {
                 layoutMenu

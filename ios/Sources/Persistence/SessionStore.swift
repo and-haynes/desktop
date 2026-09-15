@@ -55,6 +55,9 @@ struct ZenSettings: Codable, Equatable, Sendable {
     /// Require Face ID / passcode to return to a Focus session after the app
     /// has been in the background.
     var focusRequiresBiometrics: Bool = false
+    /// Page zoom for a site that has no opinion of its own (#008B7). 1.0 is
+    /// 100 %; `PageZoom` owns the ladder and the clamping.
+    var defaultPageZoom: Double = PageZoom.standard
 
     init() {}
 
@@ -68,7 +71,7 @@ struct ZenSettings: Codable, Equatable, Sendable {
         case searchEngine, compactModeEnabled, compactHidesSidebar, compactHidesToolbar
         case preferDesktopSite, sidebarPinnedOnPad, appearance, compactHideDelay, hapticLevel
         case showStatusBar, sidebarEdge, layout, focusRequiresBiometrics, barFill, sepiaTintsPages
-        case barLayout
+        case barLayout, defaultPageZoom
     }
 
     init(from decoder: Decoder) throws {
@@ -115,6 +118,9 @@ struct ZenSettings: Codable, Equatable, Sendable {
         focusRequiresBiometrics =
             try c.decodeIfPresent(Bool.self, forKey: .focusRequiresBiometrics)
             ?? fallback.focusRequiresBiometrics
+        defaultPageZoom = PageZoom.clamp(
+            try c.decodeIfPresent(Double.self, forKey: .defaultPageZoom)
+                ?? fallback.defaultPageZoom)
     }
 }
 

@@ -77,6 +77,9 @@ final class BrowserState: ObservableObject {
     let bookmarks: BookmarkStore
     let trustedCertificates: TrustedCertificateStore
     let localServices: LocalServiceStore
+    /// Page zoom remembered per site (#008B7). Its own store rather than a
+    /// corner of the session file — it is written on a gesture people repeat.
+    let pageZoom: PageZoomStore
     private let session: SessionStore
 
     /// The ephemeral Focus space, when Focus mode is on. Deliberately *not*
@@ -105,6 +108,7 @@ final class BrowserState: ObservableObject {
         bookmarks: BookmarkStore? = nil,
         trustedCertificates: TrustedCertificateStore? = nil,
         localServices: LocalServiceStore? = nil,
+        pageZoom: PageZoomStore? = nil,
         restore: Bool = true
     ) {
         self.session = session
@@ -112,6 +116,7 @@ final class BrowserState: ObservableObject {
         self.bookmarks = bookmarks ?? BookmarkStore()
         self.trustedCertificates = trustedCertificates ?? TrustedCertificateStore()
         self.localServices = localServices ?? LocalServiceStore()
+        self.pageZoom = pageZoom ?? PageZoomStore()
         if restore, let snapshot = session.load(), !snapshot.spaces.isEmpty {
             apply(snapshot)
         } else {

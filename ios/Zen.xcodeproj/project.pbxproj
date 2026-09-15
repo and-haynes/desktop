@@ -46,6 +46,7 @@
 		2D30C3D37DF51BF4362C7467 /* BitwardenCrypto.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4194E2945F49162AAE7F13E1 /* BitwardenCrypto.swift */; };
 		2DE414A52167E9774FDA40F1 /* LocalServiceStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14E37899BD5634F912038987 /* LocalServiceStoreTests.swift */; };
 		2DF8BD3C7821529D4CF860D1 /* WebAuthnAvailabilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29075B937C9F7E6A0FAA6987 /* WebAuthnAvailabilityTests.swift */; };
+		2F0C687A47C3B91BDD1FBCE6 /* TextSizeControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F681C0C47DE9E705652D352 /* TextSizeControl.swift */; };
 		34B8564B03501ED4E4ED9220 /* LANScanTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEFBA6252243BF5CDF22B11A /* LANScanTests.swift */; };
 		35D6ADE3CF3B78F6DDF3C021 /* VaultCredentialStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B8DCFE94556981F90968D3C /* VaultCredentialStore.swift */; };
 		3685FE2FFD8188B9037C476D /* BrowserLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3DDC7AF839E8CA2D86E73F8 /* BrowserLayout.swift */; };
@@ -125,6 +126,7 @@
 		99B7982584DBF60E88CE3242 /* ZenGradient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88B7ABF2AE6B67A857ECDDE5 /* ZenGradient.swift */; };
 		9CA8CA48C4B0AA8E7BE39B83 /* VaultCredentialStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08F38A9E603B59D0F676F8BF /* VaultCredentialStoreTests.swift */; };
 		9F2AF197F55C23746FC97AF2 /* LANScanFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 416F737CB73FFC4D1EFCC941 /* LANScanFixtures.swift */; };
+		9FE2EDB0B8A79A1BAADDF0CF /* PageZoomTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4510207940A3BC343CD08693 /* PageZoomTests.swift */; };
 		A36CD89005860DD92A2005A8 /* BarSlotEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A05A16182422126E6EDD0E2 /* BarSlotEditor.swift */; };
 		A52950E464B97B33514E35E5 /* PKCE.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B691F68F07F1F5469400C44 /* PKCE.swift */; };
 		A8CD78D5F722693F189F6F8B /* WebEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1EA773520486C401C1B3FDA /* WebEngine.swift */; };
@@ -169,6 +171,7 @@
 		E0E3DC7B5EE872AD19704C25 /* BitwardenVaultProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF98EB500807A52EBEA72F71 /* BitwardenVaultProvider.swift */; };
 		E432A23424C7D28995FFA238 /* BitwardenLiveMockTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 614A8FBF979D46FF15E61457 /* BitwardenLiveMockTests.swift */; };
 		E66D6B0D3739FD864E9BCDAB /* GlanceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 155C7D8391369F0FE52AE2BC /* GlanceView.swift */; };
+		E77836E94149AB1FEE0A7A39 /* PageZoom.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06A62D83208A6EBB97392C2B /* PageZoom.swift */; };
 		E7F82330EA0D9210C94241F7 /* ColorParsingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 896D79F909A07C86E2E39E1C /* ColorParsingTests.swift */; };
 		E866AE41D7B93458DBD42009 /* LoginFormFill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CB4CB0B8B3A3D2FB2374A01 /* LoginFormFill.swift */; };
 		E9384E64A2209CC5EA11CB15 /* ZenColorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8504E45FB01390B4338E9D84 /* ZenColorTests.swift */; };
@@ -216,6 +219,7 @@
 		01CC03C6EAEC84E98E2C6915 /* CompactBarTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompactBarTests.swift; sourceTree = "<group>"; };
 		02CD0A88CED3B16A17086ED9 /* BrowserState+Sync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BrowserState+Sync.swift"; sourceTree = "<group>"; };
 		0384393307C90C69345E3440 /* ClientsEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClientsEngine.swift; sourceTree = "<group>"; };
+		06A62D83208A6EBB97392C2B /* PageZoom.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageZoom.swift; sourceTree = "<group>"; };
 		06CA2FAE5D6C9580B01E013C /* WebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebView.swift; sourceTree = "<group>"; };
 		08F38A9E603B59D0F676F8BF /* VaultCredentialStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultCredentialStoreTests.swift; sourceTree = "<group>"; };
 		0B45A1CC7FF5A2C483F051EE /* LocalServiceStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalServiceStore.swift; sourceTree = "<group>"; };
@@ -260,6 +264,7 @@
 		4194E2945F49162AAE7F13E1 /* BitwardenCrypto.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BitwardenCrypto.swift; sourceTree = "<group>"; };
 		4297C472C3DEAD2D96846B2E /* BrowserState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserState.swift; sourceTree = "<group>"; };
 		439FB91CDAB39BD7F4A0FB00 /* ScreenshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotTests.swift; sourceTree = "<group>"; };
+		4510207940A3BC343CD08693 /* PageZoomTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageZoomTests.swift; sourceTree = "<group>"; };
 		4612602BC62424EB26D005AE /* PasswordVaultProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordVaultProvider.swift; sourceTree = "<group>"; };
 		46585DB0F80BC570B7EF0930 /* HTTPTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTPTransport.swift; sourceTree = "<group>"; };
 		47D4D11719F3C23EA3DDAB5C /* BSOCrypto.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BSOCrypto.swift; sourceTree = "<group>"; };
@@ -329,6 +334,7 @@
 		9D527E0502C91198924E8E5E /* SyncSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncSettingsView.swift; sourceTree = "<group>"; };
 		9EF563E57E6FC87DE20BB0F4 /* VaultIndex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultIndex.swift; sourceTree = "<group>"; };
 		9F09F9DBA3529788D7567C97 /* Tab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tab.swift; sourceTree = "<group>"; };
+		9F681C0C47DE9E705652D352 /* TextSizeControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextSizeControl.swift; sourceTree = "<group>"; };
 		9FA950A132BEC1CE6A6AB420 /* JSONFileStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONFileStore.swift; sourceTree = "<group>"; };
 		9FF2CD0605111150F60A8401 /* SchemePrefill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SchemePrefill.swift; sourceTree = "<group>"; };
 		A19ECE92BD9923F1D55F4BF0 /* LoginFormFillTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginFormFillTests.swift; sourceTree = "<group>"; };
@@ -569,6 +575,7 @@
 				1663DBDEE84BFB97790F0D61 /* CSSColor.swift */,
 				D6168CC3146B1806766E7BCE /* FaviconService.swift */,
 				850C5604A63AB2C192CAF79A /* LoadFailure.swift */,
+				06A62D83208A6EBB97392C2B /* PageZoom.swift */,
 				FDF2D00B73B4DF7EE752DC9E /* SepiaPageTint.swift */,
 				BDDBBA13BDB15356DBFA88EA /* VideoPopOut.swift */,
 				B1EA773520486C401C1B3FDA /* WebEngine.swift */,
@@ -776,6 +783,7 @@
 				AD33633950B572673E4F3923 /* NamedColorLibraryTests.swift */,
 				58025A3180D201B498C94796 /* OnePasswordConnectTests.swift */,
 				85B0AE33B7A1B2100B23FAB2 /* PageTopInsetTests.swift */,
+				4510207940A3BC343CD08693 /* PageZoomTests.swift */,
 				314DF36C53C94DD94BBFFE26 /* PasswordsAutoFillTests.swift */,
 				4A4B81AB81AA7FFAB6F90E89 /* PasswordVaultServiceTests.swift */,
 				9B97537F2DDF9B5798D7318A /* SchemePrefillTests.swift */,
@@ -820,6 +828,7 @@
 				153BE572C4E43DBC0331D37A /* ErrorPageView.swift */,
 				C5B86DDB786B902B992ABB0C /* FindBar.swift */,
 				DFDCADCF735EAA705F326D9F /* NewTabPage.swift */,
+				9F681C0C47DE9E705652D352 /* TextSizeControl.swift */,
 				926A0C7C35EF2BBD6BF3F07F /* ZenEnvironment.swift */,
 				BB438807025F397275AC8B4E /* ZenToast.swift */,
 				2FD8BFFBCE8E7E24AA1E2251 /* Focus */,
@@ -1069,6 +1078,7 @@
 				6687E0661DFBE1676662969C /* OnePasswordVaultProvider.swift in Sources */,
 				A52950E464B97B33514E35E5 /* PKCE.swift in Sources */,
 				3FDC1076156AEE69058B429C /* PageTopInsets.swift in Sources */,
+				E77836E94149AB1FEE0A7A39 /* PageZoom.swift in Sources */,
 				23FA735CF34CD97EE0585DD2 /* PasswordVaultProvider.swift in Sources */,
 				4D76FE9AEA01B9EAC61CFDAE /* PasswordVaultService.swift in Sources */,
 				626899AF2E80A8FC5AFD45AF /* PasswordsPanel.swift in Sources */,
@@ -1108,6 +1118,7 @@
 				63FFA95C54695028BABB5ED9 /* Tab.swift in Sources */,
 				70EABBE197A464B62C640799 /* TabRowView.swift in Sources */,
 				15E51108240C806C47C4D059 /* TabsEngine.swift in Sources */,
+				2F0C687A47C3B91BDD1FBCE6 /* TextSizeControl.swift in Sources */,
 				6D869C61EFF81D62EB152165 /* TokenServerClient.swift in Sources */,
 				233B6ECEEFDFACC662E660E6 /* TrustedCertificateStore.swift in Sources */,
 				35D6ADE3CF3B78F6DDF3C021 /* VaultCredentialStore.swift in Sources */,
@@ -1170,6 +1181,7 @@
 				1BD5A162BEE76463B86552E6 /* NamedColorLibraryTests.swift in Sources */,
 				F6A4DDFA506C81B3FEFFB291 /* OnePasswordConnectTests.swift in Sources */,
 				94AAB1DD511576822E8FB177 /* PageTopInsetTests.swift in Sources */,
+				9FE2EDB0B8A79A1BAADDF0CF /* PageZoomTests.swift in Sources */,
 				1C58705A17589E5E3BC54ED3 /* PasswordVaultServiceTests.swift in Sources */,
 				0CC8FE94B8539654B28F3FDC /* PasswordsAutoFillTests.swift in Sources */,
 				EEEC641FDA6E1E752A175E06 /* SchemePrefillTests.swift in Sources */,

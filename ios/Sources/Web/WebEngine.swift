@@ -158,6 +158,11 @@ final class WebViewPool {
 
     func existing(for tabID: UUID) -> ZenWebView? { views[tabID] }
 
+    /// Every tab that currently holds a live view. Needed by anything that has
+    /// to move a setting through the pages already on screen rather than only
+    /// the next one loaded — page zoom is the first (#008B7).
+    var loadedViews: [ZenWebView] { Array(views.values) }
+
     func isLoaded(_ tabID: UUID) -> Bool { views[tabID] != nil }
 
     /// Get or create the web view backing a tab, evicting as needed.

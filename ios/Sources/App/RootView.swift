@@ -147,7 +147,7 @@ struct RootView: View {
     /// did, and they are applied in their own layer because a single `body` with
     /// every modifier on it is more than the type-checker will sit still for.
     var body: some View {
-        sheets
+        pageChrome
             .onReceive(NotificationCenter.default.publisher(for: .zenNavigateBack)) { note in
                 webView(for: note)?.goBack()
             }
@@ -297,6 +297,13 @@ struct RootView: View {
                 break
             }
         }
+    }
+
+    /// Page-level behaviours that need both the pool and a store — page zoom
+    /// so far (#008B7). Its own layer for the same reason the sheets are:
+    /// `body` is already as long an expression as the type checker will solve.
+    private var pageChrome: some View {
+        sheets.modifier(PageZoomBridge(state: state, pool: pool.pool))
     }
 
     /// The sheets, in one layer of their own.
@@ -939,6 +946,8 @@ struct RootView: View {
             shortcutButton(.leftArrow, modifiers: [.control, .shift]) {
                 withAnimation { state.cycleSpace(by: -1) }
             }
+            // ⌘+ / ⌘− / ⌘0, in a view of their own — see `PageZoomShortcuts`.
+            PageZoomShortcuts()
         }
         .opacity(0)
         .frame(width: 0, height: 0)
