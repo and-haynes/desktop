@@ -15,6 +15,7 @@
 //  what upstream's `unloadWorkspace()` does, except we do it automatically.
 
 import Foundation
+import UIKit
 import WebKit
 
 enum WebEngine {
@@ -163,4 +164,56 @@ final class ZenWebView: WKWebView {
     /// "nothing happens, forever" in #0089A.
     var lastRequestedURL: URL?
 
+    /// The document's own background colour, as last read out of the page.
+    /// Nil where the page paints nothing of its own.
+    private var pageBackgroundColor: UIColor?
+
+    /// Where the page runs under the top safe area its scroll view carries a
+    /// top inset, so a site's own fixed header starts below the Dynamic Island
+    /// rather than behind it (#008A9). The strip that inset opens up has to
+    /// look like *the page*, not like a black slab — so it is painted in the
+    /// page's own background colour, and left clear (showing the space
+    /// gradient) where the page has none.
+    func syncUnderPageBackground() {
+        guard scrollView.contentInset.top > 0 else {
+            scrollView.backgroundColor = .clear
+            return
+        }
+        scrollView.backgroundColor = pageBackgroundColor ?? .clear
+    }
+
+    /// Ask the document what colour it is. `underPageBackgroundColor` is no
+    /// help: it comes back clear while the web view is transparent, which it
+    /// must be so a space's gradient shows before the first paint.
+    ///
+    /// Skipped outright where there is no inset to fill, which on a layout that
+    /// frames the content is always — this costs a page nothing it does not use.
+    func refreshPageBackgroundColor() {
+        guard scrollView.contentInset.top > 0 else { return }
+        evaluateJavaScript(Self.pageBackgroundScript) { [weak self] result, _ in
+            guard let self else { return }
+            let parsed = (result as? String).flatMap(CSSColor.parse)
+            // A transparent page background is not "black" — it is "let the
+            // gradient through", which is what clear does.
+            self.pageBackgroundColor = (parsed?.isTransparent ?? true) ? nil : parsed?.uiColor
+            self.syncUnderPageBackground()
+        }
+    }
+
+    /// `<body>` first: that is where a styled page puts its colour. `<html>` is
+    /// the fallback, and is what a page that colours the root uses.
+    private static let pageBackgroundScript = """
+        (function () {
+          var root = document.documentElement;
+          var body = document.body;
+          function read(el) {
+            if (!el) { return null; }
+            var c = window.getComputedStyle(el).backgroundColor;
+            if (!c) { return null; }
+            if (c === 'transparent' || /,\\s*0\\s*\\)$/.test(c)) { return null; }
+            return c;
+          }
+          return read(body) || read(root) || 'rgba(0, 0, 0, 0)';
+        })()
+        """
 }

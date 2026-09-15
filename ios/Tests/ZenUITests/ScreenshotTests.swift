@@ -262,6 +262,20 @@ final class ScreenshotTests: XCTestCase {
         try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-STATUSBAR"))
     }
 
+    /// #008A9. Hiding the status bar must take away the clock, the signal and
+    /// the battery and nothing else — the Dynamic Island is hardware, and the
+    /// page has to start below it. Hacker News is the proof: its header is
+    /// `position: fixed`, so if the inset is wrong it is the first thing to
+    /// disappear under the island.
+    func testCaptureStatusBarHiddenOverAFixedHeaderPage() throws {
+        let suffix = UIDevice.current.userInterfaceIdiom == .pad ? "-ipad" : ""
+        // Hidden is the default (#00899); this asserts it rather than assuming.
+        XCTAssertFalse(app.statusBars.firstMatch.exists, "the status bar should start hidden")
+        navigate(to: "https://news.ycombinator.com")
+        settle(3.0)
+        capture("32-status-hidden-card\(suffix)")
+    }
+
     /// Open Settings, check the toggle reads `from` (which is what proves the
     /// previous step stuck), flip it, wait for `to`, and close the sheet.
     private func flipShowStatusBar(from: String, to: String) -> Bool {

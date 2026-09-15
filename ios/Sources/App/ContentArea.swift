@@ -11,6 +11,9 @@ struct ContentArea: View {
     @ObservedObject var state: BrowserState
     let space: Space
     let pool: WebViewPool
+    /// Scroll-view top inset for the page, so a site's own fixed header starts
+    /// below the Dynamic Island where the web view runs under it (#008A9).
+    var topContentInset: CGFloat = 0
     @Environment(\.zenPalette) private var palette
 
     var body: some View {
@@ -42,8 +45,11 @@ struct ContentArea: View {
                 if tab.isNewTabPage {
                     NewTabPage(state: state, space: space)
                 } else {
-                    WebView(tab: tab, space: space, state: state, pool: pool)
-                        .background(palette.mainBrowserBackground.color)
+                    WebView(
+                        tab: tab, space: space, state: state, pool: pool,
+                        topContentInset: topContentInset
+                    )
+                    .background(palette.mainBrowserBackground.color)
                     // Over the top rather than instead of: the web view stays
                     // alive underneath, so Retry is a reload and not a rebuild.
                     if let failure = tab.loadFailure {

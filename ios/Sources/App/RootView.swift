@@ -20,6 +20,9 @@ struct RootView: View {
     @State private var shareItem: URL?
     /// Countdown that puts the compact bar away after scrolling stops.
     @State private var compactHideTask: Task<Void, Never>?
+    /// The window's top safe-area inset, measured once at the root. The island
+    /// is hardware, so this stays whatever the status bar is doing (#008A9).
+    @State private var safeAreaTop: CGFloat = 0
 
     @MainActor
     init(state: BrowserState? = nil, sync: SyncService? = nil) {
@@ -61,11 +64,15 @@ struct RootView: View {
     }
 
     var body: some View {
-        ZStack {
-            background
-            layout
-            compactGrabber
-            overlays
+        GeometryReader { proxy in
+            ZStack {
+                background
+                layout
+                compactGrabber
+                overlays
+            }
+            .onAppear { safeAreaTop = proxy.safeAreaInsets.top }
+            .onChange(of: proxy.safeAreaInsets.top) { _, top in safeAreaTop = top }
         }
         .environment(\.zenPalette, palette)
         // Applied at the *root* so it holds across every layout, the sheets and
@@ -234,31 +241,26 @@ struct RootView: View {
         .gesture(drawerEdgeSwipe)
     }
 
-    /// With the status bar hidden there is nothing left in the top band but
-    /// empty gradient, so the page takes it back and runs to the very top
-    /// edge. `.container` rather than `.all` keeps the keyboard pushing the
-    /// layout, and releasing only the *top* edge leaves the horizontal insets
-    /// intact — which is exactly where the Dynamic Island intrudes in
-    /// landscape.
-    ///
-    /// The island itself is hardware and simply sits over the page, as it does
-    /// over video, photos and maps. The alternative — insetting the page by the
-    /// island's height — needs a strip in the page's own background colour to
-    /// look like anything but a black slab, and WebKit will not tell us that
-    /// colour while the web view is transparent (which it must be, so the space
-    /// gradient shows through before a page paints).
-    private var reclaimsTopEdge: Bool { !state.settings.showStatusBar }
+    /// Where the page starts. Hiding the status bar is not an input — see
+    /// `PageTopInsets` (#008A9). `.container` rather than `.all` where the page
+    /// *does* take the top band keeps the keyboard pushing the layout, and
+    /// releasing only the top edge leaves the horizontal insets intact, which
+    /// is exactly where the Dynamic Island intrudes in landscape.
+    private var topInsets: PageTopInsets {
+        PageTopInsets.forSettings(state.settings, safeAreaTop: safeAreaTop)
+    }
 
     private var content: some View {
         VStack(spacing: 0) {
             if let space = state.activeSpace {
-                ContentArea(state: state, space: space, pool: pool.pool)
-                .padding(.horizontal, ZenMetrics.splitGap)
-                .padding(.top, reclaimsTopEdge ? 0 : ZenMetrics.splitGap)
-                .ignoresSafeArea(.container, edges: reclaimsTopEdge ? .top : [])
-                .animation(
-                    .easeInOut(duration: 0.25), value: state.settings.showStatusBar
+                ContentArea(
+                    state: state, space: space, pool: pool.pool,
+                    topContentInset: topInsets.webTopContentInset
                 )
+                .padding(.horizontal, ZenMetrics.splitGap)
+                .padding(.top, topInsets.cardTopPadding)
+                .ignoresSafeArea(
+                    .container, edges: topInsets.pageUnderTopSafeArea ? .top : [])
                 // Tapping the page puts a revealed compact toolbar away
                 // again. Simultaneous so it never swallows a page tap.
                 .simultaneousGesture(
