@@ -72,11 +72,12 @@ struct SplitContainer<Pane: View>: View {
         .animation(.easeInOut(duration: ZenTokens.hiddenToolbarTransition), value: showsOwnBar)
     }
 
-    /// The secondary bar hides on the same rule as the main one in compact
-    /// mode, and is always present otherwise.
+    /// The secondary bar follows the main one in compact mode, and is always
+    /// present otherwise. It has no collapsed form of its own — a pane bar is
+    /// already the short version — so it rides on `expanded` alone.
     private var secondaryBarHidden: Bool {
         state.settings.compactModeEnabled && state.settings.compactHidesToolbar
-            && !state.compactRevealed
+            && state.compactBarPhase != .expanded
     }
 
     @ViewBuilder

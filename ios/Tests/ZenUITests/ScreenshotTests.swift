@@ -171,7 +171,9 @@ final class ScreenshotTests: XCTestCase {
         XCTAssertTrue(
             tapMenuItem(matching: "label CONTAINS[c] 'Compact Mode'"),
             "compact mode menu item missing")
-        settle(2.0)
+        // #008AF: the bar starts whole and falls a step at a time — expanded,
+        // pill, gone — so reaching the grabber takes two still-delays.
+        settle(9.0)
         capture("10-compact-grabber\(suffix)")
 
         // Prove the grabber reveals the bar, then leave compact mode so the
@@ -190,6 +192,52 @@ final class ScreenshotTests: XCTestCase {
         _ = tapMenuItem(matching: "label CONTAINS[c] 'Compact Mode'")
     }
 
+
+    /// Compact mode's middle state (#008AF): scrolling brings back the pill —
+    /// favicon and domain, nothing else — and only a *tap* on it expands the
+    /// full bar.
+    func testCaptureCompactPillAndExpansion() throws {
+        let suffix = UIDevice.current.userInterfaceIdiom == .pad ? "-ipad" : ""
+        settle(4.0)
+        // A page long enough to scroll, which is what summons the pill.
+        navigate(to: "https://news.ycombinator.com")
+
+        XCTAssertTrue(
+            tapMenuItem(matching: "label CONTAINS[c] 'Compact Mode'"),
+            "compact mode menu item missing")
+        settle(9.0)
+
+        let pill = app.descendants(matching: .any)["compactPill"].firstMatch
+        XCTAssertTrue(scrollToThePill(pill), "scrolling did not bring back the collapsed pill")
+        capture("39-compact-pill\(suffix)")
+
+        // Scrolling must never expand it — only the tap does.
+        XCTAssertFalse(
+            app.buttons["Address and search"].exists,
+            "scrolling expanded the bar; it should only ever bring back the pill")
+
+        XCTAssertTrue(scrollToThePill(pill), "the pill did not come back for the tap")
+        pill.tap()
+        settle(0.8)
+        XCTAssertTrue(
+            app.buttons["Address and search"].waitForExistence(timeout: 3),
+            "tapping the pill did not expand the bar")
+        capture("40-compact-expanded\(suffix)")
+
+        // Leave compact mode, or the setting persists into the next launch and
+        // every test after this one starts with no bar to drive.
+        _ = tapMenuItem(matching: "label CONTAINS[c] 'Compact Mode'")
+    }
+
+    /// Scroll the page and catch the pill before the still-timer takes it. The
+    /// timer is three seconds by default, so this is deliberately brisk.
+    private func scrollToThePill(_ pill: XCUIElement) -> Bool {
+        for _ in 0..<4 {
+            app.swipeUp()
+            if pill.waitForExistence(timeout: 1.2) { return true }
+        }
+        return false
+    }
 
     /// The accent colour tool (#0088F) and the hex entry path.
     func testCaptureColorPicker() throws {

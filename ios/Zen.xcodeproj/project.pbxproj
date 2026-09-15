@@ -38,6 +38,7 @@
 		4BFDB75AC44DC39DD5AB0EFE /* BarSwipeGesture.swift in Sources */ = {isa = PBXBuildFile; fileRef = C328A5EE18F01699DF47AE6A /* BarSwipeGesture.swift */; };
 		4D86D9F0730D15CBFF2F493A /* JSONValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = D06FE302E103E94A2B0B70FE /* JSONValue.swift */; };
 		508BFA96B5CF670C7E44DD59 /* ZenApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E314F1A113B5A944AA437E9 /* ZenApp.swift */; };
+		508D81EAE3B70903F088B707 /* CompactPill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D06C8D8148A3844473E549E /* CompactPill.swift */; };
 		52754347A4EE689C839BF1B5 /* AppearanceModeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CC1263F0FF95AC80F83EDCB /* AppearanceModeTests.swift */; };
 		52D2889E3A1A18B197B46215 /* SearchEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6F50C30E6017F5CE0A3A949 /* SearchEngine.swift */; };
 		577B82B19A735DEC410CC6DE /* SuggestionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C856C6784CFBBAC153B6D5C /* SuggestionEngine.swift */; };
@@ -55,6 +56,7 @@
 		6D869C61EFF81D62EB152165 /* TokenServerClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC256C195E53895E27297696 /* TokenServerClient.swift */; };
 		70EABBE197A464B62C640799 /* TabRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82193B0812A778DE46C01FCA /* TabRowView.swift */; };
 		77A4DD4AEE444A1E1D1B3A40 /* SidebarEdge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 496530E78393C0309E6DC697 /* SidebarEdge.swift */; };
+		77EE444C8C297740CD53C141 /* CompactBarTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01CC03C6EAEC84E98E2C6915 /* CompactBarTests.swift */; };
 		7AF27E924711B1B48BC0518A /* BarSwipeGestureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 626F7FF4DA0415ED88BC1361 /* BarSwipeGestureTests.swift */; };
 		7C11E3E08187A3225F84258C /* EssentialsGrid.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDFF04967B55ED7F97DCAB72 /* EssentialsGrid.swift */; };
 		7DC61421F4669B027616E8A2 /* Space.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EE8DC3BDB6C2210F2DF96F0 /* Space.swift */; };
@@ -77,6 +79,7 @@
 		A8CD78D5F722693F189F6F8B /* WebEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1EA773520486C401C1B3FDA /* WebEngine.swift */; };
 		ACCF847DDF9D5B32BBC96A28 /* CSSColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1663DBDEE84BFB97790F0D61 /* CSSColor.swift */; };
 		AEF649A69239786AB1D0BD15 /* RecentColorsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C98CBB864CCA46E7EE6DDAAE /* RecentColorsStore.swift */; };
+		B1628A6E9B29E1648C35D3FD /* CompactBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6C6D1F5A9CFA5AF58CC7A93 /* CompactBarController.swift */; };
 		B8C0AC2A453AF455DD41C648 /* ColorParsing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C89A165A5B3DE33E6C03E0B /* ColorParsing.swift */; };
 		B9A8D252A256882924FC680C /* BrowserState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4297C472C3DEAD2D96846B2E /* BrowserState.swift */; };
 		BB92AC29304BA8F348D2C469 /* SyncShadow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70871EF5ED7E073C4BA499AF /* SyncShadow.swift */; };
@@ -127,6 +130,7 @@
 
 /* Begin PBXFileReference section */
 		00702F505256F196432DB86D /* OmniboxOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OmniboxOverlay.swift; sourceTree = "<group>"; };
+		01CC03C6EAEC84E98E2C6915 /* CompactBarTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompactBarTests.swift; sourceTree = "<group>"; };
 		02CD0A88CED3B16A17086ED9 /* BrowserState+Sync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BrowserState+Sync.swift"; sourceTree = "<group>"; };
 		0384393307C90C69345E3440 /* ClientsEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClientsEngine.swift; sourceTree = "<group>"; };
 		06CA2FAE5D6C9580B01E013C /* WebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebView.swift; sourceTree = "<group>"; };
@@ -187,6 +191,7 @@
 		926A0C7C35EF2BBD6BF3F07F /* ZenEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZenEnvironment.swift; sourceTree = "<group>"; };
 		9711F57491E845C7024435DE /* SpacesEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpacesEngine.swift; sourceTree = "<group>"; };
 		9C89A165A5B3DE33E6C03E0B /* ColorParsing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorParsing.swift; sourceTree = "<group>"; };
+		9D06C8D8148A3844473E549E /* CompactPill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompactPill.swift; sourceTree = "<group>"; };
 		9D527E0502C91198924E8E5E /* SyncSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncSettingsView.swift; sourceTree = "<group>"; };
 		9F09F9DBA3529788D7567C97 /* Tab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tab.swift; sourceTree = "<group>"; };
 		9FA950A132BEC1CE6A6AB420 /* JSONFileStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONFileStore.swift; sourceTree = "<group>"; };
@@ -204,6 +209,7 @@
 		C5B4C36D8CF492F87328958F /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
 		C5B86DDB786B902B992ABB0C /* FindBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FindBar.swift; sourceTree = "<group>"; };
 		C616F8839759C7CC58339DBB /* ZenUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = ZenUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C6C6D1F5A9CFA5AF58CC7A93 /* CompactBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompactBarController.swift; sourceTree = "<group>"; };
 		C98CBB864CCA46E7EE6DDAAE /* RecentColorsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentColorsStore.swift; sourceTree = "<group>"; };
 		CEEEA5047438DAA8F1415FDC /* SessionStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStoreTests.swift; sourceTree = "<group>"; };
 		CFF3EA739DDD841F4DF4C81E /* SessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStore.swift; sourceTree = "<group>"; };
@@ -309,6 +315,8 @@
 			isa = PBXGroup;
 			children = (
 				C328A5EE18F01699DF47AE6A /* BarSwipeGesture.swift */,
+				C6C6D1F5A9CFA5AF58CC7A93 /* CompactBarController.swift */,
+				9D06C8D8148A3844473E549E /* CompactPill.swift */,
 				00702F505256F196432DB86D /* OmniboxOverlay.swift */,
 				89CF4FD1B002F1922E42F267 /* OmniboxPill.swift */,
 				3E5240A82F9C160738FAA784 /* OmniboxTextField.swift */,
@@ -475,6 +483,7 @@
 				626F7FF4DA0415ED88BC1361 /* BarSwipeGestureTests.swift */,
 				2B7DC3083D917DB62298DF0C /* BrowserStateTests.swift */,
 				896D79F909A07C86E2E39E1C /* ColorParsingTests.swift */,
+				01CC03C6EAEC84E98E2C6915 /* CompactBarTests.swift */,
 				D2971FAB4405F536C1C76DDA /* HapticsTests.swift */,
 				FF464950DD8915C034DD2E64 /* LANHostTests.swift */,
 				782C96F203ECA8E99702C663 /* LoadFailureTests.swift */,
@@ -670,6 +679,8 @@
 				ACCF847DDF9D5B32BBC96A28 /* CSSColor.swift in Sources */,
 				49497DBB7B64C045BEB5E6D5 /* ClientsEngine.swift in Sources */,
 				B8C0AC2A453AF455DD41C648 /* ColorParsing.swift in Sources */,
+				B1628A6E9B29E1648C35D3FD /* CompactBarController.swift in Sources */,
+				508D81EAE3B70903F088B707 /* CompactPill.swift in Sources */,
 				EDCF068803ADEC573CE28C5C /* ContentArea.swift in Sources */,
 				37048826351CB638FDF4835F /* ErrorPageView.swift in Sources */,
 				7C11E3E08187A3225F84258C /* EssentialsGrid.swift in Sources */,
@@ -754,6 +765,7 @@
 				7AF27E924711B1B48BC0518A /* BarSwipeGestureTests.swift in Sources */,
 				10DB9AA9F73EA1211E61422B /* BrowserStateTests.swift in Sources */,
 				E7F82330EA0D9210C94241F7 /* ColorParsingTests.swift in Sources */,
+				77EE444C8C297740CD53C141 /* CompactBarTests.swift in Sources */,
 				F4BE296D6EFC1B54C9E01515 /* HapticsTests.swift in Sources */,
 				C3C3C63F3F71C8DC7F36F0AB /* LANHostTests.swift in Sources */,
 				1F4326C74B645F3296BDFDEB /* LoadFailureTests.swift in Sources */,

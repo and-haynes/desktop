@@ -94,7 +94,7 @@ struct SettingsSheet: View {
                         .disabled(!state.settings.compactModeEnabled)
                     VStack(alignment: .leading, spacing: 2) {
                         HStack {
-                            Text("Hide after scrolling")
+                            Text("Hide when still")
                             Spacer()
                             Text(String(format: "%.1fs", state.settings.compactHideDelay))
                                 .foregroundStyle(.secondary)
@@ -108,9 +108,10 @@ struct SettingsSheet: View {
                 } footer: {
                     Text(
                         "Zen keeps hiding the sidebar and hiding the toolbar as separate "
-                            + "settings. The bar returns while you scroll and fades again "
-                            + "shortly after; the grabber above the home indicator brings it "
-                            + "back deliberately.")
+                            + "settings. The bar falls a step at a time once the page is "
+                            + "still: the full bar becomes a pill showing where you are, and "
+                            + "then goes. Scrolling brings the pill back; tapping it opens "
+                            + "the full bar again. Swipe up from either to reach the tabs.")
                 }
 
                 if UIDevice.current.userInterfaceIdiom == .pad {

@@ -37,8 +37,11 @@ final class BrowserState: ObservableObject {
 
     /// Sidebar drawer (iPhone) / sidebar visibility (iPad).
     @Published var isSidebarVisible: Bool = false
-    /// Compact mode has temporarily revealed the chrome via an edge gesture.
-    @Published var compactRevealed: Bool = false
+    /// Which of compact mode's three bar states the chrome is in (#008AF).
+    /// `RootView` owns the state machine; this is the copy the rest of the
+    /// tree — the split panes, the page-tap gesture — reads. `expanded`
+    /// whenever compact mode is off.
+    @Published var compactBarPhase: CompactBarPhase = .expanded
     @Published var isOmniboxOpen: Bool = false
     @Published var omniboxText: String = ""
     /// Which tab the omnibox is editing. nil means the active tab — set

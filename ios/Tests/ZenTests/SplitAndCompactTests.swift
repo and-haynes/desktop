@@ -87,10 +87,11 @@ final class SplitPaneOmniboxTests: XCTestCase {
 
 final class CompactHideDelayTests: XCTestCase {
 
-    func testDefaultDelayIsWithinTheAskedRange() {
-        let delay = ZenSettings().compactHideDelay
-        XCTAssertGreaterThanOrEqual(delay, 1.5)
-        XCTAssertLessThanOrEqual(delay, 2.0)
+    /// #008AF moved this from "shortly after scrolling" to a deliberate three
+    /// seconds of stillness, and made the same number govern every step of the
+    /// bar's ladder.
+    func testDefaultDelayIsThreeSeconds() {
+        XCTAssertEqual(ZenSettings().compactHideDelay, 3.0, accuracy: 0.0001)
     }
 
     func testDelayRoundTripsThroughJSON() throws {

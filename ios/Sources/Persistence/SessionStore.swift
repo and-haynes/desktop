@@ -24,10 +24,12 @@ struct ZenSettings: Codable, Equatable, Sendable {
     var sidebarPinnedOnPad: Bool = true
     /// Follow system / Light / Dark, as `zen.view.window.scheme`.
     var appearance: AppearanceMode = .system
-    /// How long the compact-mode bar lingers after scrolling stops, in
-    /// seconds. Upstream's nearest equivalent is
+    /// How long the chrome lingers once the page is still, in seconds. Each
+    /// step of the compact bar's ladder — expanded to pill, pill to gone —
+    /// waits this long, so there is one number rather than three (#008AF).
+    /// Upstream's nearest equivalent is
     /// `zen.view.compact.toolbar-hide-after-hover.duration`.
-    var compactHideDelay: Double = 1.8
+    var compactHideDelay: Double = 3.0
     /// How much the phone talks back. Default Normal; see `Haptics`.
     var hapticLevel: HapticLevel = .normal
     /// Show the clock, signal and battery. Off by default: in a browser the
