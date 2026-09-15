@@ -65,10 +65,13 @@ struct SplitContainer<Pane: View>: View {
         VStack(spacing: 4) {
             if showsOwnBar {
                 ZenGlassContainer(spacing: 4) {
+                    // The pane bar follows the same `BarLayout` as the main one
+                    // (#00896) — fill, radius, font, contents — and only swaps
+                    // the slot buttons for the pane's own controls.
                     OmniboxPill(
                         state: state, tabID: id, isSecondaryPane: true,
-                        isFloating: state.settings.layout.barFloats
-                    ) {}
+                        isFloating: state.settings.barLayout.position.isFloating
+                            || state.settings.layout.barFloats)
                 }
                 .transition(.move(edge: .top).combined(with: .opacity))
             }

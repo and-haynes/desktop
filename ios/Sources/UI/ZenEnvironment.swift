@@ -276,3 +276,118 @@ extension View {
                 isInteractive: isInteractive))
     }
 }
+
+// MARK: - The customisable bar's backing (#00896)
+
+/// `ZenBarFill` with the knobs the bar customiser adds: a shape that follows
+/// the layout's own corner radius rather than one constant, an optional flat
+/// colour instead of a material, a blur strength, and border and shadow as
+/// choices rather than givens.
+///
+/// A separate modifier rather than more parameters on `ZenBarFill`, because the
+/// find bar still wants the plain thing: one shape, one material, no questions.
+struct ZenBarChrome: ViewModifier {
+    let layout: BarLayout
+    let fill: BarFill
+    let palette: ZenPalette
+    /// Overrides the layout height when a pane bar is drawn slimmer.
+    var height: CGFloat?
+
+    private var radius: CGFloat {
+        let tall = height ?? CGFloat(layout.height)
+        // Past half the height a radius is a capsule and nothing more, so it is
+        // clamped here rather than left for SwiftUI to interpret.
+        return min(CGFloat(layout.cornerRadius), tall / 2)
+    }
+
+    private var shape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: radius, style: .continuous)
+    }
+
+    /// Everything a material contributes scales with the blur strength — the
+    /// only part of a system blur an app can actually move. At 0 the bar is the
+    /// page with an outline on it; at 1 it is the full frosted surface.
+    private var tintAlpha: Double { 0.5 * layout.blurStrength }
+
+    func body(content: Content) -> some View {
+        content
+            .background { background }
+            .overlay {
+                if layout.showsBorder {
+                    shape.strokeBorder(borderColor, lineWidth: 0.5)
+                }
+            }
+            .clipShape(shape)
+            .shadow(
+                color: layout.showsShadow ? shadowColor : .clear,
+                radius: layout.showsShadow ? 10 : 0, y: layout.showsShadow ? 3 : 0)
+    }
+
+    /// Over a bare page the chrome's own hairline is invisible; the text colour
+    /// at low alpha is what actually reads against anything.
+    private var borderColor: Color {
+        fill == .transparent && layout.customColor == nil
+            ? palette.text.withAlpha(0.28).color
+            : palette.borderContrast.color
+    }
+
+    private var shadowColor: Color { .black.opacity(palette.isDark ? 0.5 : 0.3) }
+
+    @ViewBuilder
+    private var background: some View {
+        if let custom = layout.customColor {
+            // A flat colour still sits on a material, so a translucent choice
+            // frosts the page rather than smearing it.
+            ZStack {
+                if layout.blurStrength > 0 {
+                    shape.fill(.ultraThinMaterial).opacity(layout.blurStrength)
+                }
+                shape.fill(custom.withAlpha(layout.customColorOpacity).color)
+            }
+        } else {
+            switch fill {
+            case .liquidGlass:
+                // Below iOS 26 there is no lens; above it, `zenBarChrome`
+                // applies `glassEffect` to the content instead of a background.
+                ZStack {
+                    shape.fill(.ultraThinMaterial).opacity(layout.blurStrength)
+                    shape.fill(palette.urlbarBackground.withAlpha(tintAlpha * 0.9).color)
+                }
+            case .matte:
+                ZStack {
+                    // Opaque by definition: `urlbarBackground` carries alpha, so
+                    // it is composited over the chrome base first.
+                    shape.fill(palette.mainBrowserBackground.color)
+                    shape.fill(palette.urlbarBackground.color)
+                }
+                .opacity(max(0.35, layout.blurStrength))
+            case .transparent:
+                Color.clear
+            }
+        }
+    }
+}
+
+extension View {
+    /// Apply a bar layout's backing. Liquid Glass has to wrap the content
+    /// rather than sit behind it, which is why this is a function with a branch
+    /// rather than a single modifier.
+    @ViewBuilder
+    func zenBarChrome(
+        layout: BarLayout, fill: BarFill, palette: ZenPalette, isInteractive: Bool = true,
+        height: CGFloat? = nil
+    ) -> some View {
+        if fill == .liquidGlass, layout.customColor == nil, #available(iOS 26.0, *) {
+            let tint = palette.urlbarBackground.withAlpha(0.5 * layout.blurStrength).color
+            let radius = min(CGFloat(layout.cornerRadius), (height ?? CGFloat(layout.height)) / 2)
+            self.glassEffect(
+                isInteractive
+                    ? Glass.regular.tint(tint).interactive()
+                    : Glass.regular.tint(tint),
+                in: RoundedRectangle(cornerRadius: radius, style: .continuous))
+        } else {
+            modifier(
+                ZenBarChrome(layout: layout, fill: fill, palette: palette, height: height))
+        }
+    }
+}

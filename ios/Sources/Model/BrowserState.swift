@@ -59,14 +59,22 @@ final class BrowserState: ObservableObject {
     @Published var toast: ZenToastMessage?
     @Published var isHistorySheetPresented: Bool = false
     @Published var isSettingsPresented: Bool = false
+    /// The Local section — imported LAN services — as its own sheet (#0089C).
+    @Published var isLocalServicesPresented: Bool = false
     @Published var findInPageQuery: String = ""
     @Published var isFindBarVisible: Bool = false
     /// Live swipe offset in points while a space-switch gesture is in progress.
     @Published var spaceSwipeOffset: CGFloat = 0
 
+    /// Live navigation state per tab: what the bar's back / forward / reload
+    /// buttons and its progress indicator read from. Runtime only — a restored
+    /// tab has no history until it loads, so persisting this would be a lie.
+    @Published private(set) var navigationStates: [UUID: TabNavigationState] = [:]
+
     let history: HistoryStore
     let bookmarks: BookmarkStore
     let trustedCertificates: TrustedCertificateStore
+    let localServices: LocalServiceStore
     private let session: SessionStore
 
     /// The ephemeral Focus space, when Focus mode is on. Deliberately *not*
@@ -94,12 +102,14 @@ final class BrowserState: ObservableObject {
         history: HistoryStore? = nil,
         bookmarks: BookmarkStore? = nil,
         trustedCertificates: TrustedCertificateStore? = nil,
+        localServices: LocalServiceStore? = nil,
         restore: Bool = true
     ) {
         self.session = session
         self.history = history ?? HistoryStore()
         self.bookmarks = bookmarks ?? BookmarkStore()
         self.trustedCertificates = trustedCertificates ?? TrustedCertificateStore()
+        self.localServices = localServices ?? LocalServiceStore()
         if restore, let snapshot = session.load(), !snapshot.spaces.isEmpty {
             apply(snapshot)
         } else {
@@ -232,6 +242,21 @@ final class BrowserState: ObservableObject {
     func markLoaded(_ tabID: UUID, _ loaded: Bool = true) {
         guard let index = index(of: tabID), tabs[index].isLoaded != loaded else { return }
         tabs[index].isLoaded = loaded
+        if !loaded { navigationStates[tabID] = nil }
+    }
+
+    // MARK: Navigation state
+
+    /// What the bar's navigation controls should read. An unloaded tab has no
+    /// web view and therefore no history — the empty value, not a stale one.
+    func navigation(for tabID: UUID?) -> TabNavigationState {
+        guard let id = tabID ?? activeTabID else { return TabNavigationState() }
+        return navigationStates[id] ?? TabNavigationState()
+    }
+
+    func updateNavigation(_ tabID: UUID, _ next: TabNavigationState) {
+        guard navigationStates[tabID] != next else { return }
+        navigationStates[tabID] = next
     }
 
     // MARK: Tab mutation
@@ -646,7 +671,8 @@ final class BrowserState: ObservableObject {
     /// certificate prompt has to wait its turn rather than disappear — see the
     /// gated binding in RootView.
     var isBlockingSheetPresented: Bool {
-        isHistorySheetPresented || isSettingsPresented || securityDetail != nil
+        isHistorySheetPresented || isSettingsPresented || isLocalServicesPresented
+            || securityDetail != nil
     }
 
     /// What the glyph at the left of a tab's URL pill is saying.

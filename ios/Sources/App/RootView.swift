@@ -30,6 +30,15 @@ struct RootView: View {
     /// Set when the app leaves the foreground while Focus is on, so returning
     /// can demand authentication.
     @State private var focusNeedsUnlockOnReturn = false
+    /// The bar was put away deliberately — a swipe assigned to `hideBar`, which
+    /// is auto-hide's manual equivalent. Cleared by the grabber.
+    @State private var barHiddenByGesture = false
+    /// The `onScroll` auto-hide rule has the bar out of the way right now.
+    @State private var barHiddenByScroll = false
+    @State private var barRevealTask: Task<Void, Never>?
+    /// The window is wider than it is tall, which is what the layout's
+    /// landscape overrides key off.
+    @State private var isLandscape = false
 
     @MainActor
     init(state: BrowserState? = nil, sync: SyncService? = nil) {
@@ -77,7 +86,62 @@ struct RootView: View {
 
     private var layoutMode: BrowserLayout { state.settings.layout }
 
+    // MARK: The customisable bar (#00896)
+
+    private var barLayout: BarLayout { state.settings.barLayout }
+    private var barPosition: BarPosition { barLayout.position(landscape: isLandscape) }
+    private var barAutoHide: BarAutoHide { barLayout.autoHide(landscape: isLandscape) }
+
+    /// Whether the bar sits over the page rather than taking room from it. The
+    /// full-screen *layout* floats it regardless of position, because that is
+    /// the whole of what full screen means.
+    private var barFloats: Bool { barPosition.isFloating || layoutMode.barFloats }
+
+    /// The single answer to "is the bar on screen", from three rules that can
+    /// each hide it: compact mode, the auto-hide setting, and a deliberate
+    /// hide-bar gesture.
+    private var barHidden: Bool {
+        if barHiddenByGesture { return true }
+        switch barAutoHide {
+        case .never: return toolbarHidden
+        case .onScroll: return toolbarHidden || barHiddenByScroll
+        case .compact:
+            // Follow compact mode whether or not it is switched on, which is
+            // what makes this rule different from `never`.
+            return state.settings.compactHidesToolbar && !state.compactRevealed
+        }
+    }
+
+    /// The grabber is the way back from *any* of those, not just compact mode.
+    private var showsGrabber: Bool {
+        chromeHidden || barHiddenByGesture
+            || (barAutoHide == .compact && barHidden)
+    }
+
+    /// The bar can now carry back, forward, stop and scroll-to-top (#00896),
+    /// and every one of those needs the *pool* — which only this view has. They
+    /// arrive as notifications for the same reason `.zenReloadActiveTab` always
+    /// did, and they are applied in their own layer because a single `body` with
+    /// every modifier on it is more than the type-checker will sit still for.
     var body: some View {
+        window
+            .onReceive(NotificationCenter.default.publisher(for: .zenNavigateBack)) { note in
+                webView(for: note)?.goBack()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .zenNavigateForward)) { note in
+                webView(for: note)?.goForward()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .zenStopLoading)) { note in
+                webView(for: note)?.stopLoading()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .zenScrollToTop)) { note in
+                guard let view = webView(for: note) else { return }
+                let top = -view.scrollView.contentInset.top
+                view.scrollView.setContentOffset(CGPoint(x: 0, y: top), animated: true)
+            }
+    }
+
+    private var window: some View {
         GeometryReader { proxy in
             ZStack {
                 background
@@ -88,6 +152,7 @@ struct RootView: View {
             .onAppear { readSafeArea(proxy) }
             .onChange(of: proxy.safeAreaInsets.top) { _, _ in readSafeArea(proxy) }
             .onChange(of: proxy.safeAreaInsets.bottom) { _, _ in readSafeArea(proxy) }
+            .onChange(of: proxy.size) { _, size in isLandscape = size.width > size.height }
         }
         .environment(\.zenPalette, palette)
         // Applied at the *root* so it holds across every layout, the sheets and
@@ -107,8 +172,8 @@ struct RootView: View {
             // fetch them so the sidebar is not a column of monograms.
             Task { await FaviconService.prefetchMissing(for: state) }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .zenReloadActiveTab)) { _ in
-            guard let tabID = state.activeTabID else { return }
+        .onReceive(NotificationCenter.default.publisher(for: .zenReloadActiveTab)) { note in
+            guard let tabID = tabID(for: note) ?? state.activeTabID else { return }
             // An unloaded tab has no view to reload; selecting it rebuilds one.
             if let view = pool.pool.existing(for: tabID) {
                 // A failed load has nothing committed, so reload() is a no-op;
@@ -130,10 +195,12 @@ struct RootView: View {
             // Nothing may buzz during a scroll — see `Haptics.isScrolling`.
             Haptics.shared.isScrolling = true
             revealChromeWhileScrolling()
+            barScrollBegan()
         }
         .onReceive(NotificationCenter.default.publisher(for: .zenPageScrollEnded)) { _ in
             Haptics.shared.isScrolling = false
             scheduleCompactHide()
+            barScrollEnded()
         }
         .task {
             // The service holds the browser weakly, so this is the one place
@@ -205,6 +272,9 @@ struct RootView: View {
         }
         .sheet(isPresented: $state.isSettingsPresented) {
             SettingsSheet(state: state, sync: sync).environment(\.zenPalette, palette)
+        }
+        .sheet(isPresented: $state.isLocalServicesPresented) {
+            LocalSectionSheet(state: state).environment(\.zenPalette, palette)
         }
         .sheet(item: $shareItem) { url in
             ShareSheet(items: [url])
@@ -344,18 +414,23 @@ struct RootView: View {
     /// gradient shows through before a page paints).
     private var reclaimsTopEdge: Bool { !state.settings.showStatusBar }
 
+    /// The bar can now be at either end and either in the flow or over the
+    /// page, which is four arrangements rather than two — so the alignment and
+    /// the order are both read off the layout instead of being written out.
     private var content: some View {
-        ZStack(alignment: .bottom) {
+        ZStack(alignment: barPosition.isTop ? .top : .bottom) {
             VStack(spacing: 0) {
+                // Docked at the top the bar takes room from the page, exactly
+                // as the bottom-docked one always has.
+                if !barFloats && barPosition.isTop { barStack }
                 contentArea
-                // In card and edge-to-edge the bar is in the layout flow and
-                // pushes the page up. In full screen it floats, so it must not
-                // take part in the flow at all.
-                if !layoutMode.barFloats { bottomBar }
+                if !barFloats && !barPosition.isTop { barStack }
             }
-            if layoutMode.barFloats { bottomBar }
+            // Floating: over the page, taking no part in the flow.
+            if barFloats { barStack }
         }
         .animation(.spring(response: 0.34, dampingFraction: 0.86), value: layoutMode)
+        .animation(.spring(response: 0.34, dampingFraction: 0.86), value: barPosition)
     }
 
     @ViewBuilder
@@ -385,10 +460,14 @@ struct RootView: View {
     }
 
     private var topEdgesIgnored: Edge.Set {
+        // A bar docked at the top has already taken the safe area for itself,
+        // so the page must not reclaim it as well — that would slide the page
+        // up underneath the bar.
+        let topTaken = !barFloats && barPosition.isTop
         switch layoutMode {
-        case .card: return reclaimsTopEdge ? .top : []
-        case .edgeToEdge: return .top
-        case .fullScreen: return [.top, .bottom]
+        case .card: return reclaimsTopEdge && !topTaken ? .top : []
+        case .edgeToEdge: return topTaken ? [] : .top
+        case .fullScreen: return topTaken ? .bottom : [.top, .bottom]
         }
     }
 
@@ -402,39 +481,65 @@ struct RootView: View {
     /// page's own colour — so the page simply has the edge, and the island sits
     /// over it.
     private var webTopInset: CGFloat {
-        guard layoutMode.ignoresTopSafeArea, state.settings.showStatusBar else { return 0 }
-        return safeAreaTop
+        var inset: CGFloat = 0
+        if layoutMode.ignoresTopSafeArea, state.settings.showStatusBar,
+            !(!barFloats && barPosition.isTop)
+        {
+            inset += safeAreaTop
+        }
+        // A bar floating at the *top* covers the page's first screenful the
+        // same way the bottom one covers its last.
+        if barFloats, barPosition.isTop, !barHidden {
+            inset += CGFloat(barLayout.height) + topBarInset + 8
+        }
+        return inset
     }
 
-    /// Full screen puts the bar over the page, so the last screenful would be
-    /// permanently covered without a matching bottom inset.
+    /// A floating bar sits over the page, so the screenful under it would be
+    /// permanently covered without a matching inset.
     private var webBottomInset: CGFloat {
-        guard layoutMode.barFloats, !toolbarHidden else { return 0 }
-        return ZenMetrics.omniboxPillHeight + safeAreaBottom + 12
+        guard barFloats, !barPosition.isTop, !barHidden else { return 0 }
+        return CGFloat(barLayout.height) + bottomBarInset + 12
     }
 
-    private var bottomBar: some View {
+    private var barStack: some View {
+        let edge: Edge = barPosition.isTop ? .top : .bottom
         // One container for both bars: two pieces of glass 8pt apart should
         // read as one lens, not as two stacked ones.
-        ZenGlassContainer(spacing: 8) {
+        return ZenGlassContainer(spacing: 8) {
             VStack(spacing: 8) {
                 if state.isFindBarVisible {
                     FindBar(state: state, pool: pool.pool)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .transition(.move(edge: edge).combined(with: .opacity))
                 }
-                if !toolbarHidden {
+                if !barHidden {
                     OmniboxPill(
-                        state: state, isFloating: layoutMode.barFloats
-                    ) { shareItem = state.activeTab?.url }
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        state: state, isFloating: barFloats,
+                        onShare: { shareItem = $0 },
+                        onHideBar: { hideBarByGesture() }
+                    )
+                    .transition(.move(edge: edge).combined(with: .opacity))
                 }
             }
         }
-        .padding(.horizontal, 10)
-        .padding(.top, 8)
-        .padding(.bottom, layoutMode.barFloats ? safeAreaBottom + 4 : 4)
-        .animation(.easeInOut(duration: ZenTokens.hiddenToolbarTransition), value: toolbarHidden)
+        // The margin is the layout's, except that a full-width bar keeps a
+        // hairline of inset so its border is not clipped by the screen edge.
+        .padding(.horizontal, max(CGFloat(barLayout.horizontalMargin), barLayout.isPill ? 4 : 0))
+        .padding(.top, barPosition.isTop ? topBarInset : 8)
+        .padding(.bottom, barPosition.isTop ? 4 : bottomBarInset)
+        .animation(.easeInOut(duration: ZenTokens.hiddenToolbarTransition), value: barHidden)
         .animation(.easeInOut(duration: 0.2), value: state.isFindBarVisible)
+    }
+
+    /// The bar's own vertical offset, on top of whatever the safe area needs.
+    private var barOffset: CGFloat { CGFloat(barLayout.verticalOffset) }
+
+    private var topBarInset: CGFloat {
+        (barFloats || reclaimsTopEdge ? safeAreaTop : 0) + barOffset
+    }
+
+    private var bottomBarInset: CGFloat {
+        (barFloats ? safeAreaBottom : 0) + barOffset
     }
 
     // MARK: Overlays
@@ -486,53 +591,67 @@ struct RootView: View {
     /// pill just above the home indicator, tapped or pulled up.
     @ViewBuilder
     private var compactGrabber: some View {
-        if chromeHidden {
+        if showsGrabber {
             VStack {
-                Spacer()
-                Capsule()
-                    .fill(palette.text.withAlpha(0.75).color)
-                    .frame(
-                        width: ZenMetrics.compactGrabberWidth,
-                        height: ZenMetrics.compactGrabberHeight)
-                    // The page behind can be any colour, and a bare 35%-alpha
-                    // pill simply vanished against a light one. A material pad
-                    // behind it gives the handle something to sit on, the way
-                    // a system sheet grabber does.
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 7)
-                    .background {
-                        Capsule()
-                            .fill(.ultraThinMaterial)
-                            .overlay { Capsule().fill(palette.brandingBG.withAlpha(0.35).color) }
-                    }
-                    .overlay {
-                        Capsule().strokeBorder(palette.borderContrast.color, lineWidth: 0.5)
-                    }
-                    .clipShape(Capsule())
-                    .shadow(color: .black.opacity(0.28), radius: 6, y: 2)
-                    // A 6pt pill is not a touch target; 44pt is.
-                    .frame(height: ZenMetrics.compactGrabberHitHeight)
-                    .frame(maxWidth: .infinity)
-                    .contentShape(Rectangle())
-                    .onTapGesture { revealChrome() }
-                    .gesture(
-                        DragGesture(minimumDistance: 8)
-                            .onChanged { _ in Haptics.shared.prepare(.grabberDrag) }
-                            .onEnded { value in
-                                // Pull up to reveal; a downward flick is the
-                                // user reaching for the home gesture.
-                                if value.translation.height < -8 {
-                                    Haptics.shared.fire(.grabberDrag)
-                                    revealChrome()
-                                }
-                            }
-                    )
-                    .accessibilityLabel("Show toolbar")
-                    .accessibilityAddTraits(.isButton)
+                // The handle goes to whichever edge the bar it summons lives on.
+                if barPosition.isTop {
+                    grabberPill
+                    Spacer()
+                } else {
+                    Spacer()
+                    grabberPill
+                }
             }
             .transition(.opacity)
             .zIndex(1)
         }
+    }
+
+    private var grabberPill: some View {
+        Capsule()
+            .fill(palette.text.withAlpha(0.75).color)
+            .frame(
+                width: ZenMetrics.compactGrabberWidth,
+                height: ZenMetrics.compactGrabberHeight)
+            // The page behind can be any colour, and a bare 35%-alpha pill
+            // simply vanished against a light one. A material pad behind it
+            // gives the handle something to sit on, the way a system sheet
+            // grabber does.
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background {
+                Capsule()
+                    .fill(.ultraThinMaterial)
+                    .overlay { Capsule().fill(palette.brandingBG.withAlpha(0.35).color) }
+            }
+            .overlay {
+                Capsule().strokeBorder(palette.borderContrast.color, lineWidth: 0.5)
+            }
+            .clipShape(Capsule())
+            .shadow(color: .black.opacity(0.28), radius: 6, y: 2)
+            // A 6pt pill is not a touch target; 44pt is.
+            .frame(height: ZenMetrics.compactGrabberHitHeight)
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
+            .onTapGesture { revealChrome() }
+            .gesture(
+                DragGesture(minimumDistance: 8)
+                    .onChanged { _ in Haptics.shared.prepare(.grabberDrag) }
+                    .onEnded { value in
+                        // Pull *away from the edge the bar is on* to reveal; the
+                        // other direction is the user reaching for the home
+                        // gesture (or the notification shade).
+                        let towardsCentre =
+                            barPosition.isTop ? value.translation.height > 8
+                            : value.translation.height < -8
+                        if towardsCentre {
+                            Haptics.shared.fire(.grabberDrag)
+                            revealChrome()
+                        }
+                    }
+            )
+            .accessibilityLabel("Show toolbar")
+            .accessibilityAddTraits(.isButton)
     }
 
     /// The grabber's deliberate reveal: no countdown, it stays until the page
@@ -540,11 +659,59 @@ struct RootView: View {
     private func revealChrome() {
         compactHideTask?.cancel()
         compactHideTask = nil
+        barRevealTask?.cancel()
+        barRevealTask = nil
         Haptics.shared.fire(.compactBarShow)
         withAnimation(
             .spring(response: ZenMetrics.compactAnimationDuration * 2, dampingFraction: 1)
         ) {
             state.compactRevealed = true
+            // The grabber is the way back from every rule that can hide the
+            // bar, so it clears all of them rather than just compact mode's.
+            barHiddenByGesture = false
+            barHiddenByScroll = false
+        }
+    }
+
+    /// The `hideBar` action — auto-hide's manual equivalent. Deliberate, so it
+    /// stays put until the grabber brings it back.
+    private func hideBarByGesture() {
+        barRevealTask?.cancel()
+        barRevealTask = nil
+        Haptics.shared.fire(.compactBarHide)
+        withAnimation(.easeInOut(duration: ZenTokens.hiddenToolbarTransition)) {
+            barHiddenByGesture = true
+        }
+    }
+
+    /// The `onScroll` rule: out of the way while the page is moving, back
+    /// shortly after it settles.
+    ///
+    /// Direction would be nicer — Safari hides going down and shows going up —
+    /// but WKWebView's scroll delegate reaches us as a notification with no
+    /// payload, and threading direction through it would mean a second channel
+    /// for one animation. "Moving" is the honest signal we have, and it reuses
+    /// the compact-mode delay that already exists as a setting.
+    private func barScrollBegan() {
+        guard barAutoHide == .onScroll else { return }
+        barRevealTask?.cancel()
+        barRevealTask = nil
+        guard !barHiddenByScroll else { return }
+        withAnimation(.easeOut(duration: ZenTokens.hiddenToolbarTransition)) {
+            barHiddenByScroll = true
+        }
+    }
+
+    private func barScrollEnded() {
+        guard barAutoHide == .onScroll, barHiddenByScroll else { return }
+        barRevealTask?.cancel()
+        let delay = max(0.2, state.settings.compactHideDelay)
+        barRevealTask = Task {
+            try? await Task.sleep(for: .seconds(delay))
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeInOut(duration: ZenTokens.hiddenToolbarTransition)) {
+                barHiddenByScroll = false
+            }
         }
     }
 
@@ -587,9 +754,23 @@ struct RootView: View {
         }
     }
 
+    /// The tab a bar-action notification names, or nil for "whatever is
+    /// active" — which is what `.zenReloadActiveTab` has always meant.
+    private func tabID(for note: Notification) -> UUID? {
+        (note.userInfo?["tab"] as? String).flatMap(UUID.init(uuidString:))
+    }
+
+    /// The live web view a bar-action notification is about. Only RootView can
+    /// answer this, because only it holds the pool.
+    private func webView(for note: Notification) -> ZenWebView? {
+        guard let id = tabID(for: note) ?? state.activeTabID else { return nil }
+        return pool.pool.existing(for: id)
+    }
+
     private func readSafeArea(_ proxy: GeometryProxy) {
         safeAreaTop = proxy.safeAreaInsets.top
         safeAreaBottom = proxy.safeAreaInsets.bottom
+        isLandscape = proxy.size.width > proxy.size.height
     }
 
     /// Entering Focus compiles the blocklist *before* creating the first tab —

@@ -5,6 +5,12 @@
 //
 //  Visual reference: `.urlbar:not([breakout-extend])` — 48px tall, the
 //  translucent `--zen-toolbar-element-bg` surface, `--border-radius-medium`.
+//
+//  Since #00896 none of those numbers are constants any more: the bar draws
+//  itself from a `BarLayout`, which is what the "Customize bar" editor writes
+//  and what the editor's live preview reads. Everything here that used to be a
+//  literal is now a lookup, and the buttons are a list rather than a hard-wired
+//  row — so this file is the *renderer* for a layout, not a design of its own.
 
 import SwiftUI
 
@@ -14,13 +20,24 @@ struct OmniboxPill: View {
     /// the ordinary single-pane case; split view gives each pane its own bar
     /// bound to that pane's tab.
     var tabID: UUID?
-    /// A secondary pane's bar is slimmer and drops the controls that belong to
-    /// the window rather than the pane.
+    /// A secondary pane's bar is slimmer and swaps the slot buttons for the
+    /// pane controls — it still follows the layout for everything else.
     var isSecondaryPane: Bool = false
-    /// Full-screen layout floats the bar over the page.
+    /// Full-screen layout, or a floating bar position, puts the bar over the
+    /// page rather than in the flow.
     var isFloating: Bool = false
+    /// The editor's live preview passes the layout being edited rather than the
+    /// saved one, so every change shows before it is committed.
+    var layoutOverride: BarLayout?
+    /// A preview is drawn, not wired up: no navigation, no haptics, no menus
+    /// that could be opened over the editor that is drawing them.
+    var isPreview: Bool = false
     @Environment(\.zenPalette) private var palette
-    let onShare: () -> Void
+    var onShare: (URL) -> Void = { _ in }
+    /// Put the bar away. Owned by whoever animates it (RootView).
+    var onHideBar: () -> Void = {}
+
+    var layout: BarLayout { layoutOverride ?? state.settings.barLayout }
 
     private var tab: Tab? {
         if let tabID { return state.tab(id: tabID) }
@@ -32,121 +49,249 @@ struct OmniboxPill: View {
         tabID == nil || tabID == state.activeTabID
     }
 
+    private var navigation: TabNavigationState { state.navigation(for: tab?.id) }
+
+    /// The glyph colour. `fixed` keeps one colour whatever space you are in,
+    /// which is the point of the option — a bar that does not change under you.
+    private var accent: ZenColor {
+        guard layout.accentSource == .fixed, let fixed = layout.fixedAccent else {
+            return palette.accent
+        }
+        return fixed
+    }
+
+    private var barHeight: CGFloat {
+        isSecondaryPane
+            ? min(CGFloat(layout.height), ZenMetrics.paneBarHeight + 4)
+            : CGFloat(layout.height)
+    }
+
+    private var fill: BarFill { layout.resolvedFill(default: state.settings.barFill) }
+
+    private var context: BarActionContext {
+        BarActionContext(
+            tabID: tabID, share: onShare, hideBar: onHideBar,
+            showActionMenu: {})
+    }
+
     var body: some View {
         HStack(spacing: 6) {
-            if isSecondaryPane {
-                // The pane indicator doubles as the focus affordance: filled
-                // when this is the pane you are in, hollow when it is not.
-                Image(systemName: isActivePane ? "circle.fill" : "circle")
-                    .font(.system(size: 8, weight: .bold))
-                    .foregroundStyle(
-                        isActivePane ? palette.accent.color : palette.text.withAlpha(0.3).color)
-                    .frame(width: 22, height: 36)
-                    .accessibilityLabel(isActivePane ? "Active pane" : "Inactive pane")
-            } else if state.settings.sidebarEdge == .leading {
-                sidebarButton
-            }
-
-            // The badge sits *outside* the address button: it is its own
-            // control, and nesting a button inside a button gives you neither.
-            securityBadge
-
-            Button {
-                Haptics.shared.fire(.omniboxOpen)
-                // Selecting first makes the tapped pane the active one, so the
-                // suggestions and the commit both land where you looked.
-                if let tabID, tabID != state.activeTabID { state.select(tabID) }
-                state.openOmnibox(
-                    for: tabID, prefill: tab.map(Self.editableText) ?? "")
-            } label: {
-                HStack(spacing: 7) {
-                    Text(displayText)
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundStyle(palette.text.color)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                    Spacer(minLength: 0)
-                }
-                .padding(.horizontal, 12)
-                .frame(maxWidth: .infinity, minHeight: 36)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(ZenPressStyle(pressedScale: 0.99))
-            .accessibilityLabel("Address and search")
-
-            if isSecondaryPane {
-                Button {
-                    Haptics.shared.fire(.splitExit)
-                    withAnimation(.spring(response: 0.3, dampingFraction: 1)) {
-                        state.splitSecondaryTabID = nil
-                    }
-                } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(palette.text.withAlpha(0.7).color)
-                        .frame(width: 28, height: 36)
-                }
-                .buttonStyle(ZenPressStyle())
-                .accessibilityLabel("Close split pane")
-            } else {
-                if state.isFocusMode {
-                    // Focus's signature control: always there, never buried.
-                    FocusEraseButton(state: state)
-                } else if let tab, !tab.isNewTabPage {
-                    bookmarkButton(tab)
-                }
-                menuButton
-                if state.settings.sidebarEdge == .trailing {
-                    sidebarButton
-                }
-            }
+            leadingControls
+            addressArea
+            trailingControls
         }
         .padding(.horizontal, 6)
-        .frame(height: isSecondaryPane ? ZenMetrics.paneBarHeight : ZenMetrics.omniboxPillHeight)
-        .zenBarFill(state.settings.barFill, palette: palette, isFloating: isFloating)
+        .frame(height: barHeight)
+        .background { progressFill }
+        .overlay(alignment: .bottom) { progressLine }
+        .zenBarChrome(
+            layout: layout, fill: fill, palette: palette, isInteractive: !isPreview,
+            height: barHeight
+        )
         .opacity(isActivePane ? 1 : 0.82)
-        .simultaneousGesture(sidebarSwipe)
+        .modifier(
+            BarGestures(
+                state: state, layout: layout, context: context, enabled: !isPreview,
+                overflow: { AnyView(overflowItems) }))
     }
 
-    // MARK: Swipe to the tab drawer (#0089F)
+    // MARK: Slots
 
-    /// The bar is the only chrome guaranteed to be under a thumb, which makes
-    /// it the right handle for the tab drawer — the toolbar button is a 34pt
-    /// target at the far left of a 6-inch screen.
-    ///
-    /// `simultaneousGesture` with a non-zero minimum distance: the tap that
-    /// opens the omnibox and the buttons at either end all keep working, and a
-    /// gesture that never travels 12pt is a tap, not a swipe. The direction
-    /// mapping lives in `BarSwipeGesture` so the planned URL-bar customisation
-    /// can reassign it without touching this; the sidebar-edge setting reaches
-    /// it the same way — `SidebarEdge.swipeMapping` mirrors right/left when the
-    /// drawer is on the right, leaving up/down alone.
-    private var sidebarSwipe: some Gesture {
-        DragGesture(minimumDistance: 12)
-            .onChanged { _ in Haptics.shared.prepare(.sidebarSnap) }
-            .onEnded { value in
-                let action = BarSwipeGesture.action(
-                    translation: value.translation, velocity: value.velocity,
-                    isSidebarOpen: state.isSidebarVisible,
-                    mapping: state.settings.sidebarEdge.swipeMapping)
-                guard action != .none else { return }
-                Haptics.shared.fire(.sidebarSnap)
-                withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
-                    state.isSidebarVisible = action == .openSidebar
-                }
+    /// Sidebar button placement (#008A8): a slot's side is whatever the user
+    /// put it on — the customisable bar already has a general mechanism for
+    /// that (drag a `.sidebar` item between `leftSlots`/`rightSlots` in the
+    /// Customize bar editor), and `sidebarEdge` does not fight it. The
+    /// built-in ios drawer instead force-mirrors a hard-wired button, because
+    /// it has no slot system to defer to.
+    @ViewBuilder
+    private var leadingControls: some View {
+        if isSecondaryPane {
+            // The pane indicator doubles as the focus affordance: filled when
+            // this is the pane you are in, hollow when it is not.
+            Image(systemName: isActivePane ? "circle.fill" : "circle")
+                .font(.system(size: 8, weight: .bold))
+                .foregroundStyle(
+                    isActivePane ? accent.color : palette.text.withAlpha(0.3).color)
+                .frame(width: 22, height: 36)
+                .accessibilityLabel(isActivePane ? "Active pane" : "Inactive pane")
+        } else {
+            ForEach(layout.leftSlots) { item in
+                slotButton(item)
             }
+        }
     }
 
-    /// Solid chrome when the bar sits in the layout; a bare outline when it
-    /// floats over the page.
+    @ViewBuilder
+    private var trailingControls: some View {
+        if isSecondaryPane {
+            Button {
+                fire(.splitExit)
+                withAnimation(.spring(response: 0.3, dampingFraction: 1)) {
+                    state.splitSecondaryTabID = nil
+                }
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(palette.text.withAlpha(0.7).color)
+                    .frame(width: 28, height: 36)
+            }
+            .buttonStyle(ZenPressStyle())
+            .disabled(isPreview)
+            .accessibilityLabel("Close split pane")
+        } else {
+            // Focus's signature control is not a slot: the whole promise of the
+            // mode is that Erase is always there, so it cannot be customised
+            // away (#00888).
+            if state.isFocusMode && !isPreview {
+                FocusEraseButton(state: state)
+            }
+            ForEach(layout.rightSlots) { item in
+                slotButton(item)
+            }
+        }
+    }
 
-    // MARK: Pieces
+    @ViewBuilder
+    private func slotButton(_ item: BarSlotItem) -> some View {
+        switch item.action {
+        case .overflowMenu:
+            Menu {
+                overflowItems
+            } label: {
+                glyph(for: item.action, enabled: true)
+            }
+            .disabled(isPreview)
+            .accessibilityLabel("More")
+            .accessibilityIdentifier("moreMenu")
+        case .spaceSwitcher:
+            Menu {
+                ForEach(state.spaces) { space in
+                    Button {
+                        withAnimation { state.switchSpace(to: space.id) }
+                    } label: {
+                        Label {
+                            Text(space.name)
+                        } icon: {
+                            SpaceIconView(space: space, size: 15)
+                        }
+                    }
+                }
+            } label: {
+                glyph(for: item.action, enabled: true)
+            }
+            .disabled(isPreview)
+            .accessibilityLabel("Spaces")
+        default:
+            let enabled = BarActionRunner.isEnabled(item.action, state: state, tabID: tabID)
+            Button {
+                run(item.action)
+            } label: {
+                glyph(for: item.action, enabled: enabled)
+            }
+            .buttonStyle(ZenPressStyle())
+            .disabled(isPreview || !enabled)
+            .accessibilityLabel(item.action.title)
+            .accessibilityIdentifier("barSlot-\(item.action.rawValue)")
+            .modifier(
+                SlotLongPress(action: item.longPress, enabled: !isPreview) { [self] secondary in
+                    run(secondary)
+                })
+        }
+    }
+
+    /// One slot glyph. Latching actions (bookmark, split, compact, Focus) are
+    /// drawn in the accent when they are on — otherwise you cannot tell a
+    /// toggle from a button.
+    private func glyph(for action: BarAction, enabled: Bool) -> some View {
+        let isOn = BarActionRunner.isOn(action, state: state, tabID: tabID)
+        let symbol = action.symbol(
+            isLoading: navigation.isLoading,
+            isBookmarked: BarActionRunner.isOn(.bookmark, state: state, tabID: tabID))
+        return Image(systemName: symbol)
+            .font(.system(size: 14, weight: .medium))
+            .foregroundStyle(
+                isOn ? accent.color : palette.text.withAlpha(enabled ? 0.7 : 0.28).color
+            )
+            .frame(width: 32, height: 36)
+            .contentShape(Rectangle())
+    }
+
+    // MARK: The address area
+
+    /// The pill's middle: badge, favicon, the label, and the optional find
+    /// affordance. A tap opens the omnibox; a double tap runs whatever the
+    /// layout assigned to it.
+    @ViewBuilder
+    private var addressArea: some View {
+        let content = HStack(spacing: 7) {
+            if layout.contents.showsSecurityBadge { securityBadge }
+            if layout.contents.showsFavicon, let tab {
+                FaviconView(tab: tab, size: 15)
+            }
+            Text(displayText)
+                .font(.system(size: CGFloat(layout.urlFontSize), weight: .medium))
+                .foregroundStyle(palette.text.color)
+                .lineLimit(1)
+                .truncationMode(.middle)
+            Spacer(minLength: 0)
+            if layout.contents.showsFindButton && !isSecondaryPane {
+                Button {
+                    run(.findInPage)
+                } label: {
+                    Image(systemName: "text.magnifyingglass")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(palette.text.withAlpha(0.5).color)
+                        .frame(width: 24, height: 30)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(ZenPressStyle())
+                .disabled(isPreview)
+                .accessibilityLabel("Find in page")
+            }
+        }
+        .padding(.horizontal, layout.contents.showsSecurityBadge ? 4 : 12)
+        .frame(maxWidth: .infinity, minHeight: 36)
+        .contentShape(Rectangle())
+
+        if let doubleTap = layout.gestures[.doubleTap], doubleTap != .none, !isPreview {
+            // Declared before the single tap so SwiftUI resolves the two-tap
+            // case first; a plain Button would fire twice instead.
+            content
+                .onTapGesture(count: 2) { run(doubleTap) }
+                .onTapGesture { openOmnibox() }
+                .accessibilityAddTraits(.isButton)
+                .accessibilityLabel("Address and search")
+        } else {
+            Button { openOmnibox() } label: { content }
+                .buttonStyle(ZenPressStyle(pressedScale: 0.99))
+                .disabled(isPreview)
+                .accessibilityLabel("Address and search")
+        }
+    }
+
+    private func openOmnibox() {
+        guard !isPreview else { return }
+        fire(.omniboxOpen)
+        // Selecting first makes the tapped pane the active one, so the
+        // suggestions and the commit both land where you looked.
+        if let tabID, tabID != state.activeTabID { state.select(tabID) }
+        state.openOmnibox(for: tabID, prefill: tab.map(Self.editableText) ?? "")
+    }
 
     private var displayText: String {
         guard let tab else { return "Search or enter address" }
         if tab.isNewTabPage { return "Search or enter address" }
-        let host = URLDetector.prettyHost(tab.url)
-        return host.isEmpty ? tab.url.absoluteString : host
+        switch layout.contents.label {
+        case .fullURL:
+            return tab.url.absoluteString
+        case .pageTitle:
+            // Falls back to the host until a title arrives, rather than showing
+            // an empty bar for the first second of every load.
+            return tab.title.isEmpty ? URLDetector.prettyHost(tab.url) : tab.title
+        case .domain:
+            let host = URLDetector.prettyHost(tab.url)
+            return host.isEmpty ? tab.url.absoluteString : host
+        }
     }
 
     /// The glyph, and — when there is something behind it — the button that
@@ -160,9 +305,9 @@ struct OmniboxPill: View {
             .foregroundStyle(
                 badge.isWarning ? ZenTokens.warningColor.color : palette.text.withAlpha(0.45).color)
 
-        if badge.isActionable {
+        if badge.isActionable && !isPreview {
             Button {
-                Haptics.shared.fire(.longPressMenu)
+                fire(.longPressMenu)
                 if let tabID, tabID != state.activeTabID { state.select(tabID) }
                 state.openSecurityDetail(for: tab)
             } label: {
@@ -185,116 +330,167 @@ struct OmniboxPill: View {
         tab.isNewTabPage ? "" : tab.url.absoluteString
     }
 
-    private var sidebarButton: some View {
-        Button {
-            Haptics.shared.fire(.sidebarSnap)
-            withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
-                state.isSidebarVisible.toggle()
+    // MARK: Progress
+
+    /// The bar's own surface filling from the left. Costs no extra height,
+    /// which on a phone is the argument for it.
+    @ViewBuilder
+    private var progressFill: some View {
+        if layout.contents.progress == .fill, navigation.showsProgress {
+            GeometryReader { geo in
+                accent.withAlpha(0.22).color
+                    .frame(width: geo.size.width * navigation.progress)
+                    .animation(.easeOut(duration: 0.2), value: navigation.progress)
             }
-        } label: {
-            Image(systemName: state.settings.sidebarEdge.toggleSymbolName)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(palette.text.withAlpha(0.7).color)
-                .frame(width: 34, height: 36)
         }
-        .buttonStyle(ZenPressStyle())
-        .accessibilityLabel("Toggle sidebar")
     }
 
-    private func bookmarkButton(_ tab: Tab) -> some View {
-        let saved = state.bookmarks.isBookmarked(tab.url)
-        return Button {
-            Haptics.shared.fire(saved ? .bookmarkRemove : .bookmarkAdd)
-            state.bookmarks.toggle(
-                url: tab.url, title: tab.displayTitle, spaceID: state.activeSpaceID)
-        } label: {
-            Image(systemName: saved ? "bookmark.fill" : "bookmark")
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(saved ? palette.accent.color : palette.text.withAlpha(0.6).color)
-                .frame(width: 30, height: 36)
+    /// A hairline along the bottom edge, as a desktop browser draws it.
+    @ViewBuilder
+    private var progressLine: some View {
+        if layout.contents.progress == .line, navigation.showsProgress {
+            GeometryReader { geo in
+                accent.color
+                    .frame(width: geo.size.width * navigation.progress, height: 2)
+                    .animation(.easeOut(duration: 0.2), value: navigation.progress)
+                    .frame(maxHeight: .infinity, alignment: .bottom)
+            }
+            .allowsHitTesting(false)
         }
-        .buttonStyle(ZenPressStyle())
-        .accessibilityLabel(saved ? "Remove bookmark" : "Add bookmark")
     }
 
-    private var menuButton: some View {
-        Menu {
+    // MARK: The overflow menu
+
+    /// Built from the layout's overflow slot, so what is in the menu is as
+    /// customisable as what is on the bar.
+    @ViewBuilder
+    private var overflowItems: some View {
+        ForEach(layout.overflowSlots) { item in
             Button {
-                NotificationCenter.default.post(name: .zenReloadActiveTab, object: nil)
-            } label: { Label("Reload", systemImage: "arrow.clockwise") }
-
-            Button { onShare() } label: { Label("Share", systemImage: "square.and.arrow.up") }
-
-            Button {
-                state.isFindBarVisible = true
-            } label: { Label("Find in Page", systemImage: "text.magnifyingglass") }
-
-            Toggle(isOn: $state.settings.preferDesktopSite) {
-                Label("Request Desktop Site", systemImage: "desktopcomputer")
-            }
-
-            Button {
-                NotificationCenter.default.post(name: .zenPopOutVideo, object: nil)
-            } label: { Label("Pop Out Video", systemImage: "pip.enter") }
-
-            Divider()
-
-            Button {
-                Haptics.shared.fire(state.isSplitActive ? .splitExit : .splitEnter)
-                withAnimation(.spring(response: 0.3, dampingFraction: 1)) { state.toggleSplit() }
+                run(item.action)
             } label: {
                 Label(
-                    state.isSplitActive ? "Exit Split View" : "Split View",
-                    systemImage: "rectangle.split.2x1")
+                    menuTitle(item.action),
+                    systemImage: item.action.symbol(
+                        isLoading: navigation.isLoading,
+                        isBookmarked: BarActionRunner.isOn(
+                            .bookmark, state: state, tabID: tabID)))
             }
-
-            Button {
-                Haptics.shared.fire(
-                    state.settings.compactModeEnabled ? .compactBarShow : .compactBarHide)
-                state.settings.compactModeEnabled.toggle()
-            } label: {
-                Label(
-                    state.settings.compactModeEnabled ? "Exit Compact Mode" : "Compact Mode",
-                    systemImage: "rectangle.compress.vertical")
-            }
-
-            Button {
-                NotificationCenter.default.post(name: .zenToggleFocusMode, object: nil)
-            } label: {
-                Label(
-                    state.isFocusMode ? "Leave Focus (erases)" : "Focus Mode",
-                    systemImage: state.isFocusMode ? "eye.slash.fill" : "eye.slash")
-            }
-
-            // Shows where you are and moves you on — the cycle is short enough
-            // that a submenu of three would be more taps, not fewer.
-            Button {
-                NotificationCenter.default.post(name: .zenCycleLayout, object: nil)
-            } label: {
-                Label(
-                    "Layout: \(state.settings.layout.displayName)",
-                    systemImage: state.settings.layout.symbol)
-            }
-
-            Divider()
-
-            Button { state.isHistorySheetPresented = true } label: {
-                Label("History", systemImage: "clock.arrow.circlepath")
-            }
+            .disabled(!BarActionRunner.isEnabled(item.action, state: state, tabID: tabID))
+        }
+        if layout.overflowSlots.isEmpty {
             Button { state.isSettingsPresented = true } label: {
                 Label("Settings", systemImage: "gearshape")
             }
-        } label: {
-            Image(systemName: "ellipsis")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(palette.text.withAlpha(0.7).color)
-                .frame(width: 32, height: 36)
-                .contentShape(Rectangle())
         }
-        // A SwiftUI Menu does not inherit the accessibility label of its own
-        // label view, so both are set here explicitly.
-        .accessibilityLabel("More")
-        .accessibilityIdentifier("moreMenu")
+    }
+
+    /// A menu row says what it will do, not what the thing is called — the
+    /// glyph on the bar has no room for "Exit Split View" but a menu does.
+    private func menuTitle(_ action: BarAction) -> String {
+        switch action {
+        case .reloadStop: return navigation.isLoading ? "Stop" : "Reload"
+        case .splitView: return state.isSplitActive ? "Exit Split View" : "Split View"
+        case .compactToggle:
+            return state.settings.compactModeEnabled ? "Exit Compact Mode" : "Compact Mode"
+        case .focusMode: return state.isFocusMode ? "Leave Focus (erases)" : "Focus Mode"
+        case .desktopSite:
+            return state.settings.preferDesktopSite ? "Request Mobile Site" : "Request Desktop Site"
+        case .bookmark:
+            return BarActionRunner.isOn(.bookmark, state: state, tabID: tabID)
+                ? "Remove Bookmark" : "Add Bookmark"
+        case .layoutCycle: return "Layout: \(state.settings.layout.displayName)"
+        case .sidebar: return "Tabs"
+        case .localServices: return "Local"
+        default: return action.title
+        }
+    }
+
+    // MARK: Plumbing
+
+    private func run(_ action: BarAction) {
+        guard !isPreview else { return }
+        BarActionRunner.perform(action, state: state, context: context)
+    }
+
+    private func fire(_ event: HapticEvent) {
+        guard layout.haptics, !isPreview else { return }
+        Haptics.shared.fire(event)
+    }
+}
+
+// MARK: - Long press on a slot button
+
+/// A second action on a held button. Applied as a modifier so a slot with no
+/// secondary action carries no gesture at all — an empty `onLongPressGesture`
+/// still delays the tap it is attached to.
+private struct SlotLongPress: ViewModifier {
+    let action: BarAction?
+    let enabled: Bool
+    let run: (BarAction) -> Void
+
+    func body(content: Content) -> some View {
+        if let action, action != .none, enabled {
+            content.onLongPressGesture(minimumDuration: 0.45) {
+                Haptics.shared.fire(.longPressMenu)
+                run(action)
+            }
+        } else {
+            content
+        }
+    }
+}
+
+// MARK: - Gestures on the bar itself
+
+/// Swipes, the long press and the double tap, resolved through the layout's
+/// gesture table (#00896). The double tap lives on the address area — see
+/// `addressArea` — because it has to be arbitrated against the tap that opens
+/// the omnibox; everything else can sit on the whole bar.
+private struct BarGestures<Menu: View>: ViewModifier {
+    @ObservedObject var state: BrowserState
+    let layout: BarLayout
+    let context: BarActionContext
+    let enabled: Bool
+    let overflow: () -> Menu
+
+    func body(content: Content) -> some View {
+        guard enabled else { return AnyView(content) }
+        var view = AnyView(content.simultaneousGesture(swipe))
+        switch layout.gestures[.longPress] {
+        case .some(.actionMenu):
+            // The system's own long-press menu: it is the only thing that can
+            // put a menu next to a bar with no anchor of its own.
+            view = AnyView(view.contextMenu { overflow() })
+        case .some(let action) where action != .none:
+            view = AnyView(
+                view.onLongPressGesture(minimumDuration: 0.5) {
+                    if layout.haptics { Haptics.shared.fire(.longPressMenu) }
+                    BarActionRunner.perform(action, state: state, context: context)
+                })
+        default:
+            break
+        }
+        return view
+    }
+
+    /// `simultaneousGesture` with a non-zero minimum distance: the tap that
+    /// opens the omnibox and the buttons at either end all keep working, and a
+    /// gesture that never travels 12pt is a tap, not a swipe.
+    private var swipe: some Gesture {
+        DragGesture(minimumDistance: 12)
+            .onChanged { _ in
+                if layout.haptics { Haptics.shared.prepare(.sidebarSnap) }
+            }
+            .onEnded { value in
+                guard
+                    let action = BarSwipeGesture.action(
+                        translation: value.translation, velocity: value.velocity, layout: layout,
+                        sidebarEdge: state.settings.sidebarEdge)
+                else { return }
+                if layout.haptics { Haptics.shared.fire(.sidebarSnap) }
+                BarActionRunner.perform(action, state: state, context: context)
+            }
     }
 }
 
@@ -310,10 +506,6 @@ extension Notification.Name {
     static let zenPageScrollBegan = Notification.Name("zen.pageScrollBegan")
     /// Scrolling settled. Starts the hide countdown.
     static let zenPageScrollEnded = Notification.Name("zen.pageScrollEnded")
-    /// Put the page's video into Picture in Picture (#008B0). Posted by the
-    /// overflow menu and the page's context menu; RootView observes it, for the
-    /// same reason as `zenReloadActiveTab` — the web view lives in the pool.
-    static let zenPopOutVideo = Notification.Name("zen.popOutVideo")
     /// Advance the layout cycle. RootView owns the transition animation.
     static let zenCycleLayout = Notification.Name("zen.cycleLayout")
     /// Every Focus tab has been torn down; the pool must drop their web views

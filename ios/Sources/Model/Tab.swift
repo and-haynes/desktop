@@ -88,3 +88,20 @@ struct Tab: Identifiable, Codable, Equatable, Sendable {
         Tab(url: newTabURL, title: "New Tab", kind: .normal, spaceID: spaceID)
     }
 }
+
+/// What the bar's navigation controls and progress indicator read.
+///
+/// Kept out of `Tab` on purpose: it changes many times a second during a load
+/// and `Tab` is what gets written to the session file, so folding it in would
+/// mean debouncing a disk write against a progress bar.
+struct TabNavigationState: Equatable, Sendable {
+    var canGoBack: Bool = false
+    var canGoForward: Bool = false
+    var isLoading: Bool = false
+    /// 0...1. WebKit's `estimatedProgress`, which starts at 0.1 rather than 0.
+    var progress: Double = 0
+
+    /// Whether there is anything worth drawing. WebKit leaves `estimatedProgress`
+    /// at 1 after a load finishes, so "loading" is the gate, not the number.
+    var showsProgress: Bool { isLoading && progress > 0 && progress < 1 }
+}

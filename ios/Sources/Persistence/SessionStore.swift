@@ -44,6 +44,10 @@ struct ZenSettings: Codable, Equatable, Sendable {
     var layout: BrowserLayout = .card
     /// What sits behind the floating URL bar. Default Liquid Glass.
     var barFill: BarFill = .liquidGlass
+    /// The whole customisable bar: position, geometry, look, contents, buttons,
+    /// gestures and auto-hide (#00896). Defaults to the Zen preset, which is
+    /// the bar as it shipped.
+    var barLayout: BarLayout = BarLayout()
     /// Sepia only: warm the *pages* too, not just the chrome. Off by default —
     /// a CSS filter over someone else's design is a blunt instrument, and it
     /// is their choice whether to want it (#00890).
@@ -64,6 +68,7 @@ struct ZenSettings: Codable, Equatable, Sendable {
         case searchEngine, compactModeEnabled, compactHidesSidebar, compactHidesToolbar
         case preferDesktopSite, sidebarPinnedOnPad, appearance, compactHideDelay, hapticLevel
         case showStatusBar, sidebarEdge, layout, focusRequiresBiometrics, barFill, sepiaTintsPages
+        case barLayout
     }
 
     init(from decoder: Decoder) throws {
@@ -101,6 +106,10 @@ struct ZenSettings: Codable, Equatable, Sendable {
             try c.decodeIfPresent(SidebarEdge.self, forKey: .sidebarEdge) ?? fallback.sidebarEdge
         layout = try c.decodeIfPresent(BrowserLayout.self, forKey: .layout) ?? fallback.layout
         barFill = try c.decodeIfPresent(BarFill.self, forKey: .barFill) ?? fallback.barFill
+        // BarLayout decodes leniently in its own right, so this only has to
+        // survive the key being absent entirely.
+        barLayout = (try? c.decodeIfPresent(BarLayout.self, forKey: .barLayout))
+            ?? fallback.barLayout
         sepiaTintsPages =
             try c.decodeIfPresent(Bool.self, forKey: .sepiaTintsPages) ?? fallback.sepiaTintsPages
         focusRequiresBiometrics =

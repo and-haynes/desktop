@@ -189,6 +189,10 @@ final class WebViewPool {
         view.scrollView.contentInsetAdjustmentBehavior = .never
         view.scrollView.scrollsToTop = true
         view.pendingScrollY = tab.scrollY
+        view.onNavigationChange = { [weak self] changed in
+            guard let id = changed.tabID else { return }
+            self?.state?.updateNavigation(id, changed.navigationState)
+        }
         views[tab.id] = view
         state?.markLoaded(tab.id, true)
         evictIfNeeded()
@@ -206,6 +210,7 @@ final class WebViewPool {
         view.stopLoading()
         view.navigationDelegate = nil
         view.uiDelegate = nil
+        view.onNavigationChange = nil
         view.removeFromSuperview()
         usageOrder.removeAll { $0 == tabID }
         state?.markLoaded(tabID, false)
@@ -332,4 +337,40 @@ final class ZenWebView: WKWebView {
           return read(body) || read(root) || 'rgba(0, 0, 0, 0)';
         })()
         """
+    /// Called whenever WebKit moves `estimatedProgress`, `isLoading`,
+    /// `canGoBack` or `canGoForward`. The customisable bar can put back,
+    /// forward, reload/stop and a progress indicator on screen for every pane
+    /// (#00896), so these are observed once here rather than polled per view.
+    var onNavigationChange: ((ZenWebView) -> Void)?
+
+    private var observations: [NSKeyValueObservation] = []
+
+    override init(frame: CGRect, configuration: WKWebViewConfiguration) {
+        super.init(frame: frame, configuration: configuration)
+        observations = [
+            observe(\.estimatedProgress) { view, _ in ZenWebView.notify(view) },
+            observe(\.isLoading) { view, _ in ZenWebView.notify(view) },
+            observe(\.canGoBack) { view, _ in ZenWebView.notify(view) },
+            observe(\.canGoForward) { view, _ in ZenWebView.notify(view) },
+        ]
+    }
+
+    /// KVO hands us a non-isolated callback, but WebKit only ever mutates these
+    /// properties on the main thread — so asserting that is honest, where a
+    /// hop to `DispatchQueue.main` would put the progress bar a frame behind
+    /// the load it is describing.
+    private nonisolated static func notify(_ view: ZenWebView) {
+        MainActor.assumeIsolated { view.onNavigationChange?(view) }
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("ZenWebView is only ever created in code")
+    }
+
+    var navigationState: TabNavigationState {
+        TabNavigationState(
+            canGoBack: canGoBack, canGoForward: canGoForward, isLoading: isLoading,
+            progress: estimatedProgress)
+    }
 }

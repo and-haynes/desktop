@@ -8,10 +8,9 @@
 //  left of a 6-inch screen.
 //
 //  The decision is a pure function of the drag so it can be tested without a
-//  simulator, and it resolves through a *mapping table* rather than a switch:
-//  the planned URL-bar customisation needs to reassign a direction without
-//  touching the gesture, and a table is the seam that makes that a one-line
-//  change.
+//  simulator, and it resolves through the *layout's* gesture table rather than
+//  a switch — which is what let #00896 make every direction assignable without
+//  touching the gesture recogniser.
 
 import CoreGraphics
 
@@ -21,8 +20,10 @@ enum BarSwipeDirection: String, Equatable, CaseIterable, Sendable {
     case left, right, up, down
 }
 
-/// What a bar swipe does. One action today, deliberately named rather than
-/// hard-wired so it can become an assignable command later.
+/// What a bar swipe meant before #00896 made the bar's gestures a
+/// user-assignable table. Kept for the sidebar-edge (edge, gesture direction)
+/// → action tests below, which exercise that pure mapping directly rather than
+/// a whole `BarLayout`.
 enum BarGestureAction: String, Equatable, Sendable {
     case openSidebar
     case closeSidebar
@@ -39,8 +40,9 @@ enum BarSwipeGesture {
     /// Points per second along the dominant axis.
     static let velocityThreshold: CGFloat = 320
 
-    /// The default direction → action map. Right or up reaches for the tab
-    /// list; left or down puts it away, mirroring the drawer's own motion.
+    /// The default direction → action map from before the bar became
+    /// customisable. Right or up reaches for the tab list; left or down puts
+    /// it away, mirroring the drawer's own motion.
     static let defaultMapping: [BarSwipeDirection: BarGestureAction] = [
         .right: .openSidebar,
         .up: .openSidebar,
@@ -99,5 +101,46 @@ enum BarSwipeGesture {
         direction: BarSwipeDirection, isSidebarOpen: Bool, edge: SidebarEdge
     ) -> BarGestureAction {
         resolve(direction: direction, isSidebarOpen: isSidebarOpen, mapping: edge.swipeMapping)
+    }
+
+    // MARK: The customisable bar (#00896)
+
+    /// The whole decision under the customisable bar: direction, then the
+    /// layout's own assignment for it. `nil` when the drag meant nothing or
+    /// the direction is unassigned.
+    ///
+    /// `sidebarEdge` mirrors only the slot actually bound to `.sidebar` — if
+    /// swipeLeft opens the drawer and the drawer moves to the right edge,
+    /// swipeRight opens it instead. Anything else on swipeLeft/swipeRight (a
+    /// customised next/previous-tab pair, say) is left exactly where the user
+    /// put it; #008A8 mirrors the drawer, not the whole gesture table.
+    static func action(
+        translation: CGSize, velocity: CGSize, layout: BarLayout,
+        sidebarEdge: SidebarEdge = .leading
+    ) -> BarAction? {
+        guard let direction = direction(translation: translation, velocity: velocity),
+            let gesture = BarGesture(direction: direction)
+        else { return nil }
+        let gestures = effectiveGestures(layout.gestures, edge: sidebarEdge)
+        guard let action = gestures[gesture], action != .none else { return nil }
+        return action
+    }
+
+    /// `layout.gestures`, with whichever horizontal slot is bound to
+    /// `.sidebar` swapped to the opposite side once the sidebar itself has
+    /// moved there.
+    static func effectiveGestures(
+        _ gestures: [BarGesture: BarAction], edge: SidebarEdge
+    ) -> [BarGesture: BarAction] {
+        guard edge == .trailing else { return gestures }
+        var copy = gestures
+        if gestures[.swipeLeft] == .sidebar {
+            copy[.swipeLeft] = gestures[.swipeRight]
+            copy[.swipeRight] = .sidebar
+        } else if gestures[.swipeRight] == .sidebar {
+            copy[.swipeRight] = gestures[.swipeLeft]
+            copy[.swipeLeft] = .sidebar
+        }
+        return copy
     }
 }
