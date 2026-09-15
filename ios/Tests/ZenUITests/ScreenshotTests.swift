@@ -75,7 +75,11 @@ final class ScreenshotTests: XCTestCase {
 
     // MARK: Elements
 
-    private var sidebarButton: XCUIElement { app.buttons["Toggle sidebar"] }
+    // "Toggle sidebar" was the hard-wired ios-branch button's label; since
+    // #00896 the bar is slot-driven and the shipped "zen" preset's sidebar
+    // slot carries the identifier below and the label "Tabs" instead. This
+    // was already stale on experimental before #008A8 touched this file.
+    private var sidebarButton: XCUIElement { app.buttons["barSlot-sidebar"] }
     private var addressBar: XCUIElement { app.buttons["Address and search"] }
 
     private func openSidebar() {
