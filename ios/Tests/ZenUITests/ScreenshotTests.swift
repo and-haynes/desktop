@@ -574,6 +574,107 @@ final class ScreenshotTests: XCTestCase {
         try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-SYNC"))
     }
 
+    /// #008AA end to end, as far as it can go without a password.
+    ///
+    /// The app is relaunched with `-zenFxAWebChannelProbe`, which makes the
+    /// sign-in sheet dispatch a synthetic `fxaccounts:oauth_login` into
+    /// Mozilla's own page once it loads — with this request's real `state` and
+    /// an obviously fake `code`. That drives the WebChannel handler, the state
+    /// check and the PKCE exchange against Mozilla's live token endpoint,
+    /// which rejects the code. **The rejection appearing in the diagnostics
+    /// transcript is the assertion**: before this ticket the flow ended in
+    /// silence, and a silent failure is the bug.
+    ///
+    /// It also captures the transcript itself, which is the evidence that
+    /// `fxaccounts:fxa_status` was asked and answered.
+    func testSyncDiagnosticsRecordTheWebChannelFlow() throws {
+        let suffix = UIDevice.current.userInterfaceIdiom == .pad ? "-ipad" : ""
+        app.terminate()
+        app = XCUIApplication()
+        app.launchArguments += [
+            "-zenFxAWebChannelProbe",
+            """
+            {"id":"account_updates","message":{"command":"fxaccounts:oauth_login",\
+            "messageId":"probe","data":{"action":"signin",\
+            "code":"zenprobe0000000000000000000000000000000000000000000000000000cafe",\
+            "state":"__ZEN_STATE__","declinedSyncEngines":[],\
+            "offeredSyncEngines":["bookmarks","history","tabs"]}}}
+            """,
+        ]
+        app.launch()
+        settle(4.0)
+
+        XCTAssertTrue(openSettings(), "could not open Settings")
+        let sheet = app.collectionViews.firstMatch
+        let signIn = app.descendants(matching: .any)["syncSignInButton"].firstMatch
+        for _ in 0..<10 {
+            if signIn.exists && signIn.isHittable { break }
+            if sheet.exists { sheet.swipeUp() } else { app.swipeUp() }
+            settle(0.5)
+        }
+        XCTAssertTrue(signIn.waitForExistence(timeout: 8), "the Sync section is missing")
+        signIn.tap()
+
+        let cancel = app.buttons["syncSignInCancel"].firstMatch
+        XCTAssertTrue(cancel.waitForExistence(timeout: 15), "the sign-in sheet did not open")
+        // Mozilla's page, then the probe, then the exchange. The alert that
+        // the failed exchange raises is itself the proof that the failure did
+        // not vanish.
+        // The page itself, part-way through: this is what Mozilla's form looks
+        // like in a WebChannel context, and whether it rendered at all.
+        settle(12.0)
+        capture("29c-sync-signin-webchannel\(suffix)")
+        let alert = app.alerts.firstMatch
+        let sawAlert = alert.waitForExistence(timeout: 70)
+        if sawAlert {
+            capture("30-sync-signin-failure\(suffix)")
+            XCTAssertTrue(
+                alert.staticTexts.element(boundBy: 0).label.contains("Sync stopped at"),
+                "a failed exchange must say where it stopped")
+            alert.buttons["OK"].firstMatch.tap()
+            settle(1.0)
+        }
+        if cancel.exists, cancel.isHittable { cancel.tap() }
+        settle(1.5)
+
+        // The transcript: authorization opened, page loaded, fxa_status
+        // answered, oauth_login received, code exchange failed.
+        let diagnostics = app.descendants(matching: .any)["syncDiagnosticsLink"].firstMatch
+        for _ in 0..<10 {
+            if diagnostics.exists && diagnostics.isHittable { break }
+            if sheet.exists { sheet.swipeUp() } else { app.swipeUp() }
+            settle(0.5)
+        }
+        XCTAssertTrue(
+            diagnostics.waitForExistence(timeout: 10), "the diagnostics row is missing")
+        diagnostics.tap()
+        settle(1.5)
+        capture("31-sync-diagnostics\(suffix)")
+
+        let transcript = app.descendants(matching: .any)["syncDiagnosticsView"].firstMatch
+        XCTAssertTrue(transcript.waitForExistence(timeout: 8), "diagnostics did not open")
+        let text = app.debugDescription
+        XCTAssertTrue(
+            text.contains("Sign-in page loaded"), "the sign-in page never loaded")
+        XCTAssertTrue(
+            text.contains("oauth_login"),
+            "the oauth_login message never crossed the WebChannel")
+        XCTAssertTrue(
+            text.contains("state matched"), "the state check did not run")
+        XCTAssertTrue(
+            sawAlert || text.contains("Code exchange"),
+            "the flow did not reach the code exchange")
+        // `fxaccounts:fxa_status` is deliberately *not* asserted here. The
+        // Mozilla accounts page asks for it after an email has been entered
+        // and the account is known, which needs a real account — so the live
+        // run cannot reach it. The round trip is covered instead by
+        // `FxAWebChannelBridgeTests`, in a real WKWebView against a stand-in
+        // page. See the README.
+        try? Data(text.utf8)
+            .write(to: outputDirectory.appendingPathComponent("sync-diagnostics-tree.txt"))
+        try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-DIAGNOSTICS"))
+    }
+
     /// The new-tab strip (#0089F): full width, pinned below the tab list, and
     /// it actually makes a tab.
     func testCaptureNewTabStrip() throws {

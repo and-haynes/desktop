@@ -54,6 +54,7 @@
 		6D869C61EFF81D62EB152165 /* TokenServerClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC256C195E53895E27297696 /* TokenServerClient.swift */; };
 		70EABBE197A464B62C640799 /* TabRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82193B0812A778DE46C01FCA /* TabRowView.swift */; };
 		73FB4B64946C016E25E36449 /* FxAWebChannelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAF4B40A9E2B2DA45870E23C /* FxAWebChannelTests.swift */; };
+		76577B1B0B9A197A618F9121 /* FxAWebChannelBridgeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D423177180833AD4F4538C7 /* FxAWebChannelBridgeTests.swift */; };
 		7AF27E924711B1B48BC0518A /* BarSwipeGestureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 626F7FF4DA0415ED88BC1361 /* BarSwipeGestureTests.swift */; };
 		7C11E3E08187A3225F84258C /* EssentialsGrid.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDFF04967B55ED7F97DCAB72 /* EssentialsGrid.swift */; };
 		7D3F0143C5B301DD4A247C07 /* SyncDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C6370B5DA927813C5A6ED68 /* SyncDiagnostics.swift */; };
@@ -178,6 +179,7 @@
 		896D79F909A07C86E2E39E1C /* ColorParsingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorParsingTests.swift; sourceTree = "<group>"; };
 		89CF4FD1B002F1922E42F267 /* OmniboxPill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OmniboxPill.swift; sourceTree = "<group>"; };
 		8C3C1C2ECA755FA42D37CD44 /* SyncStorageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncStorageTests.swift; sourceTree = "<group>"; };
+		8D423177180833AD4F4538C7 /* FxAWebChannelBridgeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FxAWebChannelBridgeTests.swift; sourceTree = "<group>"; };
 		8EE8DC3BDB6C2210F2DF96F0 /* Space.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Space.swift; sourceTree = "<group>"; };
 		8EF927EF7B88CDA97759FFF1 /* ZenSpacesRecords.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZenSpacesRecords.swift; sourceTree = "<group>"; };
 		8FF289D1C71AF8A70C502CAD /* ZenTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = ZenTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -476,6 +478,7 @@
 				626F7FF4DA0415ED88BC1361 /* BarSwipeGestureTests.swift */,
 				2B7DC3083D917DB62298DF0C /* BrowserStateTests.swift */,
 				896D79F909A07C86E2E39E1C /* ColorParsingTests.swift */,
+				8D423177180833AD4F4538C7 /* FxAWebChannelBridgeTests.swift */,
 				CAF4B40A9E2B2DA45870E23C /* FxAWebChannelTests.swift */,
 				D2971FAB4405F536C1C76DDA /* HapticsTests.swift */,
 				FF464950DD8915C034DD2E64 /* LANHostTests.swift */,
@@ -754,6 +757,7 @@
 				7AF27E924711B1B48BC0518A /* BarSwipeGestureTests.swift in Sources */,
 				10DB9AA9F73EA1211E61422B /* BrowserStateTests.swift in Sources */,
 				E7F82330EA0D9210C94241F7 /* ColorParsingTests.swift in Sources */,
+				76577B1B0B9A197A618F9121 /* FxAWebChannelBridgeTests.swift in Sources */,
 				73FB4B64946C016E25E36449 /* FxAWebChannelTests.swift in Sources */,
 				F4BE296D6EFC1B54C9E01515 /* HapticsTests.swift in Sources */,
 				C3C3C63F3F71C8DC7F36F0AB /* LANHostTests.swift in Sources */,

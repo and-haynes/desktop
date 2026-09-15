@@ -260,3 +260,71 @@ final class FxAWebChannelMessageTests: XCTestCase {
         XCTAssertEqual(query["redirect_uri"], SyncConfig.redirectURI)
     }
 }
+
+/// Endpoint discovery, which turned out to be a second way for #008AA to fail:
+/// the flow got all the way to the code exchange and then POSTed to a URL that
+/// does not exist.
+final class FxAEndpointDiscoveryTests: XCTestCase {
+
+    /// The live document, fetched from
+    /// `https://accounts.firefox.com/.well-known/fxa-client-configuration`
+    /// on 2026-09-15. Note what is *not* in it: a `/v1` on any base URL.
+    static let liveDocument = """
+        {"auth_server_base_url":"https://api.accounts.firefox.com",
+         "oauth_server_base_url":"https://oauth.accounts.firefox.com",
+         "pairing_server_base_uri":"wss://channelserver.services.mozilla.com",
+         "profile_server_base_url":"https://profile.accounts.firefox.com",
+         "sync_tokenserver_base_url":"https://token.services.mozilla.com"}
+        """
+
+    /// Before the fix, discovery *replaced* our versioned constants with bare
+    /// origins, so `exchange` POSTed to `/token` rather than `/v1/token` and
+    /// got a 404 — after the password had been typed. Verified live: a POST to
+    /// `https://oauth.accounts.firefox.com/v1/token` answers 400 "Invalid
+    /// request parameter" for a junk code, which is the endpoint existing.
+    func testDiscoveryKeepsTheVersionSegment() throws {
+        let endpoints = FxAEndpoints(discoveryDocument: try JSONValue(jsonString: Self.liveDocument))
+        XCTAssertEqual(
+            endpoints.oauthServer.absoluteString, "https://oauth.accounts.firefox.com/v1")
+        XCTAssertEqual(
+            endpoints.profileServer.absoluteString, "https://profile.accounts.firefox.com/v1")
+        // The token server's path is supplied by its client, so its base is
+        // taken as given.
+        XCTAssertEqual(
+            endpoints.tokenServer.absoluteString, "https://token.services.mozilla.com")
+    }
+
+    /// The endpoints the exchange and the profile fetch actually build.
+    func testTheDerivedEndpointsAreTheOnesMozillaServes() throws {
+        let endpoints = FxAEndpoints(discoveryDocument: try JSONValue(jsonString: Self.liveDocument))
+        XCTAssertEqual(
+            endpoints.oauthServer.appendingPathComponent("token").absoluteString,
+            "https://oauth.accounts.firefox.com/v1/token")
+        XCTAssertEqual(
+            endpoints.profileServer.appendingPathComponent("profile").absoluteString,
+            "https://profile.accounts.firefox.com/v1/profile")
+    }
+
+    /// If Mozilla puts the `/v1` back, it must not be doubled.
+    func testVersioningIsIdempotent() throws {
+        let versioned = """
+            {"oauth_server_base_url":"https://oauth.accounts.firefox.com/v1",
+             "profile_server_base_url":"https://profile.accounts.firefox.com/v2"}
+            """
+        let endpoints = FxAEndpoints(discoveryDocument: try JSONValue(jsonString: versioned))
+        XCTAssertEqual(
+            endpoints.oauthServer.absoluteString, "https://oauth.accounts.firefox.com/v1")
+        XCTAssertEqual(
+            endpoints.profileServer.absoluteString, "https://profile.accounts.firefox.com/v2")
+    }
+
+    /// A document that cannot be read leaves the built-in values alone, which
+    /// already carry their `/v1`.
+    func testAnEmptyDocumentChangesNothing() throws {
+        let endpoints = FxAEndpoints(discoveryDocument: try JSONValue(jsonString: "{}"))
+        XCTAssertEqual(endpoints, .fallback)
+        XCTAssertEqual(
+            FxAEndpoints.fallback.oauthServer.absoluteString,
+            "https://oauth.accounts.firefox.com/v1")
+    }
+}

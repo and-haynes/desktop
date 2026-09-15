@@ -40,15 +40,33 @@ struct FxAEndpoints: Equatable, Sendable, Codable {
     init(discoveryDocument json: JSONValue) {
         self.init()
         if let value = json[WellKnown.oauth.rawValue]?.stringValue, let url = URL(string: value) {
-            oauthServer = url
+            oauthServer = Self.versioned(url)
         }
         if let value = json[WellKnown.profile.rawValue]?.stringValue, let url = URL(string: value)
         {
-            profileServer = url
+            profileServer = Self.versioned(url)
         }
         if let value = json[WellKnown.token.rawValue]?.stringValue, let url = URL(string: value) {
+            // The token server's path (`/1.0/sync/1.5`) is supplied by the
+            // caller, so its base is taken exactly as given.
             tokenServer = url
         }
+    }
+
+    /// The discovery document hands back **bare origins** —
+    /// `https://oauth.accounts.firefox.com`, no path — while every endpoint on
+    /// them lives under `/v1`. Our fallback constants have the `/v1`;
+    /// discovery, which is supposed to be an improvement on them, silently
+    /// removed it, and the code exchange then POSTed to `/token` and got a 404
+    /// after the password had already been typed. Found by the #008AA
+    /// diagnostics on their first run against the live server.
+    ///
+    /// Idempotent: a document that grows the `/v1` back is not given two.
+    static func versioned(_ url: URL) -> URL {
+        let last = url.pathComponents.last ?? ""
+        let isVersion =
+            last.count > 1 && last.hasPrefix("v") && last.dropFirst().allSatisfy(\.isNumber)
+        return isVersion ? url : url.appendingPathComponent("v1")
     }
 }
 

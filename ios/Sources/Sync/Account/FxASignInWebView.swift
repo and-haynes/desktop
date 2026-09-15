@@ -147,12 +147,19 @@ private struct FxASignInWebView: UIViewRepresentable {
 
     /// The content controller retains its message handler. Without this the
     /// coordinator — and the closure graph behind it — outlives the sheet.
+    ///
+    /// **Order matters, and getting it wrong aborts the process.**
+    /// `stopLoading()` calls `didFailProvisionalNavigation` back
+    /// *synchronously*, and the coordinator's implementation writes to the
+    /// sheet's `@Binding`s — which SwiftUI is in the middle of tearing down.
+    /// Swift's exclusivity check catches the re-entrant write and traps. So the
+    /// delegate goes first, and only then is the load stopped.
     static func dismantleUIView(_ webView: WKWebView, coordinator: Coordinator) {
-        webView.stopLoading()
         webView.navigationDelegate = nil
         let controller = webView.configuration.userContentController
         controller.removeScriptMessageHandler(forName: FxAWebChannel.handlerName)
         controller.removeAllUserScripts()
+        webView.stopLoading()
     }
 
     @MainActor
@@ -163,6 +170,9 @@ private struct FxASignInWebView: UIViewRepresentable {
         /// back-forward restore — must not re-run the exchange with an
         /// already-spent code.
         private var hasCalledBack = false
+        #if DEBUG
+            private var hasProbed = false
+        #endif
 
         init(_ parent: FxASignInWebView) {
             self.parent = parent
@@ -216,6 +226,9 @@ private struct FxASignInWebView: UIViewRepresentable {
                     .fxaStatus,
                     "answered: clientId \(SyncConfig.oauthClientID), engines "
                         + SyncConfig.webChannelEngines.joined(separator: ", "))
+                #if DEBUG
+                    self.runProbeIfRequested()
+                #endif
             }
         }
 
@@ -314,7 +327,65 @@ private struct FxASignInWebView: UIViewRepresentable {
             parent.isLoading = false
             diagnostics.succeeded(
                 .pageLoaded, webView.url.map { $0.host ?? $0.absoluteString } ?? "loaded")
+            #if DEBUG
+                // The FxA page is a single-page app: the document finishing is
+                // not the app being alive. Give its script time to boot and ask
+                // us for `fxa_status` — the probe fires on that answer, and
+                // this is only the backstop for a page that never asks.
+                scheduleProbeBackstop(webView)
+            #endif
         }
+
+        #if DEBUG
+            /// The #008AA verification hook, compiled out of release builds.
+            ///
+            /// A real sign-in needs a real password, so the only way to prove
+            /// that an `oauth_login` actually drives the exchange is to send
+            /// one. With `-zenFxAWebChannelProbe <json>` on the command line
+            /// the sheet dispatches that message into the page once, as if FxA
+            /// had sent it. `__ZEN_STATE__` anywhere in the JSON is replaced
+            /// with this request's real state, so the probe gets past the state
+            /// check; the code is fake, so Mozilla answers the exchange with a
+            /// 400 — and that failure arriving in the diagnostics transcript
+            /// rather than vanishing is the thing being verified.
+            private func scheduleProbeBackstop(_ webView: WKWebView) {
+                guard Self.probeArgument != nil else { return }
+                Task { [weak self] in
+                    try? await Task.sleep(for: .seconds(40))
+                    self?.runProbeIfRequested()
+                }
+            }
+
+            private func runProbeIfRequested() {
+                guard !hasProbed, let webView, let json = Self.probeArgument else { return }
+                hasProbed = true
+                let filled = json.replacingOccurrences(
+                    of: "__ZEN_STATE__", with: parent.request.state)
+                diagnostics.log(
+                    .webChannel,
+                    "probe: dispatching into \(webView.url?.path ?? "?") "
+                        + "(\(webView.title ?? "untitled"))")
+                webView.evaluateJavaScript(
+                    """
+                    window.dispatchEvent(new CustomEvent("WebChannelMessageToChrome", {
+                      detail: \(filled)
+                    }));
+                    """
+                ) { [diagnostics] _, error in
+                    MainActor.assumeIsolated {
+                        if let error { diagnostics.failed(.webChannel, error) }
+                    }
+                }
+            }
+
+            private static var probeArgument: String? {
+                let arguments = ProcessInfo.processInfo.arguments
+                guard let index = arguments.firstIndex(of: "-zenFxAWebChannelProbe"),
+                    arguments.index(after: index) < arguments.endIndex
+                else { return nil }
+                return arguments[arguments.index(after: index)]
+            }
+        #endif
 
         func webView(
             _ webView: WKWebView, didFailProvisionalNavigation: WKNavigation!, withError error: Error
