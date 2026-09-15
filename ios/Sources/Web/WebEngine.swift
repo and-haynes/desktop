@@ -64,6 +64,11 @@ enum WebEngine {
         // Long-press link targets come from WKUIDelegate's
         // contextMenuConfigurationForElement, so no script injection is needed.
         applyMediaPolicy(to: config)
+        //
+        // Nothing is added to `userContentController` here, and that is a
+        // feature (#008AB): a user script that rewrites login forms, renames
+        // fields or intercepts focus is enough to stop iOS recognising them,
+        // and Password AutoFill goes quiet with no error to explain it.
         return config
     }
 
@@ -194,7 +199,14 @@ final class WebViewPool {
 }
 
 /// WKWebView subclass carrying the small amount of per-tab state the delegate
-/// needs, plus the keyboard-accessory suppression an embedded browser wants.
+/// needs.
+///
+/// **Deliberately nothing else** (#008AB). An embedded web view is often given
+/// a custom `inputAccessoryView`, or has `inputAssistantItem` emptied, to get
+/// rid of WebKit's form bar. Do not: that bar is where iOS puts the Password
+/// AutoFill key, so replacing it takes a browser's only route to a password
+/// manager away. The header here used to claim "keyboard-accessory
+/// suppression"; there never was any, and there must not be.
 final class ZenWebView: WKWebView {
     var tabID: UUID?
     /// Applied once the first navigation finishes, for session restore.

@@ -14,26 +14,7 @@ struct SettingsSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section {
-                    Picker("Appearance", selection: $state.settings.appearance) {
-                        ForEach(AppearanceMode.allCases) { mode in
-                            Label(mode.displayName, systemImage: mode.symbol).tag(mode)
-                        }
-                    }
-                    .pickerStyle(.inline)
-                    .labelsHidden()
-                    .accessibilityIdentifier("appearancePicker")
-                    Toggle("Show status bar", isOn: $state.settings.showStatusBar)
-                        .accessibilityIdentifier("showStatusBarToggle")
-                } header: {
-                    Text("Appearance")
-                } footer: {
-                    Text(
-                        "Follow System uses the space's own colours to decide light or dark "
-                            + "where the theme is strongly tinted, as Zen does. The status "
-                            + "bar is hidden by default so the page gets the whole screen; "
-                            + "the Dynamic Island is hardware and stays either way.")
-                }
+                appearanceSection
 
                 Section {
                     Picker("Haptics", selection: $state.settings.hapticLevel) {
@@ -122,6 +103,8 @@ struct SettingsSheet: View {
 
                 SyncSettingsSection(sync: sync)
 
+                PasswordsSettingsSection()
+
                 Section("Spaces") {
                     ForEach(state.spaces) { space in
                         Button {
@@ -200,6 +183,40 @@ struct SettingsSheet: View {
         }
         .tint(palette.accent.color)
     }
+
+    // MARK: Sections
+    //
+    // Split out of `body` deliberately: a `Form` with this many sections and
+    // this many bindings in one expression pushes the type checker past its
+    // budget, and the error it gives ("unable to type-check this expression in
+    // reasonable time") names no cause. One property per section keeps each
+    // one small enough to infer.
+
+    @ViewBuilder
+    private var appearanceSection: some View {
+        Section {
+            Picker("Appearance", selection: $state.settings.appearance) {
+                ForEach(AppearanceMode.allCases) { mode in
+                    Label(mode.displayName, systemImage: mode.symbol).tag(mode)
+                }
+            }
+            .pickerStyle(.inline)
+            .labelsHidden()
+            .accessibilityIdentifier("appearancePicker")
+            Toggle("Show status bar", isOn: $state.settings.showStatusBar)
+                .accessibilityIdentifier("showStatusBarToggle")
+        } header: {
+            Text("Appearance")
+        } footer: {
+            Text(
+                "Follow System uses the space's own colours to decide light or dark "
+                    + "where the theme is strongly tinted, as Zen does. The status "
+                    + "bar is hidden by default so the page gets the whole screen; "
+                    + "the Dynamic Island is hardware and stays either way.")
+        }
+    }
+
+    @ViewBuilder
 
     /// The sign-in sheet's three outcomes. Kept out of the body so the Form's
     /// modifier chain stays something the type checker can finish.

@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zen AutoFill test</title>
+<style>
+  body { font: 17px -apple-system, system-ui, sans-serif; margin: 0; padding: 32px 20px;
+         background: #fff; color: #111; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  p  { color: #666; margin: 0 0 24px; font-size: 15px; }
+  label { display: block; font-size: 13px; color: #666; margin: 16px 0 4px; }
+  input { width: 100%; box-sizing: border-box; font-size: 17px; padding: 12px;
+          border: 1px solid #ccc; border-radius: 10px; }
+  button { margin-top: 20px; width: 100%; font-size: 17px; padding: 13px;
+           border: 0; border-radius: 10px; background: #0060df; color: #fff; }
+</style>
+</head>
+<body>
+  <h1>Sign in</h1>
+  <p>A stand-in login form for checking iOS Password AutoFill (#008AB).</p>
+  <form id="login" method="post" action="/submitted">
+    <label for="username">Email</label>
+    <input id="username" name="username" type="email" autocomplete="username"
+           autocapitalize="none" autocorrect="off" spellcheck="false">
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" autocomplete="current-password">
+    <button type="submit">Sign in</button>
+  </form>
+</body>
+</html>

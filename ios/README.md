@@ -121,6 +121,9 @@ network and takes minutes, where the unit tests take under a second.
 | 13 | Bookmarks | Partial | Leaf-level, into Mobile Bookmarks. Desktop folders are held, and their contents appear here unfiled — Zen for iOS has no bookmark folders to put them in. |
 | 13 | Open tabs | Done | Ours published; other devices' shown in the sidebar under "Other devices", tap to open here. |
 | 13 | History | Done | Additive merge — last-writer-wins on history would delete evidence of a visit. |
+| 14 | **Passwords** — iOS Password AutoFill | Done | Not a feature so much as a suppression audit: no custom `inputAccessoryView`, no emptied `inputAssistantItem`, no user scripts in page content, persistent per-space stores. Verified in the simulator against a local https fixture, showing the same `SystemInputAssistantView` / `kb-autofill-key` Safari shows. See *Passwords*. |
+| 14 | Passkeys (WebAuthn) | Done | WebKit's own; Zen neither sees nor stores them. The platform authenticator answers `false` in a simulator. |
+| 14 | A password manager of Zen's own | **Not on this branch** | iOS gives a third-party browser no way to be one for other apps. A native 1Password Connect / Vaultwarden panel *inside* Zen is being tried on `experimental` (#008AD). |
 | 12 | **Reader mode** | **TODO** | WebKit exposes no reader/readability API to third-party apps. Implementing it means injecting a Readability port and rendering the result ourselves. |
 
 ### Also not done
@@ -400,6 +403,99 @@ assertion there went through our own encryption *and* our own decryption.
 | Glance: 80% wide, full height | 88% × 78%, centred | Full height on a phone is indistinguishable from just opening the tab. |
 | `corner-shape: superellipse(1.3)` | `.continuous` rounded rectangles | SwiftUI has no superellipse corner shape. |
 | Junicode serif wordmark | System serif | The font is not vendored. |
+
+## Passwords
+
+Zen keeps no passwords. On iOS it cannot usefully have any: there is no
+browser-extension model, and an app cannot read another app's vault. What a
+third-party browser gets — the same thing Firefox for iOS gets — is **system
+Password AutoFill**. Focus a login field in a `WKWebView` and iOS puts a key in
+the bar above the keyboard; whichever app is set as the AutoFill provider
+(iCloud Passwords, 1Password, Bitwarden) is what answers.
+
+![The Passwords row above the keyboard on a focused password field](docs/screenshots/34-autofill.png)
+
+So the feature is not something to build, it is something **not to break**.
+Every known way of losing that key is something the app does, and none of them
+report an error — the key is simply not there:
+
+| Do not | Why |
+|---|---|
+| Override `inputAccessoryView` on the web view | Replaces the bar iOS puts the key in |
+| Empty `inputAssistantItem`'s bar button groups | Leaves the bar with nothing in it |
+| Inject a user script that rewrites login forms | Renamed or re-parented fields stop iOS recognising the form |
+| Add a script message handler that moves focus | AutoFill needs the field to keep first responder |
+| Use a non-persistent (`.nonPersistent()`) store for browsing | Does not remove the key, but throws away whatever is then saved |
+
+Zen does none of these, and `Tests/ZenTests/AutoFillSuppressionTests.swift`
+pins each one — the two `inputAccessoryView`/`inputAssistantItem` cases by
+comparing method implementation pointers against `WKWebView`, so an override
+added anywhere in `ZenWebView` fails the test. The sign-in sheet
+(`FxASignInWebView`) is the one web view that *does* inject a script and use a
+non-persistent store; that is deliberate and scoped to Mozilla's own sign-in
+page, which is not a page you fill from your vault.
+
+**Settings → Passwords** explains the above and spells out the route to the
+setting, because iOS publishes no URL for the AutoFill pane —
+`UIApplication.openSettingsURLString` opens *Zen's* page, not that one. The
+path is Settings → General → AutoFill & Passwords (on iOS 17 it was
+Settings → Passwords → Password Options).
+
+| | |
+|---|---|
+| ![Settings → Passwords, explaining AutoFill and the provider steps](docs/screenshots/35-passwords-settings.png) | ![The foot of the screen: what Zen stores, and the button to iOS Settings](docs/screenshots/35b-passwords-settings-foot.png) |
+| How it works, and the four steps to choose a provider | What Zen stores — nothing — and the one button iOS allows |
+
+**Passkeys** work, and are not ours either: WebKit implements WebAuthn, so a
+page in Zen can call `navigator.credentials` and iOS puts up its own sheet.
+`WebAuthnAvailabilityTests` asserts the API surface is exposed
+(`navigator.credentials`, `window.PublicKeyCredential`) and *records* rather
+than asserts `isUserVerifyingPlatformAuthenticatorAvailable()`, which answers
+`false` in a simulator — there is no Secure Enclave and no saved passkey there,
+so asserting it would be asserting a fact about the simulator.
+
+### Checking AutoFill by hand
+
+The end-to-end check needs a login page on a **secure origin**. This was
+measured: served over `http://127.0.0.1:8090` the same page raises the keyboard
+with *no* assistant bar above it at all, so plain http is not an option — iOS
+offers AutoFill on https only.
+
+`Tests/Fixtures/serve.py` serves `Tests/Fixtures/login.html` over TLS and makes
+its own CA and leaf on first run. The host is `zen.localtest.me`, public DNS
+that answers `127.0.0.1`, so nothing needs editing in `/etc/hosts`, and the
+simulator shares the Mac's resolver and loopback.
+
+```bash
+python3 Tests/Fixtures/serve.py            # https://zen.localtest.me:8443/login.html
+xcrun simctl keychain booted add-root-cert /tmp/zensync-fixtures/ca.pem
+```
+
+Then save a login for that site once (Safari in the same simulator will offer
+to, after submitting the form), and run:
+
+```bash
+xcodebuild test -scheme ZenScreenshots -project Zen.xcodeproj \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+  -derivedDataPath /tmp/zenbuild CODE_SIGNING_ALLOWED=NO \
+  -only-testing:ZenUITests/ScreenshotTests/testPasswordAutoFillIsOfferedInTheWebView
+```
+
+The test asserts the bar is `SystemInputAssistantView` carrying a
+`kb-autofill-key` — which is exactly what Safari shows on the same page, and
+the comparison that makes the result mean something.
+
+One catch worth knowing: **the keyboard cannot be screenshotted from inside the
+test.** It lives in its own `UIRemoteKeyboardWindow`, and neither
+`XCUIScreen.main.screenshot()` nor an element screenshot composites it — both
+render the app window and leave a blank strip where the Passwords row is. The
+committed `34-autofill.png` is a framebuffer grab taken while the test holds
+the state:
+
+```bash
+xcrun simctl io booted screenshot frame.png
+```
+
 
 ## Screenshots
 

@@ -675,6 +675,166 @@ final class ScreenshotTests: XCTestCase {
         try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-DIAGNOSTICS"))
     }
 
+    /// iOS Password AutoFill in our web views (#008AB).
+    ///
+    /// The assertion is the **AutoFill affordance in the QuickType bar**: iOS
+    /// puts it there when a WKWebView's focused field is one it can fill, and
+    /// takes it away if the app has replaced the input accessory view, emptied
+    /// the keyboard's assistant item, or stolen first responder. Nothing in Zen
+    /// does any of those — this is the test that keeps it that way.
+    ///
+    /// Needs the fixture server from `ios/Tests/Fixtures/serve.py` running on
+    /// the host; the simulator's 127.0.0.1 is the Mac's. Skipped, not failed,
+    /// when nothing is listening: a screenshot run on another machine should
+    /// not go red for want of a local server.
+    func testPasswordAutoFillIsOfferedInTheWebView() throws {
+        let suffix = UIDevice.current.userInterfaceIdiom == .pad ? "-ipad" : ""
+        settle(3.0)
+
+        guard let password = try focusFixturePasswordField() else {
+            throw XCTSkip(
+                "no fixture login form on any candidate port — start "
+                    + "`python3 Tests/Fixtures/serve.py`. See \"Password AutoFill\" "
+                    + "in ios/README.md.")
+        }
+        _ = password
+        // Context only: the page, the omnibox and WebKit's own form toolbar.
+        // See the note below on why the keyboard is not in it.
+        capture("34-autofill-window\(suffix)")
+
+        // The web view must still own the keyboard: a browser that takes the
+        // field's first responder away kills AutoFill outright.
+        XCTAssertTrue(
+            app.keyboards.firstMatch.waitForExistence(timeout: 8),
+            "focusing a password field did not raise the keyboard")
+        XCTAssertFalse(
+            app.textFields["omniboxField"].exists,
+            "the omnibox stole focus from the page's password field")
+
+        // The whole app scene, dumped so a run that finds no affordance says
+        // *what it did find* rather than just failing.
+        try? Data(app.debugDescription.utf8)
+            .write(to: outputDirectory.appendingPathComponent("autofill-keyboard-tree.txt"))
+
+        // The bar is `SystemInputAssistantView`, which is a *sibling* of the
+        // keyboard under the window, not a descendant of it — querying
+        // `app.keyboards` for it finds nothing even when it is on screen.
+        XCTAssertTrue(
+            assistantBar.waitForExistence(timeout: 8),
+            "no input assistant bar above the keyboard — the app has replaced "
+                + "or emptied it, which is what removes AutoFill")
+
+        let affordance = autoFillAffordance
+        XCTAssertTrue(
+            affordance.exists,
+            "no AutoFill affordance on a focused password field — something in "
+                + "the app is suppressing it")
+
+        // The element tree is the assertion; the *picture* has to come from
+        // outside. Neither `XCUIScreen.main.screenshot()` nor an element
+        // screenshot composites the keyboard scene — the keyboard lives in its
+        // own `UIRemoteKeyboardWindow`, so both render the app window and leave
+        // a blank strip where the Passwords row is. `34-autofill.png` in
+        // `docs/screenshots` is therefore a framebuffer grab taken while this
+        // test holds the state:
+        //
+        //     xcrun simctl io <udid> screenshot frame.png
+        //
+        // Run it in a loop alongside the test and keep the frame with the
+        // keyboard up. Nothing is written here under that name, so the
+        // committed screenshot is never overwritten by a blank one.
+        try? Data(assistantBar.debugDescription.utf8)
+            .write(to: outputDirectory.appendingPathComponent("34-autofill-bar\(suffix).txt"))
+
+        try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-AUTOFILL"))
+    }
+
+    /// The candidates the fixture server may be on. Probed rather than fixed
+    /// because the port is the host's to choose, and a test that hard-codes one
+    /// fails for a reason that has nothing to do with the app.
+    ///
+    /// **https only, and a named host.** Measured, not assumed: served over
+    /// `http://127.0.0.1:8090` the same page raises the keyboard with no
+    /// `SystemInputAssistantView` above it at all — iOS offers Password
+    /// AutoFill on secure origins only. `zen.localtest.me` is public DNS that
+    /// answers 127.0.0.1, so it needs no `/etc/hosts` edit, and the simulator
+    /// resolves and routes it through the Mac.
+    private static let fixtureURLs = [
+        "https://zen.localtest.me:8443/login.html",
+        "https://zen.localtest.me:8444/login.html",
+    ]
+
+    /// Load the fixture login page and put the caret in its password field.
+    /// Returns nil when no candidate served a form, so the caller can skip.
+    private func focusFixturePasswordField() throws -> XCUIElement? {
+        for candidate in Self.fixtureURLs {
+            navigate(to: candidate)
+            settle(2.0)
+            let password = app.webViews.firstMatch.secureTextFields.firstMatch
+            guard password.waitForExistence(timeout: 6) else { continue }
+            password.tap()
+            settle(2.5)
+            return password
+        }
+        return nil
+    }
+
+    /// The bar above the keyboard that carries the AutoFill key. UIKit calls
+    /// it `SystemInputAssistantView` and hangs it off the window beside the
+    /// keyboard, so it is reached from `app`, not from `app.keyboards`.
+    private var assistantBar: XCUIElement {
+        app.descendants(matching: .any)["SystemInputAssistantView"].firstMatch
+    }
+
+    /// What iOS calls the AutoFill entry point has moved around between
+    /// releases — a key glyph (`kb-autofill-key`), a "Passwords" key, a
+    /// QuickType suggestion naming the saved account. Match any of them rather
+    /// than pinning one name. Verified against Safari on the same fixture page,
+    /// which shows `Button "Passwords"` wrapping `Image kb-autofill-key`.
+    private var autoFillAffordance: XCUIElement {
+        assistantBar.descendants(matching: .any).matching(
+            NSPredicate(
+                format: "identifier == 'kb-autofill-key' OR identifier CONTAINS[c] 'autofill' "
+                    + "OR label CONTAINS[c] 'password' OR label CONTAINS[c] 'autofill' "
+                    + "OR label CONTAINS[c] 'zen.localtest.me'")
+        ).firstMatch
+    }
+
+    /// Settings → Passwords (#008AB): the explanation and the route to the
+    /// AutoFill pane, which iOS gives no deep link to.
+    func testCapturePasswordsSettings() throws {
+        let suffix = UIDevice.current.userInterfaceIdiom == .pad ? "-ipad" : ""
+        settle(3.0)
+        XCTAssertTrue(openSettings(), "could not open Settings")
+
+        let sheet = app.collectionViews.firstMatch
+        let link = app.descendants(matching: .any)["passwordsSettingsLink"].firstMatch
+        for _ in 0..<12 {
+            if link.exists && link.isHittable { break }
+            if sheet.exists { sheet.swipeUp() } else { app.swipeUp() }
+            settle(0.4)
+        }
+        XCTAssertTrue(link.waitForExistence(timeout: 8), "the Passwords row is missing")
+        link.tap()
+        settle(1.5)
+        XCTAssertTrue(
+            app.descendants(matching: .any)["passwordsSettingsView"].waitForExistence(timeout: 8),
+            "the Passwords screen did not open")
+        capture("35-passwords-settings\(suffix)")
+        // The one button on the screen has to exist, or the instructions are
+        // all there is. It is below the fold on a phone.
+        let button = app.descendants(matching: .any)["passwordsOpenSettingsButton"].firstMatch
+        let form = app.collectionViews.firstMatch
+        for _ in 0..<8 {
+            if button.exists && button.isHittable { break }
+            if form.exists { form.swipeUp() } else { app.swipeUp() }
+            settle(0.4)
+        }
+        XCTAssertTrue(button.exists, "no way to reach iOS Settings")
+        capture("35b-passwords-settings-foot\(suffix)")
+        try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-PASSWORDS"))
+    }
+
     /// The new-tab strip (#0089F): full width, pinned below the tab list, and
     /// it actually makes a tab.
     func testCaptureNewTabStrip() throws {
