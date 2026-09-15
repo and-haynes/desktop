@@ -6,6 +6,8 @@ import SwiftUI
 struct SettingsSheet: View {
     @ObservedObject var state: BrowserState
     @ObservedObject var sync: SyncService
+    /// Experimental (#008AD); inert until a vault is connected.
+    @ObservedObject var vault: PasswordVaultService
     @Environment(\.dismiss) private var dismiss
     @Environment(\.zenPalette) private var palette
     @State private var editingSpace: Space?
@@ -138,7 +140,7 @@ struct SettingsSheet: View {
 
                 SyncSettingsSection(sync: sync)
 
-                PasswordsSettingsSection()
+                PasswordsSettingsSection(vault: vault)
 
                 Section("Spaces") {
                     ForEach(state.spaces) { space in

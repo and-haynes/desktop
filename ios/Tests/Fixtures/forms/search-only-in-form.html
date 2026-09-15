@@ -1,0 +1,10 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Search inside the form</title></head>
+<body>
+  <!-- Nastier: the only preceding text input in the same form is a search box.
+       Scoring must go negative and decline to fill it rather than guess. -->
+  <form method="post" action="/in">
+    <input name="search_query" type="text" placeholder="Search">
+    <input name="password" type="password">
+    <button type="submit">Go</button>
+  </form>
+</body></html>

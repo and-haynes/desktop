@@ -1,0 +1,11 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Create an account</title></head>
+<body>
+  <!-- Two password fields: a sign-up, not a sign-in. Fill the first only, and
+       do not offer to save on submit. -->
+  <form method="post" action="/register">
+    <input name="email" type="email" autocomplete="username">
+    <input name="password" type="password" autocomplete="new-password">
+    <input name="password_confirm" type="password" autocomplete="new-password">
+    <button type="submit">Create account</button>
+  </form>
+</body></html>

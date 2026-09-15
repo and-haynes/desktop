@@ -1,0 +1,35 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Controlled input</title></head>
+<body>
+  <!-- Stands in for a React-controlled input: the framework owns the value and
+       reverts anything written without an input event. Assigning `.value`
+       directly leaves the field looking filled and submitting empty, which is
+       the bug `setValue` exists to avoid. -->
+  <form method="post" action="/in">
+    <input id="u" name="username" type="text" autocomplete="username">
+    <input id="p" name="password" type="password" autocomplete="current-password">
+    <button type="submit">Sign in</button>
+  </form>
+  <script>
+    (function () {
+      // Shadow the native value property, as a framework's controlled input
+      // effectively does, and only accept a value that arrived with an event.
+      var model = { u: '', p: '' };
+      ['u', 'p'].forEach(function (id) {
+        var el = document.getElementById(id);
+        el.addEventListener('input', function () { model[id] = el.value; });
+        // Revert anything set without an input event, on a microtask.
+        var native = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+        Object.defineProperty(el, 'value', {
+          get: function () { return native.get.call(el); },
+          set: function (v) {
+            native.set.call(el, v);
+            Promise.resolve().then(function () {
+              if (model[id] !== native.get.call(el)) { native.set.call(el, model[id]); }
+            });
+          }
+        });
+      });
+      window.__model = model;
+    })();
+  </script>
+</body></html>

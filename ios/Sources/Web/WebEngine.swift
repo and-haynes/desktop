@@ -146,6 +146,15 @@ final class WebViewPool {
     private var usageOrder: [UUID] = []
 
     weak var state: BrowserState?
+    /// Set by `RootView` when a vault is configured. Passing it here rather
+    /// than threading it through `WebView` and every one of its call sites
+    /// keeps the change to the browsing path down to the two lines in
+    /// `webView(for:…)` that install the observer (#008AD).
+    weak var vault: PasswordVaultService?
+    /// Kept alive for as long as their web views are: `WKUserContentController`
+    /// holds its message handlers weakly, so an observer that only the
+    /// configuration referenced would be gone before the first submit.
+    private var loginObservers: [UUID: LoginFormObserver] = [:]
 
     func existing(for tabID: UUID) -> ZenWebView? { views[tabID] }
 
@@ -177,6 +186,11 @@ final class WebViewPool {
         let config = WebEngine.configuration(
             for: space, desktop: desktop, ephemeral: ephemeral,
             blocklist: ephemeral ? focusBlocklist : nil, sepiaTint: sepiaTintsPages)
+        // Only when a vault is actually connected: with none, Zen injects
+        // nothing into page content at all (#008AB).
+        if let vault, vault.isConfigured {
+            loginObservers[tab.id] = LoginFormObserver.install(on: config, vault: vault)
+        }
         let view = ZenWebView(frame: .zero, configuration: config)
         view.tabID = tab.id
         view.customUserAgent = desktop ? WebEngine.desktopUserAgent : WebEngine.mobileUserAgent
@@ -212,6 +226,11 @@ final class WebViewPool {
         view.uiDelegate = nil
         view.onNavigationChange = nil
         view.removeFromSuperview()
+        // The observer outlives nothing: its web view is going, and holding it
+        // would leak one per unloaded tab.
+        view.configuration.userContentController.removeScriptMessageHandler(
+            forName: LoginFormFill.submitMessageHandler)
+        loginObservers[tabID] = nil
         usageOrder.removeAll { $0 == tabID }
         state?.markLoaded(tabID, false)
     }

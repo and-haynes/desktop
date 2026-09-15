@@ -69,6 +69,12 @@ targets:
     platform: iOS
     sources:
       - path: Tests/ZenTests
+      # A folder reference, not a flattened resource group: the fixtures are
+      # nested by subject (forms/, onepassword-connect/) and two subjects would
+      # otherwise be free to collide on a file name inside the bundle.
+      - path: Tests/Fixtures
+        type: folder
+        buildPhase: resources
     dependencies:
       - target: Zen
     settings:

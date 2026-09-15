@@ -1,0 +1,10 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>No autocomplete</title></head>
+<body>
+  <!-- The common case: no autocomplete attributes at all, so the username has
+       to be found by scoring name/id/placeholder. -->
+  <form method="post" action="/in">
+    <input name="user_id" type="text" placeholder="User ID">
+    <input name="pass" type="password">
+    <button type="submit">Log in</button>
+  </form>
+</body></html>

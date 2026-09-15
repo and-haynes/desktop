@@ -1,0 +1,12 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Honeypot</title></head>
+<body>
+  <!-- A zero-sized decoy field ahead of the real one. Bots fill it; we must
+       not. Also a display:none password field, which must not be the anchor. -->
+  <form method="post" action="/in">
+    <input name="username" type="text" style="position:absolute;width:0;height:0;opacity:0">
+    <input name="pw_decoy" type="password" style="display:none">
+    <input id="real-user" name="email" type="email" autocomplete="username">
+    <input id="real-pw" name="password" type="password" autocomplete="current-password">
+    <button type="submit">Sign in</button>
+  </form>
+</body></html>

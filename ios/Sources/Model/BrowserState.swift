@@ -61,6 +61,8 @@ final class BrowserState: ObservableObject {
     @Published var isSettingsPresented: Bool = false
     /// The Local section — imported LAN services — as its own sheet (#0089C).
     @Published var isLocalServicesPresented: Bool = false
+    /// The vault panel for the current page (#008AD, experimental).
+    @Published var isPasswordsPanelPresented: Bool = false
     @Published var findInPageQuery: String = ""
     @Published var isFindBarVisible: Bool = false
     /// Live swipe offset in points while a space-switch gesture is in progress.

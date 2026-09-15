@@ -12,6 +12,10 @@ import SwiftUI
 struct RootView: View {
     @StateObject private var state: BrowserState
     @StateObject private var sync: SyncService
+    /// Experimental (#008AD). Always built — it is inert until a vault is
+    /// configured, and having it unconditionally means the settings screen can
+    /// offer to connect one.
+    @StateObject private var vault = PasswordVaultService()
     @StateObject private var pool = PoolBox()
     @Environment(\.colorScheme) private var systemScheme
     @Environment(\.horizontalSizeClass) private var sizeClass
@@ -266,6 +270,10 @@ struct RootView: View {
             if phase != .active { state.saveNow() }
             if phase == .active {
                 sync.start()
+                // Throttled inside the service: coming back to the foreground
+                // repeatedly must not mean a KDF run each time (#008AD).
+                pool.pool.vault = vault
+                Task { await vault.syncIfStale() }
             } else {
                 sync.applicationDidEnterBackground()
             }
@@ -305,10 +313,24 @@ struct RootView: View {
                     .environment(\.zenPalette, palette)
             }
             .sheet(isPresented: $state.isSettingsPresented) {
-                SettingsSheet(state: state, sync: sync).environment(\.zenPalette, palette)
+                SettingsSheet(state: state, sync: sync, vault: vault).environment(\.zenPalette, palette)
             }
             .sheet(isPresented: $state.isLocalServicesPresented) {
                 LocalSectionSheet(state: state).environment(\.zenPalette, palette)
+            }
+            .sheet(isPresented: $state.isPasswordsPanelPresented) {
+                PasswordsPanel(state: state, vault: vault, pool: pool.pool)
+                    .environment(\.zenPalette, palette)
+            }
+            // `item:`, not `isPresented:` — the sheet is built from the
+            // credential, and a nil one would have nothing to show.
+            .sheet(item: $vault.pendingSave) { credential in
+                SavePasswordSheet(
+                    credential: credential,
+                    existing: vault.existingEntry(for: credential),
+                    vault: vault
+                )
+                .environment(\.zenPalette, palette)
             }
             .sheet(item: $shareItem) { url in
                 ShareSheet(items: [url])

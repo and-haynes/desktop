@@ -1,0 +1,12 @@
+[
+  {
+    "id": "vault1",
+    "name": "Personal",
+    "attributeVersion": 2,
+    "contentVersion": 118,
+    "items": 2,
+    "type": "USER_CREATED",
+    "createdAt": "2024-01-15T10:00:00Z",
+    "updatedAt": "2026-08-01T09:30:00Z"
+  }
+]

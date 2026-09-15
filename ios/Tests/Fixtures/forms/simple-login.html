@@ -1,0 +1,11 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Simple login</title></head>
+<body>
+  <!-- The well-behaved case: autocomplete is declared, one password field. -->
+  <form id="login" method="post" action="/in">
+    <label for="u">Email</label>
+    <input id="u" name="username" type="email" autocomplete="username">
+    <label for="p">Password</label>
+    <input id="p" name="password" type="password" autocomplete="current-password">
+    <button type="submit">Sign in</button>
+  </form>
+</body></html>

@@ -34,6 +34,10 @@ enum BarAction: String, Codable, CaseIterable, Identifiable, Sendable {
     case desktopSite
     /// Picture in Picture for the page's video (#008B0).
     case popOutVideo
+    /// Experimental (#008AD): the vault panel for this page. Sits with the
+    /// page verbs rather than the places, because what it offers depends
+    /// entirely on which page you are on.
+    case passwords
 
     // Tabs and spaces
     case sidebar
@@ -79,6 +83,7 @@ enum BarAction: String, Codable, CaseIterable, Identifiable, Sendable {
         case .findInPage: return "Find in Page"
         case .desktopSite: return "Desktop Site"
         case .popOutVideo: return "Pop Out Video"
+        case .passwords: return "Passwords"
         case .sidebar: return "Tabs"
         case .newTab: return "New Tab"
         case .closeTab: return "Close Tab"
@@ -117,6 +122,7 @@ enum BarAction: String, Codable, CaseIterable, Identifiable, Sendable {
         case .findInPage: return "text.magnifyingglass"
         case .desktopSite: return "desktopcomputer"
         case .popOutVideo: return "pip.enter"
+        case .passwords: return "key.fill"
         case .sidebar: return "sidebar.leading"
         case .newTab: return "plus"
         case .closeTab: return "xmark"
@@ -156,7 +162,7 @@ enum BarAction: String, Codable, CaseIterable, Identifiable, Sendable {
         switch self {
         case .none: return .other
         case .back, .forward, .reloadStop, .scrollToTop: return .navigation
-        case .share, .bookmark, .copyURL, .findInPage, .desktopSite, .popOutVideo:
+        case .share, .bookmark, .copyURL, .findInPage, .desktopSite, .popOutVideo, .passwords:
             return .page
         case .sidebar, .newTab, .closeTab, .nextTab, .previousTab, .spaceSwitcher:
             return .tabs

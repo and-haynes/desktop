@@ -1,0 +1,12 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Search and login</title></head>
+<body>
+  <!-- A site-wide search box above the login form. Filling the search box is
+       the classic heuristic failure, so this fixture exists to catch it. The
+       search input is outside the form; the username is inside it. -->
+  <input id="q" name="search" type="text" placeholder="Search the site">
+  <form method="post" action="/in">
+    <input id="acct" name="account" type="text" placeholder="Account name">
+    <input id="pw" name="password" type="password">
+    <button type="submit">Sign in</button>
+  </form>
+</body></html>

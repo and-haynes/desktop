@@ -1,0 +1,10 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Password step</title></head>
+<body>
+  <!-- The second page of a two-step sign-in: the username was collected on the
+       previous screen and is shown as static text, not an input. -->
+  <p>Signing in as <strong>andy@example.com</strong></p>
+  <form method="post" action="/in">
+    <input name="password" type="password" autocomplete="current-password">
+    <button type="submit">Next</button>
+  </form>
+</body></html>

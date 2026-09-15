@@ -99,6 +99,11 @@ enum BarActionRunner {
             UIPasteboard.general.url = tab.url
         case .findInPage:
             state.isFindBarVisible = true
+        case .passwords:
+            // The panel decides for itself whether there is a vault and whether
+            // anything matches; opening it with nothing to show is still the
+            // right answer, because that is where the setup link lives.
+            state.isPasswordsPanelPresented = true
         case .desktopSite:
             state.settings.preferDesktopSite.toggle()
         case .popOutVideo:

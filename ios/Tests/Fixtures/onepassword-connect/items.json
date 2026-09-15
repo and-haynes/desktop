@@ -1,0 +1,26 @@
+[
+  {
+    "id": "item1",
+    "title": "Example Site",
+    "vault": { "id": "vault1" },
+    "category": "LOGIN",
+    "urls": [
+      { "label": "website", "primary": true, "href": "https://example.com/login" }
+    ],
+    "tags": ["personal"],
+    "version": 3,
+    "createdAt": "2024-03-01T12:00:00Z",
+    "updatedAt": "2026-08-01T09:30:00Z"
+  },
+  {
+    "id": "item2",
+    "title": "Wifi Password Note",
+    "vault": { "id": "vault1" },
+    "category": "SECURE_NOTE",
+    "urls": [],
+    "tags": [],
+    "version": 1,
+    "createdAt": "2024-01-20T12:00:00Z",
+    "updatedAt": "2024-01-20T12:00:00Z"
+  }
+]
