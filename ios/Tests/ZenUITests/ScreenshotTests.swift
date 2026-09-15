@@ -105,6 +105,38 @@ final class ScreenshotTests: XCTestCase {
     }
 
 
+    /// Open Settings and reach the space row. Settings has grown enough that
+    /// Spaces is below the fold, and XCUITest does not scroll for you.
+    private func openSpaceEditor() -> Bool {
+        guard tapMenuItem(matching: "label CONTAINS[c] 'Settings'") else { return false }
+        settle(1.5)
+        let row = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Personal'")).firstMatch
+        for _ in 0..<6 {
+            if row.exists && row.isHittable { break }
+            app.swipeUp()
+            settle(0.6)
+        }
+        guard row.waitForExistence(timeout: 5) else { return false }
+        row.tap()
+        settle(1.5)
+        return true
+    }
+
+    /// From the space editor, open the accent picker.
+    private func openAccentPicker() -> Bool {
+        let accent = app.buttons["accentRow"].firstMatch
+        let accentCell = app.cells["accentRow"].firstMatch
+        if accent.waitForExistence(timeout: 5) {
+            accent.tap()
+        } else if accentCell.waitForExistence(timeout: 5) {
+            accentCell.tap()
+        } else {
+            return false
+        }
+        settle(2.0)
+        return true
+    }
+
     // MARK: Menu helpers
 
     private var moreButton: XCUIElement {
@@ -165,26 +197,8 @@ final class ScreenshotTests: XCTestCase {
         settle(4.0)
 
         // Settings -> the first space -> Accent.
-        XCTAssertTrue(
-            tapMenuItem(matching: "label CONTAINS[c] 'Settings'"), "settings menu item missing")
-        settle(1.5)
-
-        let spaceRow = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'Personal'")).firstMatch
-        XCTAssertTrue(spaceRow.waitForExistence(timeout: 8), "space row missing")
-        spaceRow.tap()
-        settle(1.5)
-
-        let accent = app.buttons["accentRow"].firstMatch
-        let accentCell = app.cells["accentRow"].firstMatch
-        if accent.waitForExistence(timeout: 5) {
-            accent.tap()
-        } else if accentCell.waitForExistence(timeout: 5) {
-            accentCell.tap()
-        } else {
-            return XCTFail("accent row missing")
-        }
-        settle(2.0)
+        XCTAssertTrue(openSpaceEditor(), "could not reach the space editor")
+        XCTAssertTrue(openAccentPicker(), "accent row missing")
         capture("14-colour-picker\(suffix)")
 
         // Type a hex value and apply it, which is the other half of the tool.
