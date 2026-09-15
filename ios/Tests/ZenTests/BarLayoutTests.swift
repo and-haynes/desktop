@@ -358,3 +358,225 @@ final class BarLayoutTests: XCTestCase {
             .appendingPathComponent("zen-tests-\(UUID().uuidString).json")
     }
 }
+
+/// Removing, adding and moving — the verbs #008AC made visible in the editor.
+/// The model already had them; what it did not have was a test that pins what
+/// "removed" means (back in the library, not gone) or that a move past the
+/// limit is refused rather than silently dropping a button.
+final class BarSlotMutationTests: XCTestCase {
+
+    private func zen() -> BarLayout { BarPreset.zen.layout }
+
+    // MARK: Remove
+
+    /// Andy's actual complaint: he could not take Bookmark off the bar. So the
+    /// first thing to pin is that taking it off works and puts it somewhere he
+    /// can find it again.
+    func testRemovingBookmarkTakesItOffTheBarAndPutsItInTheLibrary() throws {
+        var layout = zen()
+        let bookmark = try XCTUnwrap(
+            layout.rightSlots.first { $0.action == .bookmark },
+            "the Zen preset should ship a Bookmark button on the right")
+        XCTAssertFalse(layout.unplacedActions.contains(.bookmark))
+
+        layout.remove(bookmark.id)
+
+        XCTAssertFalse(layout.rightSlots.contains { $0.action == .bookmark })
+        XCTAssertNil(layout.slot(containing: bookmark.id))
+        XCTAssertTrue(
+            layout.unplacedActions.contains(.bookmark),
+            "a removed button has to be findable again, or it reads as destroyed")
+    }
+
+    /// Removing is an edit, so the layout stops claiming to be the preset.
+    func testRemovingClearsThePresetMarker() throws {
+        var layout = zen()
+        XCTAssertEqual(layout.presetID, "zen")
+        layout.remove(try XCTUnwrap(layout.rightSlots.first).id)
+        XCTAssertNil(layout.presetID)
+    }
+
+    func testRemovingSomethingThatIsNotThereChangesNothingButTheMarker() {
+        var layout = zen()
+        let before = layout.leftSlots + layout.rightSlots + layout.overflowSlots
+        layout.remove(UUID())
+        XCTAssertEqual(layout.leftSlots + layout.rightSlots + layout.overflowSlots, before)
+    }
+
+    // MARK: Add
+
+    func testAddingPutsAnActionInTheSlotAndTakesItOutOfTheLibrary() {
+        var layout = BarLayout()
+        layout.leftSlots = []
+        layout.rightSlots = []
+        layout.overflowSlots = []
+        XCTAssertTrue(layout.unplacedActions.contains(.focusMode))
+
+        XCTAssertTrue(layout.add(.focusMode, to: .left))
+
+        XCTAssertEqual(layout.leftSlots.map(\.action), [.focusMode])
+        XCTAssertFalse(layout.unplacedActions.contains(.focusMode))
+    }
+
+    /// A slot holds four. The fifth is refused rather than silently dropped —
+    /// the editor turns that `false` into the say-why.
+    func testAddingPastTheLimitIsRefused() {
+        var layout = BarLayout()
+        layout.leftSlots = []
+        let fillers: [BarAction] = [.back, .forward, .reloadStop, .share, .bookmark]
+        for action in fillers.prefix(BarLayout.maxSlotItems) {
+            XCTAssertTrue(layout.add(action, to: .left))
+        }
+        XCTAssertFalse(layout.canAdd(to: .left))
+        XCTAssertFalse(layout.add(.copyURL, to: .left), "a full slot must refuse")
+        XCTAssertEqual(layout.leftSlots.count, BarLayout.maxSlotItems)
+    }
+
+    /// The bar-only verbs are not buttons and never become them.
+    func testAnActionThatIsNotAButtonCannotBeAdded() {
+        var layout = BarLayout()
+        for action in [BarAction.hideBar, .omnibox, .actionMenu, .none] {
+            XCTAssertFalse(layout.add(action, to: .overflow), "\(action) is not a button")
+            XCTAssertFalse(layout.unplacedActions.contains(action))
+        }
+    }
+
+    // MARK: Move within a slot
+
+    func testReorderingWithinASlot() {
+        var layout = BarLayout()
+        layout.leftSlots = []
+        for action in [BarAction.back, .forward, .reloadStop] {
+            XCTAssertTrue(layout.add(action, to: .left))
+        }
+        let forward = layout.leftSlots[1].id
+        XCTAssertTrue(layout.move(forward, to: .left, at: 0))
+        XCTAssertEqual(layout.leftSlots.map(\.action), [.forward, .back, .reloadStop])
+    }
+
+    /// Reordering inside a *full* slot is still allowed: nothing is being
+    /// added, so the capacity check must not fire.
+    func testReorderingInsideAFullSlotIsAllowed() {
+        var layout = BarLayout()
+        layout.leftSlots = []
+        for action in [BarAction.back, .forward, .reloadStop, .share] {
+            XCTAssertTrue(layout.add(action, to: .left))
+        }
+        XCTAssertFalse(layout.canAdd(to: .left))
+        let last = layout.leftSlots[3].id
+        XCTAssertTrue(layout.move(last, to: .left, at: 0), "a full slot can still be reordered")
+        XCTAssertEqual(layout.leftSlots.first?.action, .share)
+        XCTAssertEqual(layout.leftSlots.count, 4)
+    }
+
+    func testAnIndexPastTheEndClampsToTheEnd() {
+        var layout = BarLayout()
+        layout.leftSlots = []
+        for action in [BarAction.back, .forward] { XCTAssertTrue(layout.add(action, to: .left)) }
+        let back = layout.leftSlots[0].id
+        XCTAssertTrue(layout.move(back, to: .left, at: 99))
+        XCTAssertEqual(layout.leftSlots.map(\.action), [.forward, .back])
+    }
+
+    // MARK: Move between slots
+
+    func testMovingShareFromTheRightToTheLeft() {
+        var layout = BarLayout()
+        layout.leftSlots = []
+        layout.rightSlots = []
+        XCTAssertTrue(layout.add(.share, to: .right))
+        let share = layout.rightSlots[0].id
+
+        XCTAssertTrue(layout.move(share, to: .left, at: 0))
+        XCTAssertEqual(layout.leftSlots.map(\.action), [.share])
+        XCTAssertTrue(layout.rightSlots.isEmpty)
+        // It moved; it did not get cloned.
+        XCTAssertEqual(layout.slot(containing: share), .left)
+    }
+
+    func testMovingIntoAFullSlotIsRefusedAndLeavesTheItemWhereItWas() {
+        var layout = BarLayout()
+        layout.leftSlots = []
+        layout.rightSlots = []
+        for action in [BarAction.back, .forward, .reloadStop, .bookmark] {
+            XCTAssertTrue(layout.add(action, to: .left))
+        }
+        XCTAssertTrue(layout.add(.share, to: .right))
+        let share = layout.rightSlots[0].id
+
+        XCTAssertFalse(layout.move(share, to: .left, at: 0), "the left slot is full")
+        XCTAssertEqual(layout.slot(containing: share), .right, "a refused move must not lose it")
+        XCTAssertEqual(layout.leftSlots.count, BarLayout.maxSlotItems)
+    }
+
+    func testMovingSomethingThatDoesNotExistIsRefused() {
+        var layout = zen()
+        XCTAssertFalse(layout.move(UUID(), to: .left, at: 0))
+    }
+
+    // MARK: The library
+
+    func testTheLibraryIsExactlyWhatIsNotOnTheBar() {
+        let layout = zen()
+        let placed = Set(
+            (layout.leftSlots + layout.rightSlots + layout.overflowSlots).map(\.action))
+        for action in BarAction.slotLibrary {
+            XCTAssertEqual(
+                layout.unplacedActions.contains(action), !placed.contains(action),
+                "\(action) should be in the library exactly when it is off the bar")
+        }
+    }
+
+    /// The same action in two slots is legal — `BarSlotItem` has its own
+    /// identity for exactly that — and it is placed either way.
+    func testAnActionPlacedTwiceIsStillOutOfTheLibrary() {
+        var layout = BarLayout()
+        layout.leftSlots = []
+        layout.rightSlots = []
+        layout.overflowSlots = []
+        XCTAssertTrue(layout.add(.share, to: .left))
+        XCTAssertTrue(layout.add(.share, to: .right))
+        XCTAssertFalse(layout.unplacedActions.contains(.share))
+    }
+
+    // MARK: Round trip
+
+    /// The order has to survive being written down, or every edit is undone by
+    /// the next launch.
+    func testAnEditedOrderRoundTripsThroughJSON() throws {
+        var layout = zen()
+        let bookmark = try XCTUnwrap(layout.rightSlots.first { $0.action == .bookmark })
+        layout.remove(bookmark.id)
+        XCTAssertTrue(layout.add(.focusMode, to: .left))
+        let sidebar = try XCTUnwrap(layout.leftSlots.first { $0.action == .sidebar })
+        XCTAssertTrue(layout.move(sidebar.id, to: .left, at: 1))
+
+        let data = try JSONEncoder().encode(layout)
+        let decoded = try JSONDecoder().decode(BarLayout.self, from: data)
+
+        XCTAssertEqual(decoded.leftSlots.map(\.action), layout.leftSlots.map(\.action))
+        XCTAssertEqual(decoded.rightSlots.map(\.action), layout.rightSlots.map(\.action))
+        XCTAssertEqual(decoded.overflowSlots.map(\.action), layout.overflowSlots.map(\.action))
+        XCTAssertFalse(decoded.rightSlots.contains { $0.action == .bookmark })
+        XCTAssertNil(decoded.presetID, "an edited layout is not the preset any more")
+    }
+
+    // MARK: Vocabulary the editor shows
+
+    func testTheSlotHeadersAreWhatTheUserSees() {
+        XCTAssertEqual(BarSlot.left.title, "Left")
+        XCTAssertEqual(BarSlot.right.title, "Right")
+        XCTAssertEqual(
+            BarSlot.overflow.title, "More menu",
+            "the button is labelled More, so the editor should say More")
+        XCTAssertEqual(BarSlot.left.countLabel(3), "3 of 4")
+    }
+
+    /// Pop out video joined the library with the video work (#008B0), so it can
+    /// be put on a slot, a long press or a gesture like anything else.
+    func testPopOutVideoIsInTheLibrary() {
+        XCTAssertTrue(BarAction.slotLibrary.contains(.popOutVideo))
+        XCTAssertTrue(BarAction.gestureLibrary.contains(.popOutVideo))
+        XCTAssertEqual(BarAction.popOutVideo.group, .page)
+    }
+}

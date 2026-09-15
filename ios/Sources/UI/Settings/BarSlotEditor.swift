@@ -1,13 +1,34 @@
 //  BarSlotEditor.swift
-//  Arranging the bar's buttons by dragging them.
+//  Arranging the bar's buttons (#00896, #008AC).
 //
-//  Two halves that speak the same language: the *slots* (left, right, overflow)
-//  and the *library* of actions. A library chip can be dragged into a slot, a
-//  slot chip can be dragged to another slot or reordered inside its own, and
-//  everything draggable is also tappable — a drag-only interface is unusable
-//  with VoiceOver and awkward with one thumb.
+//  The first cut was a row of draggable chips per slot with Remove hidden in a
+//  context menu. Andy could not work out how to take the Bookmark button off
+//  the bar, and he was right not to: a horizontally scrolling row of chips has
+//  no affordance that says "this can be taken away", and press-and-hold is not
+//  an affordance at all — it is something you already have to know about. An
+//  editor whose main verb is invisible is not an editor.
 //
-//  The payload is a plain string because that is what survives SwiftUI's
+//  So the slots are rows in a list, and *every* way you would reasonably try to
+//  remove a button works:
+//
+//  * a red minus at the head of each row, always visible, never a hover state;
+//  * swipe left, which is what a list row trains you to try;
+//  * Remove in the row's context menu, for the person who already knows.
+//
+//  Removing is not deleting. A button that comes off the bar lands in the
+//  **library** below, which lists exactly the actions that are *not* currently
+//  placed — so "where did Bookmark go?" has an answer on the same screen, and
+//  putting it back is one tap on a `+`. A library that listed everything could
+//  not answer that question, which is why `unplacedActions` exists.
+//
+//  Order has the same belt and braces: drag the grip to reorder inside a slot
+//  (`.onMove`, with the list held in edit mode so the grips are always there),
+//  drag a row onto another slot to move between them (`.draggable` /
+//  `.dropDestination`), or use "Move to…" in the context menu when dragging is
+//  awkward — which on a phone, inside a sheet, inside a scroll view, it often
+//  is.
+//
+//  The drag payload is a plain string because that is what survives
 //  `draggable`/`dropDestination` without a custom `Transferable` per case:
 //  `action:<raw>` means "a new button of this kind", `item:<uuid>` means "the
 //  one already in a slot". Anything else is ignored.
@@ -37,141 +58,166 @@ struct BarSlotEditor: View {
     @Binding var layout: BarLayout
     /// Called before any change, so the editor can push an undo snapshot.
     var willChange: () -> Void = {}
+    /// Undo, surfaced *here* as well as in the toolbar: the toolbar button is
+    /// off the top of the screen by the time you are editing buttons, and a
+    /// destructive action needs its undo within reach of the thumb that did it.
+    var canUndo: Bool = false
+    var undo: () -> Void = {}
+    /// Back to the preset this layout came from.
+    var resetTitle: String = "Reset to Zen"
+    var reset: () -> Void = {}
+
     @Environment(\.zenPalette) private var palette
 
-    /// Set when a drop was refused, so the slot can say why rather than
-    /// silently doing nothing.
+    /// Set when a drop or an add was refused, so the slot can say why rather
+    /// than silently doing nothing.
     @State private var rejected: BarSlot?
     @State private var rejectedAt = Date.distantPast
     @State private var editingLongPress: BarSlotItem?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        List {
+            hintSection
             ForEach(BarSlot.allCases) { slot in
                 slotSection(slot)
             }
-            library
+            librarySection
+            actionsSection
         }
+        // Permanent edit mode. This is what puts a reorder grip on every row
+        // and a remove control at the head of it *without* asking anyone to
+        // find an Edit button first — which was the whole complaint.
+        .environment(\.editMode, .constant(.active))
+        .listStyle(.insetGrouped)
         .sheet(item: $editingLongPress) { item in
             BarLongPressPicker(item: item, layout: $layout, willChange: willChange)
                 .environment(\.zenPalette, palette)
         }
     }
 
-    // MARK: Slots
+    // MARK: How this works
 
-    private func slotSection(_ slot: BarSlot) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(slot.title)
-                    .font(.system(size: 13, weight: .semibold))
-                Spacer()
-                Text("\(layout.slots(slot).count)/\(slot.capacity)")
-                    .font(.system(size: 12))
-                    .monospacedDigit()
-                    .foregroundStyle(
-                        layout.canAdd(to: slot) ? .secondary : Color(ZenTokens.warningColor.uiColor))
-            }
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(Array(layout.slots(slot).enumerated()), id: \.element.id) {
-                        index, item in
-                        chip(item: item, slot: slot, index: index)
-                    }
-                    if layout.slots(slot).isEmpty {
-                        Text("Drag an action here")
-                            .font(.system(size: 12))
-                            .foregroundStyle(.secondary)
-                            .padding(.horizontal, 12)
-                            .frame(height: 38)
-                    }
-                    // A tail target, so dropping past the last chip appends
-                    // rather than doing nothing.
-                    Color.clear.frame(width: 44, height: 38)
-                        .dropDestination(for: String.self) { items, _ in
-                            drop(items, into: slot, at: layout.slots(slot).count)
-                        }
-                }
-                .padding(.horizontal, 2)
-            }
-            .frame(minHeight: 44)
-            .background {
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(palette.toolbarElementHoverBG.color)
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .strokeBorder(
-                        isRejecting(slot) ? ZenTokens.warningColor.color : palette.border.color,
-                        lineWidth: isRejecting(slot) ? 1.5 : 0.5)
-            }
-            .dropDestination(for: String.self) { items, _ in
-                drop(items, into: slot, at: layout.slots(slot).count)
-            }
-            .animation(.easeOut(duration: 0.2), value: isRejecting(slot))
-            .accessibilityIdentifier("barSlotRow-\(slot.rawValue)")
-
-            if isRejecting(slot) {
-                Text("\(slot.title) is full — \(slot.capacity) is the most it holds.")
-                    .font(.system(size: 12))
-                    .foregroundStyle(ZenTokens.warningColor.color)
-                    .transition(.opacity)
-            }
+    private var hintSection: some View {
+        Section {
+            Label(
+                "Drag to reorder, swipe to remove, tap + to add.",
+                systemImage: "hand.draw"
+            )
+            .font(.system(size: 13))
+            .foregroundStyle(.secondary)
+            .accessibilityIdentifier("barEditorHint")
         }
     }
 
-    private func chip(item: BarSlotItem, slot: BarSlot, index: Int) -> some View {
-        HStack(spacing: 5) {
-            Image(systemName: item.action.symbol)
-                .font(.system(size: 13, weight: .medium))
-            Text(item.action.title)
-                .font(.system(size: 12, weight: .medium))
-                .lineLimit(1)
-            if item.longPress != nil {
-                // A dot, not a second glyph: the secondary action is a
-                // *property* of this button, not another button.
-                Circle()
-                    .fill(palette.accent.color)
-                    .frame(width: 5, height: 5)
+    // MARK: Slots
+
+    @ViewBuilder
+    private func slotSection(_ slot: BarSlot) -> some View {
+        let items = layout.slots(slot)
+        Section {
+            if items.isEmpty {
+                Text("Nothing here yet — add something from the library below.")
+                    .font(.system(size: 13))
+                    .foregroundStyle(.secondary)
+                    .deleteDisabled(true)
+                    .moveDisabled(true)
+            }
+            ForEach(items) { item in
+                slotRow(item: item, slot: slot)
+            }
+            .onDelete { offsets in
+                // Swipe to remove. The same verb as the minus and the context
+                // menu — three doors, one room.
+                willChange()
+                let doomed = offsets.compactMap { index -> UUID? in
+                    let current = layout.slots(slot)
+                    return index < current.count ? current[index].id : nil
+                }
+                for id in doomed { layout.remove(id) }
+                Haptics.shared.fire(.tabClose)
+            }
+            .onMove { offsets, destination in
+                willChange()
+                move(in: slot, from: offsets, to: destination)
+            }
+        } header: {
+            HStack {
+                Text(slot.title)
+                Spacer()
+                Text(slot.countLabel(items.count))
+                    .monospacedDigit()
+                    .foregroundStyle(
+                        layout.canAdd(to: slot)
+                            ? Color.secondary : Color(ZenTokens.warningColor.uiColor))
+                    .accessibilityIdentifier("barSlotCount-\(slot.rawValue)")
+            }
+        } footer: {
+            if isRejecting(slot) {
+                Text("\(slot.title) is full — \(slot.capacity) is the most it holds.")
+                    .foregroundStyle(ZenTokens.warningColor.color)
             }
         }
-        .padding(.horizontal, 10)
-        .frame(height: 34)
-        .background {
-            Capsule().fill(palette.urlbarBackground.color)
+        // Dropping anywhere in the section appends to it, which is what a drag
+        // that lands in the gap between rows means.
+        .dropDestination(for: String.self) { payloads, _ in
+            drop(payloads, into: slot, at: layout.slots(slot).count)
         }
-        .overlay { Capsule().strokeBorder(palette.borderContrast.color, lineWidth: 0.5) }
-        .contentShape(Capsule())
+    }
+
+    private func slotRow(item: BarSlotItem, slot: BarSlot) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: item.action.symbol)
+                .font(.system(size: 15))
+                .foregroundStyle(palette.accent.color)
+                .frame(width: 24)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(item.action.title)
+                if let longPress = item.longPress {
+                    Text("Hold: \(longPress.title)")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Spacer()
+        }
+        .contentShape(Rectangle())
         .draggable(BarDragPayload.item(item.id)) {
-            Label(item.action.title, systemImage: item.action.symbol)
-                .padding(8)
+            Label(item.action.title, systemImage: item.action.symbol).padding(8)
         }
-        .dropDestination(for: String.self) { items, _ in
-            drop(items, into: slot, at: index)
+        .dropDestination(for: String.self) { payloads, _ in
+            drop(payloads, into: slot, at: index(of: item.id, in: slot))
+        }
+        // Swipe left. `allowsFullSwipe` off on purpose: a full swipe that
+        // removes a button the moment your thumb passes the edge is too easy
+        // to do by accident while scrolling a long list.
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            Button(role: .destructive) {
+                remove(item)
+            } label: {
+                Label("Remove", systemImage: "minus.circle")
+            }
         }
         .contextMenu {
             Button {
                 editingLongPress = item
             } label: {
                 Label(
-                    item.longPress == nil ? "Add long press…" : "Long press: \(item.longPress?.title ?? "")",
+                    item.longPress == nil
+                        ? "Add long press…" : "Long press: \(item.longPress?.title ?? "")",
                     systemImage: "hand.tap")
             }
             ForEach(BarSlot.allCases.filter { $0 != slot }) { other in
                 Button {
                     willChange()
                     _ = layout.move(item.id, to: other, at: layout.slots(other).count)
+                    Haptics.shared.fire(.dragDrop)
                 } label: {
-                    Label("Move to \(other.title)", systemImage: "arrow.right")
+                    Label("Move to \(other.placePhrase)", systemImage: "arrow.right")
                 }
                 .disabled(!layout.canAdd(to: other))
             }
             Divider()
-            Button(role: .destructive) {
-                willChange()
-                layout.remove(item.id)
-            } label: {
+            Button(role: .destructive) { remove(item) } label: {
                 Label("Remove", systemImage: "minus.circle")
             }
         }
@@ -181,64 +227,124 @@ struct BarSlotEditor: View {
 
     // MARK: The library
 
-    private var library: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Library")
-                .font(.system(size: 13, weight: .semibold))
-            Text("Drag an action into a slot, or tap it to choose where it goes.")
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
-
-            ForEach(BarActionGroup.allCases.filter { $0 != .other }) { group in
-                let actions = BarAction.slotLibrary.filter { $0.group == group }
-                if !actions.isEmpty {
-                    Text(group.title)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(.tertiary)
-                        .padding(.top, 4)
-                    FlowingChips(actions: actions) { action in
-                        libraryChip(action)
-                    }
-                }
+    @ViewBuilder
+    private var librarySection: some View {
+        let unplaced = layout.unplacedActions
+        Section {
+            if unplaced.isEmpty {
+                Text("Every action is on the bar somewhere.")
+                    .font(.system(size: 13))
+                    .foregroundStyle(.secondary)
             }
+            ForEach(unplaced) { action in
+                libraryRow(action)
+            }
+        } header: {
+            Text("Library")
+        } footer: {
+            Text(
+                "Everything not currently on the bar. Removing a button puts it "
+                    + "back here — nothing is ever thrown away.")
         }
     }
 
-    private func libraryChip(_ action: BarAction) -> some View {
-        Menu {
-            ForEach(BarSlot.allCases) { slot in
-                Button {
-                    willChange()
-                    if !layout.add(action, to: slot) { reject(slot) }
-                } label: {
-                    Label("Add to \(slot.title)", systemImage: slot == .overflow ? "ellipsis" : "plus")
+    private func libraryRow(_ action: BarAction) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: action.symbol)
+                .font(.system(size: 15))
+                .foregroundStyle(.secondary)
+                .frame(width: 24)
+            Text(action.title)
+            Spacer()
+            // The menu is the `+`: one tap opens it, one more says where. A
+            // bare `+` would have to guess a slot, and guessing wrong on a
+            // four-item slot costs an undo.
+            Menu {
+                ForEach(BarSlot.allCases) { slot in
+                    Button {
+                        add(action, to: slot)
+                    } label: {
+                        Label("Add to \(slot.placePhrase)", systemImage: "plus")
+                    }
+                    .disabled(!layout.canAdd(to: slot))
                 }
-                .disabled(!layout.canAdd(to: slot))
+            } label: {
+                Image(systemName: "plus.circle.fill")
+                    .font(.system(size: 20))
+                    .foregroundStyle(palette.accent.color)
+                    .frame(width: 44, height: 36)
+                    .contentShape(Rectangle())
             }
-        } label: {
-            HStack(spacing: 5) {
-                Image(systemName: action.symbol)
-                    .font(.system(size: 12, weight: .medium))
-                Text(action.title)
-                    .font(.system(size: 12))
-                    .lineLimit(1)
-            }
-            .padding(.horizontal, 10)
-            .frame(height: 32)
-            .background { Capsule().fill(palette.toolbarElementHoverBG.color) }
-            .overlay { Capsule().strokeBorder(palette.border.color, lineWidth: 0.5) }
-            .foregroundStyle(palette.text.color)
+            .accessibilityLabel("Add \(action.title)")
+            .accessibilityIdentifier("barAdd-\(action.rawValue)")
         }
+        .deleteDisabled(true)
+        .moveDisabled(true)
         .draggable(BarDragPayload.library(action)) {
             Label(action.title, systemImage: action.symbol).padding(8)
         }
         .accessibilityIdentifier("barLibrary-\(action.rawValue)")
     }
 
-    // MARK: Drops
+    // MARK: Undo and reset
 
-    private func drop(_ items: [String], into slot: BarSlot, at index: Int) -> Bool {
-        guard let raw = items.first, let payload = BarDragPayload(raw) else { return false }
+    private var actionsSection: some View {
+        Section {
+            Button {
+                undo()
+            } label: {
+                Label("Undo last change", systemImage: "arrow.uturn.backward")
+            }
+            .disabled(!canUndo)
+            .accessibilityIdentifier("barUndoInline")
+
+            Button {
+                reset()
+            } label: {
+                Label(resetTitle, systemImage: "arrow.counterclockwise")
+            }
+            .accessibilityIdentifier("barResetInline")
+        } footer: {
+            Text("Undo steps back one change at a time. Reset puts the whole bar back.")
+        }
+    }
+
+    // MARK: Mutations
+
+    private func index(of id: UUID, in slot: BarSlot) -> Int {
+        layout.slots(slot).firstIndex { $0.id == id } ?? layout.slots(slot).count
+    }
+
+    private func remove(_ item: BarSlotItem) {
+        willChange()
+        layout.remove(item.id)
+        Haptics.shared.fire(.tabClose)
+    }
+
+    private func add(_ action: BarAction, to slot: BarSlot) {
+        willChange()
+        if layout.add(action, to: slot) {
+            Haptics.shared.fire(.dragDrop)
+        } else {
+            reject(slot)
+        }
+    }
+
+    /// `.onMove` gives offsets into the slot's own array, so translate to the
+    /// model's "put this id at this index" and let `BarLayout` do the work —
+    /// reordering inside a slot is allowed even at capacity.
+    private func move(in slot: BarSlot, from offsets: IndexSet, to destination: Int) {
+        let items = layout.slots(slot)
+        guard let source = offsets.first, source < items.count else { return }
+        // SwiftUI's destination is the index *before* the removal; the model
+        // inserts after it, so a forward move lands one short without this.
+        let target = destination > source ? destination - 1 : destination
+        _ = layout.move(items[source].id, to: slot, at: target)
+        Haptics.shared.fire(.dragDrop)
+    }
+
+    private func drop(_ payloads: [String], into slot: BarSlot, at index: Int) -> Bool {
+        guard let raw = payloads.first, let payload = BarDragPayload(raw) else { return false }
         willChange()
         switch payload {
         case .newAction(let action):
@@ -256,8 +362,8 @@ struct BarSlotEditor: View {
         return true
     }
 
-    /// Say no visibly. A drop that silently fails reads as the drag having
-    /// missed, and you try again in the same place.
+    /// Say no visibly. A refusal that silently does nothing reads as the drag
+    /// having missed, and you try again in the same place.
     private func reject(_ slot: BarSlot) {
         Haptics.shared.fire(.loadError)
         withAnimation(.easeOut(duration: 0.2)) {
@@ -272,26 +378,6 @@ struct BarSlotEditor: View {
     }
 
     private func isRejecting(_ slot: BarSlot) -> Bool { rejected == slot }
-}
-
-/// A wrapping row of chips. `LazyVGrid` cannot size columns to their content,
-/// and a horizontal `ScrollView` hides half the library — so the widths are
-/// measured and wrapped by hand.
-private struct FlowingChips<Chip: View>: View {
-    let actions: [BarAction]
-    @ViewBuilder let chip: (BarAction) -> Chip
-
-    var body: some View {
-        // Four chips per row is what fits at the default text size on a 6.1in
-        // phone; two keeps the longest titles ("Request Desktop Site") legible
-        // at the accessibility sizes.
-        let columns = [GridItem(.adaptive(minimum: 130), spacing: 8)]
-        return LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
-            ForEach(actions) { action in
-                chip(action)
-            }
-        }
-    }
 }
 
 /// Picking the secondary action for a button.

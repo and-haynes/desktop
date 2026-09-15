@@ -568,16 +568,41 @@ enum BarSlot: String, CaseIterable, Identifiable, Sendable {
 
     var id: String { rawValue }
 
+    /// What the editor calls it. "More menu" rather than "Overflow menu"
+    /// because the button it fills is labelled *More* — the editor should name
+    /// the thing you can see, not the thing the code calls it (#008AC).
     var title: String {
         switch self {
         case .left: return "Left"
         case .right: return "Right"
-        case .overflow: return "Overflow menu"
+        case .overflow: return "More menu"
+        }
+    }
+
+    /// For "Move to…" and "Add to…", where the title alone reads oddly.
+    var placePhrase: String {
+        switch self {
+        case .left: return "the left"
+        case .right: return "the right"
+        case .overflow: return "the More menu"
         }
     }
 
     var capacity: Int {
         self == .overflow ? BarLayout.maxOverflowItems : BarLayout.maxSlotItems
+    }
+
+    /// "3 of 4" — spelled out, because "3/4" reads as three quarters.
+    func countLabel(_ used: Int) -> String { "\(used) of \(capacity)" }
+}
+
+extension BarLayout {
+    /// The actions that are not on the bar anywhere — the library's contents
+    /// (#008AC). A library that lists everything cannot answer the question it
+    /// exists to answer, which is "where did my Bookmark button go?".
+    var unplacedActions: [BarAction] {
+        let placed = Set(BarSlot.allCases.flatMap { slots($0).map(\.action) })
+        return BarAction.slotLibrary.filter { !placed.contains($0) }
     }
 }
 

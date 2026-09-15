@@ -99,37 +99,9 @@ struct BarCustomizerView: View {
     /// with the bar right up until it stopped.
     private var previewSection: some View {
         Section {
-            ZStack(alignment: current.position.isTop ? .top : .bottom) {
-                ZenGradientView(
-                    theme: state.activeSpace?.theme ?? ZenTheme.default,
-                    isDark: palette.isDark
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .overlay {
-                    // Something with contrast behind the bar, so Transparent
-                    // and low blur strengths read honestly.
-                    VStack(alignment: .leading, spacing: 6) {
-                        ForEach(0..<4, id: \.self) { row in
-                            Capsule()
-                                .fill(palette.text.withAlpha(0.18).color)
-                                .frame(height: 8)
-                                .padding(.trailing, CGFloat(row % 3) * 40)
-                        }
-                    }
-                    .padding(20)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                }
-
-                OmniboxPill(state: state, isFloating: true, isPreview: true)
-                    .padding(.horizontal, max(CGFloat(current.horizontalMargin), 4))
-                    .padding(
-                        current.position.isTop ? .top : .bottom,
-                        CGFloat(current.verticalOffset) + 10)
-            }
-            .frame(height: 148)
-            .animation(.spring(response: 0.3, dampingFraction: 0.9), value: current)
-            .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
-            .accessibilityIdentifier("barPreview")
+            BarPreviewCanvas(state: state, layout: current)
+                .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
+                .accessibilityIdentifier("barPreview")
         } header: {
             Text("Preview")
         } footer: {
@@ -399,9 +371,29 @@ struct BarCustomizerView: View {
 
     private var buttonsSection: some View {
         Section {
-            BarSlotEditor(layout: layout, willChange: { record() })
+            // Its own screen rather than a block inside this Form: the editor
+            // is a `List` now — that is what gives it swipe-to-remove and
+            // always-visible reorder grips — and a List does not nest in a
+            // Form. It carries the same live preview at the top, so you can
+            // still see what you are doing (#008AC).
+            NavigationLink {
+                BarButtonsScreen(
+                    state: state, layout: layout, willChange: { record() },
+                    canUndo: !undoStack.isEmpty, undo: { undo() },
+                    resetTitle: resetTitle, reset: { applyReset() }
+                )
                 .environment(\.zenPalette, palette)
-                .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
+            } label: {
+                HStack {
+                    Label("Buttons", systemImage: "square.grid.2x2")
+                    Spacer()
+                    Text(placedSummary)
+                        .font(.system(size: 13))
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .accessibilityIdentifier("barButtonsLink")
         } header: {
             Text("Buttons")
         } footer: {
@@ -607,6 +599,21 @@ struct BarCustomizerView: View {
         }
     }
 
+    /// "Reset to Zen", or to whichever preset this layout started from.
+    private var resetTitle: String {
+        "Reset to \(BarPreset.preset(id: current.presetID)?.name ?? BarPreset.zen.name)"
+    }
+
+    private func applyReset() {
+        apply(BarPreset.preset(id: current.presetID)?.layout ?? BarPreset.zen.layout)
+    }
+
+    /// "1 · 2 · 11" — what is on the bar right now, at a glance, so the row
+    /// says something before you open it.
+    private var placedSummary: String {
+        BarSlot.allCases.map { "\(current.slots($0).count)" }.joined(separator: " · ")
+    }
+
     private func apply(_ next: BarLayout) {
         record(force: true)
         state.settings.barLayout = next.normalised()
@@ -637,6 +644,102 @@ struct BarCustomizerView: View {
         Haptics.shared.fire(.tabRestore)
         withAnimation(.spring(response: 0.3, dampingFraction: 0.9)) {
             state.settings.barLayout = previous
+        }
+    }
+}
+
+// MARK: - The preview
+
+/// The real `OmniboxPill`, drawn but not wired up, over a stand-in for the
+/// page. Using the actual bar is the point — a hand-drawn mock would agree with
+/// the bar right up until it stopped.
+///
+/// Its own view so the buttons screen shows the same canvas as the customiser's
+/// front page: an editor where you cannot see what you are editing is how the
+/// Bookmark button went missing in the first place (#008AC).
+struct BarPreviewCanvas: View {
+    @ObservedObject var state: BrowserState
+    let layout: BarLayout
+    var height: CGFloat = 148
+    @Environment(\.zenPalette) private var palette
+
+    var body: some View {
+        ZStack(alignment: layout.position.isTop ? .top : .bottom) {
+            ZenGradientView(
+                theme: state.activeSpace?.theme ?? ZenTheme.default,
+                isDark: palette.isDark
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay {
+                // Something with contrast behind the bar, so Transparent and
+                // low blur strengths read honestly.
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(0..<4, id: \.self) { row in
+                        Capsule()
+                            .fill(palette.text.withAlpha(0.18).color)
+                            .frame(height: 8)
+                            .padding(.trailing, CGFloat(row % 3) * 40)
+                    }
+                }
+                .padding(20)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            }
+
+            OmniboxPill(state: state, isFloating: true, isPreview: true)
+                .padding(.horizontal, max(CGFloat(layout.horizontalMargin), 4))
+                .padding(
+                    layout.position.isTop ? .top : .bottom,
+                    CGFloat(layout.verticalOffset) + 10)
+        }
+        .frame(height: height)
+        .animation(.spring(response: 0.3, dampingFraction: 0.9), value: layout)
+    }
+}
+
+// MARK: - The buttons screen
+
+/// The preview, pinned, over the slot editor — so every add, remove and reorder
+/// shows in the bar you are building while you are building it.
+struct BarButtonsScreen: View {
+    @ObservedObject var state: BrowserState
+    @Binding var layout: BarLayout
+    var willChange: () -> Void
+    var canUndo: Bool
+    var undo: () -> Void
+    var resetTitle: String
+    var reset: () -> Void
+
+    @Environment(\.zenPalette) private var palette
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Shorter than the front page's: the list below is what you came
+            // for, and the preview only has to answer "did that do what I
+            // meant".
+            BarPreviewCanvas(state: state, layout: layout, height: 108)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .accessibilityIdentifier("barPreview")
+
+            BarSlotEditor(
+                layout: $layout, willChange: willChange,
+                canUndo: canUndo, undo: undo,
+                resetTitle: resetTitle, reset: reset
+            )
+            .environment(\.zenPalette, palette)
+        }
+        .background(Color(.systemGroupedBackground))
+        .navigationTitle("Buttons")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button(action: undo) {
+                    Image(systemName: "arrow.uturn.backward")
+                }
+                .disabled(!canUndo)
+                .accessibilityLabel("Undo last change")
+                .accessibilityIdentifier("barUndo")
+            }
         }
     }
 }
