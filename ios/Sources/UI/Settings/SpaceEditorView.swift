@@ -11,6 +11,7 @@ struct SpaceEditorView: View {
     @ObservedObject var state: BrowserState
     /// nil means "create a new space".
     let space: Space?
+    @StateObject private var recents = RecentColorsStore()
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
@@ -56,7 +57,7 @@ struct SpaceEditorView: View {
                         .frame(height: 96)
                         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                         .listRowInsets(EdgeInsets())
-                    wheel
+                    accentRow
                     harmonyPicker
                     textureSlider
                 } header: {
@@ -153,43 +154,36 @@ struct SpaceEditorView: View {
 
     // MARK: Theme
 
-    /// A simplified stand-in for the 380×380 wheel: hue across, lightness down,
-    /// saturation pinned to the 90–100% band the desktop picker uses.
-    private var wheel: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Accent")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
-                    ForEach(Array(stride(from: 0.0, to: 360.0, by: 15.0)), id: \.self) { hue in
-                        ForEach([48.0, 62.0], id: \.self) { lightness in
-                            swatch(
-                                ZenColor(hueDegrees: hue, saturation: 95, lightness: lightness))
-                        }
+    /// The accent drives every derived token, so it gets a real tool rather
+    /// than a strip of presets — wheel, sliders, and typed hex or RGB. It lives
+    /// on its own screen because the controls need the room.
+    private var accentRow: some View {
+        NavigationLink {
+            AccentPickerScreen(
+                color: Binding(
+                    get: { theme.primaryDotColor ?? ZenTokens.defaultAccent },
+                    set: { newColor in
+                        theme = ZenGradientGenerator.theme(
+                            seed: newColor, harmony: theme.harmony)
+                    }),
+                gradientStops: theme.dots.map(\.color),
+                recents: recents)
+        } label: {
+            HStack {
+                Text("Accent")
+                Spacer()
+                Text(ColorParsing.formatHex(theme.primaryDotColor ?? ZenTokens.defaultAccent))
+                    .font(.system(size: 12, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                Circle()
+                    .fill((theme.primaryDotColor ?? ZenTokens.defaultAccent).color)
+                    .frame(width: 22, height: 22)
+                    .overlay {
+                        Circle().strokeBorder(Color.primary.opacity(0.15), lineWidth: 0.5)
                     }
-                    swatch(ZenColor(hueDegrees: 0, saturation: 0, lightness: 30))
-                    swatch(ZenColor(hueDegrees: 0, saturation: 0, lightness: 75))
-                }
-                .padding(.vertical, 2)
             }
         }
-    }
-
-    private func swatch(_ color: ZenColor) -> some View {
-        let selected = theme.primaryDotColor == color
-        return Button {
-            theme = ZenGradientGenerator.theme(seed: color, harmony: theme.harmony)
-        } label: {
-            Circle()
-                .fill(color.color)
-                .frame(width: 26, height: 26)
-                .overlay {
-                    Circle().strokeBorder(
-                        selected ? Color.primary : .clear, lineWidth: 2)
-                }
-        }
-        .buttonStyle(.plain)
+        .accessibilityIdentifier("accentRow")
     }
 
     private var harmonyPicker: some View {

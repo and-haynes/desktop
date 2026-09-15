@@ -158,6 +158,51 @@ final class ScreenshotTests: XCTestCase {
         _ = tapMenuItem(matching: "label CONTAINS[c] 'Compact Mode'")
     }
 
+
+    /// The accent colour tool (#0088F) and the hex entry path.
+    func testCaptureColorPicker() throws {
+        let suffix = UIDevice.current.userInterfaceIdiom == .pad ? "-ipad" : ""
+        settle(4.0)
+
+        // Settings -> the first space -> Accent.
+        XCTAssertTrue(
+            tapMenuItem(matching: "label CONTAINS[c] 'Settings'"), "settings menu item missing")
+        settle(1.5)
+
+        let spaceRow = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS[c] 'Personal'")).firstMatch
+        XCTAssertTrue(spaceRow.waitForExistence(timeout: 8), "space row missing")
+        spaceRow.tap()
+        settle(1.5)
+
+        let accent = app.buttons["accentRow"].firstMatch
+        let accentCell = app.cells["accentRow"].firstMatch
+        if accent.waitForExistence(timeout: 5) {
+            accent.tap()
+        } else if accentCell.waitForExistence(timeout: 5) {
+            accentCell.tap()
+        } else {
+            return XCTFail("accent row missing")
+        }
+        settle(2.0)
+        capture("14-colour-picker\(suffix)")
+
+        // Type a hex value and apply it, which is the other half of the tool.
+        let hex = app.textFields["hexField"].firstMatch
+        XCTAssertTrue(hex.waitForExistence(timeout: 8), "hex field missing")
+        hex.tap()
+        settle(0.6)
+        // Clear whatever is there, then type a recognisable colour.
+        if let existing = hex.value as? String, !existing.isEmpty {
+            hex.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: existing.count))
+        }
+        hex.typeText("#E15B6E\n")
+        settle(1.5)
+        capture("15-colour-hex\(suffix)")
+
+        try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-COLOUR"))
+    }
+
     // MARK: The documented states
 
     func testCaptureAllStates() throws {
