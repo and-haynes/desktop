@@ -84,6 +84,8 @@ final class BrowserState: ObservableObject {
     /// one while a sheet is up is rejected rather than queued, because the page
     /// that raised it is already blocked and will retry.
     @Published var pendingCertificateChallenge: PendingCertificateChallenge?
+    /// What the URL pill's security glyph opened, if anything.
+    @Published var securityDetail: SecurityDetail?
 
     // MARK: Lifecycle
 
@@ -638,6 +640,48 @@ final class BrowserState: ObservableObject {
     }
 
     // MARK: TLS challenges
+
+    /// True while a sheet we own is on screen. SwiftUI silently drops a second
+    /// `.sheet` presented from the same view while one is already up, so the
+    /// certificate prompt has to wait its turn rather than disappear — see the
+    /// gated binding in RootView.
+    var isBlockingSheetPresented: Bool {
+        isHistorySheetPresented || isSettingsPresented || securityDetail != nil
+    }
+
+    /// What the glyph at the left of a tab's URL pill is saying.
+    func securityBadge(for tab: Tab?) -> SecurityBadge {
+        guard let tab, !tab.isNewTabPage else { return .search }
+        if let failure = tab.loadFailure { return .failed(failure) }
+        let host = tab.url.host?.lowercased()
+        if let host, pendingCertificateChallenge?.host.lowercased() == host { return .challenge }
+        guard tab.url.scheme?.lowercased() == "https" else { return .insecure }
+        if let host,
+            let approved = trustedCertificates.certificates.first(where: { $0.host == host })
+        {
+            return .trusted(approved)
+        }
+        return .secure
+    }
+
+    /// The badge's tap. A waiting challenge is not a "detail" — it is a
+    /// question the page is blocked on, so it goes back to the prompt.
+    func openSecurityDetail(for tab: Tab?) {
+        switch securityBadge(for: tab) {
+        case .search, .secure:
+            return
+        case .challenge:
+            // The challenge is still pending; the gated binding in RootView
+            // brings the sheet back as soon as nothing else is covering it.
+            securityDetail = nil
+        case .trusted(let certificate):
+            securityDetail = .trusted(certificate: certificate)
+        case .insecure:
+            securityDetail = .insecure(host: tab?.url.host ?? tab?.url.absoluteString ?? "")
+        case .failed(let failure):
+            securityDetail = .failed(failure)
+        }
+    }
 
     func presentCertificateChallenge(_ challenge: PendingCertificateChallenge) {
         guard pendingCertificateChallenge == nil else {

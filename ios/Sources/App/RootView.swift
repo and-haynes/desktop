@@ -200,13 +200,32 @@ struct RootView: View {
         .sheet(item: $shareItem) { url in
             ShareSheet(items: [url])
         }
-        .sheet(item: $state.pendingCertificateChallenge) { challenge in
+        // Root level, so it covers a split pane or a glance card — neither can
+        // present anything that covers the window. The binding is *gated*
+        // rather than direct: SwiftUI silently drops a second sheet presented
+        // from the same view while one is up, so a challenge raised while
+        // Settings or History is open would simply never appear, leaving the
+        // page blocked on a question nobody was asked. Gating queues it instead
+        // — it surfaces the moment the other sheet closes.
+        //
+        // The setter is deliberately inert. Gating dismisses the sheet by
+        // returning nil from the getter, and a setter that wrote that back
+        // would throw the challenge away; the only way out is answering it.
+        .sheet(
+            item: Binding(
+                get: { state.isBlockingSheetPresented ? nil : state.pendingCertificateChallenge },
+                set: { _ in })
+        ) { challenge in
             CertificateSheet(
                 challenge: challenge,
                 onTrust: { state.resolveCertificateChallenge(.trust) },
                 onReject: { state.resolveCertificateChallenge(.reject) }
             )
             .environment(\.zenPalette, palette)
+        }
+        .sheet(item: $state.securityDetail) { detail in
+            SecurityDetailSheet(detail: detail, state: state)
+                .environment(\.zenPalette, palette)
         }
         .background { keyboardShortcuts }
     }

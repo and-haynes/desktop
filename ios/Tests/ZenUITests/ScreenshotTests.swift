@@ -1022,6 +1022,48 @@ final class ScreenshotTests: XCTestCase {
         try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-BARFILL"))
     }
 
+    /// The URL pill's security badge is a *button* (#0089A).
+    ///
+    /// Run against a real self-signed HTTPS server on a non-default port, with
+    /// the certificate pre-approved in the app container so the app is not
+    /// blocked on a challenge — XCUITest cannot drive a held completion
+    /// handler, for the reason spelled out above. The harness:
+    ///
+    ///   mkdir /tmp/zencert && cd /tmp/zencert
+    ///   openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem \
+    ///     -days 2 -nodes -subj "/CN=localhost"
+    ///   python3 -c '...'    # serve cert.pem on 127.0.0.1:8006
+    ///   # point a tab at https://localhost:8006/ in session.json, and write
+    ///   # the openssl SHA-256 (lowercase, no colons, ISO-8601 approvedAt)
+    ///   # into Application Support/Zen/trusted-certs.json
+    ///
+    /// Without that harness there is no actionable badge to tap, so the test
+    /// skips rather than failing — it is a verification, not a regression gate.
+    func testSecurityBadgeOpensTheCertificateRecord() throws {
+        settle(5.0)
+        let badge = app.buttons["securityBadge"].firstMatch
+        try XCTSkipUnless(
+            badge.waitForExistence(timeout: 12),
+            "no actionable security badge — the self-signed harness is not set up")
+        badge.tap()
+        settle(2.0)
+
+        XCTAssertTrue(
+            app.navigationBars["Certificate"].waitForExistence(timeout: 8),
+            "tapping the badge must open the certificate record")
+        XCTAssertTrue(
+            app.staticTexts.matching(
+                NSPredicate(format: "label CONTAINS[c] ':'")).firstMatch.exists,
+            "the record must show the fingerprint")
+        capture("21-certificate-record")
+
+        // And it can be forgotten from here.
+        let forget = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS[c] 'Forget'")).firstMatch
+        XCTAssertTrue(forget.waitForExistence(timeout: 5), "no way to forget the certificate")
+        try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-BADGE"))
+    }
+
     // MARK: The documented states
 
     func testCaptureAllStates() throws {

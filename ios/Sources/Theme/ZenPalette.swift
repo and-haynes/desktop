@@ -36,6 +36,12 @@ enum ZenTokens {
 
     /// Zen's own default accent, used before a space picks one.
     static let defaultAccent = ZenColor(hex: "#5B6EE1")!
+
+    /// The amber the URL pill's warning badge and the stern certificate prompt
+    /// share. Deliberately not red: most of what it marks — plain HTTP on a
+    /// home network, a self-signed box — is a *caveat*, not an incident, and
+    /// red for a caveat is how people learn to ignore red.
+    static let warningColor = ZenColor(hex: "#E0922F")!
 }
 
 /// Every colour token zen-theme.css exposes, resolved for one accent in one

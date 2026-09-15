@@ -47,6 +47,10 @@ struct OmniboxPill: View {
                 sidebarButton
             }
 
+            // The badge sits *outside* the address button: it is its own
+            // control, and nesting a button inside a button gives you neither.
+            securityBadge
+
             Button {
                 Haptics.shared.fire(.omniboxOpen)
                 // Selecting first makes the tapped pane the active one, so the
@@ -56,9 +60,6 @@ struct OmniboxPill: View {
                     for: tabID, prefill: tab.map(Self.editableText) ?? "")
             } label: {
                 HStack(spacing: 7) {
-                    Image(systemName: lockSymbol)
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(palette.text.withAlpha(0.45).color)
                     Text(displayText)
                         .font(.system(size: 15, weight: .medium))
                         .foregroundStyle(palette.text.color)
@@ -148,9 +149,35 @@ struct OmniboxPill: View {
         return host.isEmpty ? tab.url.absoluteString : host
     }
 
-    private var lockSymbol: String {
-        guard let tab, !tab.isNewTabPage else { return "magnifyingglass" }
-        return tab.url.scheme == "https" ? "lock.fill" : "exclamationmark.triangle.fill"
+    /// The glyph, and — when there is something behind it — the button that
+    /// opens it. A warning triangle you cannot tap is the whole of #0089A:
+    /// it tells you something is wrong and gives you nowhere to go.
+    @ViewBuilder
+    private var securityBadge: some View {
+        let badge = state.securityBadge(for: tab)
+        let glyph = Image(systemName: badge.symbol)
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundStyle(
+                badge.isWarning ? ZenTokens.warningColor.color : palette.text.withAlpha(0.45).color)
+
+        if badge.isActionable {
+            Button {
+                Haptics.shared.fire(.longPressMenu)
+                if let tabID, tabID != state.activeTabID { state.select(tabID) }
+                state.openSecurityDetail(for: tab)
+            } label: {
+                glyph
+                    .frame(width: 26, height: 36)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(ZenPressStyle())
+            .accessibilityIdentifier("securityBadge")
+            .accessibilityLabel(badge.accessibilityLabel)
+        } else {
+            glyph
+                .frame(width: 20, height: 36)
+                .accessibilityLabel(badge.accessibilityLabel)
+        }
     }
 
     /// Editing shows the whole URL, not the pretty host.
