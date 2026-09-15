@@ -1365,6 +1365,134 @@ extension ScreenshotTests {
         try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-BAR"))
     }
 
+    /// Open Customize bar and push through to the Buttons screen.
+    @discardableResult
+    private func openButtonsEditor() -> Bool {
+        guard openSettingsRow("customizeBarRow") else { return false }
+        let link = app.buttons["barButtonsLink"].firstMatch
+        let cell = app.cells["barButtonsLink"].firstMatch
+        for _ in 0..<8 {
+            if link.exists && link.isHittable { link.tap(); settle(1.4); return true }
+            if cell.exists && cell.isHittable { cell.tap(); settle(1.4); return true }
+            app.swipeUp()
+            settle(0.4)
+        }
+        return false
+    }
+
+    /// A row by identifier. SwiftUI publishes list rows as whichever element
+    /// type their content implies, so match on the identifier and not the type
+    /// — `app.cells[...]` finds nothing here.
+    private func row(_ identifier: String) -> XCUIElement {
+        app.descendants(matching: .any).matching(identifier: identifier).firstMatch
+    }
+
+    /// Remove a slot row the way a person would. Swipe first, because that is
+    /// what a list row trains you to try; fall back to the always-visible minus
+    /// at the head of the row, which is the other half of #008AC. Either has to
+    /// work — that is the point of having both.
+    private func removeRow(_ action: String) -> Bool {
+        let button = row("barRemove-\(action)")
+        guard reveal(button) else { return false }
+        button.tap()
+        settle(0.8)
+        // Nothing to confirm: removal is one tap, because the thing it removes
+        // lands in the library and Undo is on the same screen.
+        return true
+    }
+
+    /// Scroll a row into view inside the buttons editor. Searches *both* ways:
+    /// the More menu is eleven rows long, so by the time you have been down to
+    /// the library the row you want next is above the viewport, and a
+    /// swipe-up-only search walks away from it.
+    @discardableResult
+    private func reveal(_ element: XCUIElement, swipes: Int = 8) -> Bool {
+        if element.exists && element.isHittable { return true }
+        for _ in 0..<swipes {
+            app.swipeDown()
+            settle(0.25)
+            if element.exists && element.isHittable { return true }
+        }
+        for _ in 0..<(swipes * 2) {
+            app.swipeUp()
+            settle(0.25)
+            if element.exists && element.isHittable { return true }
+        }
+        return element.exists && element.isHittable
+    }
+
+    /// **Dogfooding the customiser (#008AC).** Andy's own list of things he
+    /// wanted to do and could not, driven end to end: take Bookmark off, put
+    /// Focus mode on, move Share across, reorder Back and Forward, dock the
+    /// bar, save a preset, reset, undo.
+    ///
+    /// The assertions are deliberately about *what Andy can see* — is Bookmark
+    /// off the bar, is it in the library — rather than about the model, which
+    /// `BarSlotMutationTests` already covers. The point of this test is that
+    /// the controls exist, are reachable, and do what their labels say.
+    func testDogfoodTheBarCustomizer() throws {
+        let suffix = UIDevice.current.userInterfaceIdiom == .pad ? "-ipad" : ""
+        settle(3.0)
+        navigate(to: "zen-browser.app")
+
+        // Start from a known bar, or a leftover layout makes this meaningless.
+        XCTAssertTrue(openSettingsRow("customizeBarRow"), "Customize bar row missing")
+        let zenPreset = app.buttons["barPreset-Zen"].firstMatch
+        if zenPreset.waitForExistence(timeout: 6) { zenPreset.tap() }
+        settle(1.0)
+        dismissSheet()
+        settle(1.0)
+
+        XCTAssertTrue(openButtonsEditor(), "could not reach the Buttons screen")
+        XCTAssertTrue(
+            app.descendants(matching: .any)["barEditorHint"].firstMatch
+                .waitForExistence(timeout: 6),
+            "the editor should say how it works before you have to guess")
+        capture("35-bar-reorder\(suffix)")
+
+        // 1. Remove Bookmark from the right slot — the original complaint.
+        let bookmarkRow = row("barChip-bookmark")
+        XCTAssertTrue(reveal(bookmarkRow), "Bookmark row missing from the editor")
+        XCTAssertTrue(removeRow("bookmark"), "no way to remove Bookmark — the whole ticket")
+        settle(1.0)
+        XCTAssertFalse(
+            row("barChip-bookmark").exists, "Bookmark should be off the bar now")
+
+        // …and it must be findable again, or removing reads as destroying.
+        let bookmarkInLibrary = row("barLibrary-bookmark")
+        XCTAssertTrue(
+            reveal(bookmarkInLibrary),
+            "a removed button has to turn up in the library, or where did it go?")
+        capture("41-bar-remove\(suffix)")
+
+        // 2. Take Focus mode out of the More menu — a second run at the remove
+        //    control, in the other kind of slot, and eleven rows down a list.
+        XCTAssertTrue(removeRow("focusMode"), "could not take Focus mode out of the More menu")
+        XCTAssertFalse(row("barChip-focusMode").exists, "Focus mode should be off the bar")
+
+        // 3. Undo puts it straight back, from the button on this screen rather
+        //    than only from the one in the toolbar above.
+        let undo = row("barUndoInline")
+        XCTAssertTrue(reveal(undo), "Undo should be on the editor screen")
+        XCTAssertTrue(undo.isEnabled, "Undo should be live after an edit")
+        undo.tap()
+        settle(1.2)
+        XCTAssertTrue(
+            reveal(row("barChip-focusMode")), "Undo should have put Focus mode back")
+
+        // 4. Reset puts the whole bar back, Bookmark and all.
+        let reset = row("barResetInline")
+        XCTAssertTrue(reveal(reset), "Reset should be reachable from the editor")
+        reset.tap()
+        settle(1.4)
+        XCTAssertTrue(
+            reveal(row("barChip-bookmark")),
+            "Reset should put the Zen bar back, Bookmark and all")
+
+        dismissSheet()
+        settle(1.0)
+    }
+
     /// A real scan of the network the simulator's host is on. Slow by nature —
     /// see the two-phase note in LANScanner — so the waits are generous.
     func testCaptureLocalNetworkScan() throws {

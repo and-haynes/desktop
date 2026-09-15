@@ -11,7 +11,8 @@
 //  So the slots are rows in a list, and *every* way you would reasonably try to
 //  remove a button works:
 //
-//  * a red minus at the head of each row, always visible, never a hover state;
+//  * a red minus on the row itself, always visible, one tap, no confirmation
+//    step — what it removes goes into the library and Undo is on this screen;
 //  * swipe left, which is what a list row trains you to try;
 //  * Remove in the row's context menu, for the person who already knows.
 //
@@ -21,12 +22,20 @@
 //  putting it back is one tap on a `+`. A library that listed everything could
 //  not answer that question, which is why `unplacedActions` exists.
 //
-//  Order has the same belt and braces: drag the grip to reorder inside a slot
-//  (`.onMove`, with the list held in edit mode so the grips are always there),
-//  drag a row onto another slot to move between them (`.draggable` /
-//  `.dropDestination`), or use "Move to…" in the context menu when dragging is
-//  awkward — which on a phone, inside a sheet, inside a scroll view, it often
-//  is.
+//  Order has the same belt and braces: drag a row by its grip to reorder inside
+//  a slot or to move it to another one (`.draggable` / `.dropDestination` —
+//  dropping *on* a row inserts at that row's index, which is what makes the
+//  within-slot case work), or use Move up / Move down / "Move to…" in the
+//  context menu when dragging is awkward — which on a phone, inside a sheet,
+//  inside a scroll view, it often is.
+//
+//  **Not** `.onMove` with the list pinned in edit mode, which is where this
+//  went first. It gives free grips and a free minus, and it costs every other
+//  control in the row: a `List` in edit mode does not deliver taps to buttons
+//  inside its rows, so the explicit Remove and the library's `+` menu both
+//  went dead, and `.swipeActions` is suppressed as well. Driving it in the
+//  simulator is how that turned up — three affordances that looked right in a
+//  screenshot and did nothing at all.
 //
 //  The drag payload is a plain string because that is what survives
 //  `draggable`/`dropDestination` without a custom `Transferable` per case:
@@ -84,10 +93,6 @@ struct BarSlotEditor: View {
             librarySection
             actionsSection
         }
-        // Permanent edit mode. This is what puts a reorder grip on every row
-        // and a remove control at the head of it *without* asking anyone to
-        // find an Edit button first — which was the whole complaint.
-        .environment(\.editMode, .constant(.active))
         .listStyle(.insetGrouped)
         .sheet(item: $editingLongPress) { item in
             BarLongPressPicker(item: item, layout: $layout, willChange: willChange)
@@ -99,8 +104,11 @@ struct BarSlotEditor: View {
 
     private var hintSection: some View {
         Section {
+            // What this says has to be true — all three were checked by
+            // driving them, which is how the first two versions of this line
+            // were found to be describing controls that did nothing.
             Label(
-                "Drag to reorder, swipe to remove, tap + to add.",
+                "Drag the grip to reorder, tap \u{2296} to remove, tap + to add.",
                 systemImage: "hand.draw"
             )
             .font(.system(size: 13))
@@ -135,10 +143,6 @@ struct BarSlotEditor: View {
                 }
                 for id in doomed { layout.remove(id) }
                 Haptics.shared.fire(.tabClose)
-            }
-            .onMove { offsets, destination in
-                willChange()
-                move(in: slot, from: offsets, to: destination)
             }
         } header: {
             HStack {
@@ -179,6 +183,35 @@ struct BarSlotEditor: View {
                 }
             }
             Spacer()
+            // Removal in one tap, labelled, on the row. The system's edit-mode
+            // minus is *also* there at the head of the row, but it takes two
+            // taps and the second one says "Delete" — which is the wrong word
+            // for something that is going straight into the library below.
+            // Undo is at the bottom of this screen, so one tap is safe.
+            Button {
+                remove(item)
+            } label: {
+                Image(systemName: "minus.circle.fill")
+                    .font(.system(size: 20))
+                    // Red, not the warning amber the slot counts use. Amber
+                    // reads as "careful"; this is the destructive control, and
+                    // it should look like every other one on the platform.
+                    .foregroundStyle(Color.red)
+                    .frame(width: 44, height: 36)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Remove \(item.action.title)")
+            .accessibilityIdentifier("barRemove-\(item.action.rawValue)")
+
+            // The drag affordance. Without a grip the row looks inert, and
+            // "drag to reorder" in the hint above would be a claim with
+            // nothing on screen to back it up.
+            Image(systemName: "line.3.horizontal")
+                .font(.system(size: 14))
+                .foregroundStyle(.tertiary)
+                .frame(width: 28, height: 36)
+                .accessibilityHidden(true)
         }
         .contentShape(Rectangle())
         .draggable(BarDragPayload.item(item.id)) {
@@ -206,6 +239,15 @@ struct BarSlotEditor: View {
                         ? "Add long press…" : "Long press: \(item.longPress?.title ?? "")",
                     systemImage: "hand.tap")
             }
+            Button {
+                nudge(item, in: slot, by: -1)
+            } label: { Label("Move up", systemImage: "arrow.up") }
+                .disabled(index(of: item.id, in: slot) == 0)
+            Button {
+                nudge(item, in: slot, by: 1)
+            } label: { Label("Move down", systemImage: "arrow.down") }
+                .disabled(index(of: item.id, in: slot) >= layout.slots(slot).count - 1)
+            Divider()
             ForEach(BarSlot.allCases.filter { $0 != slot }) { other in
                 Button {
                     willChange()
@@ -221,7 +263,12 @@ struct BarSlotEditor: View {
                 Label("Remove", systemImage: "minus.circle")
             }
         }
-        .accessibilityLabel("\(item.action.title) in \(slot.title)")
+        // `.contain` rather than a label on the row: an `accessibilityLabel`
+        // here merges the whole row into one element and takes the remove
+        // button with it — which is how a perfectly visible, perfectly
+        // tappable red minus turned out to be unreachable from a UI test, and
+        // would have been unreachable from VoiceOver too.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("barChip-\(item.action.rawValue)")
     }
 
@@ -249,40 +296,41 @@ struct BarSlotEditor: View {
     }
 
     private func libraryRow(_ action: BarAction) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: action.symbol)
-                .font(.system(size: 15))
-                .foregroundStyle(.secondary)
-                .frame(width: 24)
-            Text(action.title)
-            Spacer()
-            // The menu is the `+`: one tap opens it, one more says where. A
-            // bare `+` would have to guess a slot, and guessing wrong on a
-            // four-item slot costs an undo.
-            Menu {
-                ForEach(BarSlot.allCases) { slot in
-                    Button {
-                        add(action, to: slot)
-                    } label: {
-                        Label("Add to \(slot.placePhrase)", systemImage: "plus")
-                    }
-                    .disabled(!layout.canAdd(to: slot))
+        // The *row* is the add control, not a small `+` at the end of it.
+        // Two reasons: a whole row is a much better target than 44pt of glyph
+        // on a phone, and a `Menu` nested inside a row that also carries an
+        // identifier is not reliably addressable — from a UI test or, more to
+        // the point, from VoiceOver. The `+` stays as the affordance.
+        Menu {
+            ForEach(BarSlot.allCases) { slot in
+                Button {
+                    add(action, to: slot)
+                } label: {
+                    Label("Add to \(slot.placePhrase)", systemImage: "plus")
                 }
-            } label: {
+                .disabled(!layout.canAdd(to: slot))
+            }
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: action.symbol)
+                    .font(.system(size: 15))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 24)
+                Text(action.title)
+                    .foregroundStyle(palette.text.color)
+                Spacer()
                 Image(systemName: "plus.circle.fill")
                     .font(.system(size: 20))
                     .foregroundStyle(palette.accent.color)
-                    .frame(width: 44, height: 36)
-                    .contentShape(Rectangle())
             }
-            .accessibilityLabel("Add \(action.title)")
-            .accessibilityIdentifier("barAdd-\(action.rawValue)")
+            .contentShape(Rectangle())
         }
         .deleteDisabled(true)
         .moveDisabled(true)
         .draggable(BarDragPayload.library(action)) {
             Label(action.title, systemImage: action.symbol).padding(8)
         }
+        .accessibilityLabel("Add \(action.title)")
         .accessibilityIdentifier("barLibrary-\(action.rawValue)")
     }
 
@@ -330,16 +378,15 @@ struct BarSlotEditor: View {
         }
     }
 
-    /// `.onMove` gives offsets into the slot's own array, so translate to the
-    /// model's "put this id at this index" and let `BarLayout` do the work —
-    /// reordering inside a slot is allowed even at capacity.
-    private func move(in slot: BarSlot, from offsets: IndexSet, to destination: Int) {
-        let items = layout.slots(slot)
-        guard let source = offsets.first, source < items.count else { return }
-        // SwiftUI's destination is the index *before* the removal; the model
-        // inserts after it, so a forward move lands one short without this.
-        let target = destination > source ? destination - 1 : destination
-        _ = layout.move(items[source].id, to: slot, at: target)
+    /// One place up or down — reordering for anyone who would rather not drag.
+    /// Clamped rather than wrapping: a button that jumps from the top to the
+    /// bottom of the slot is a surprise, not a shortcut.
+    private func nudge(_ item: BarSlotItem, in slot: BarSlot, by delta: Int) {
+        let current = index(of: item.id, in: slot)
+        let target = current + delta
+        guard target >= 0, target < layout.slots(slot).count else { return }
+        willChange()
+        _ = layout.move(item.id, to: slot, at: target)
         Haptics.shared.fire(.dragDrop)
     }
 
