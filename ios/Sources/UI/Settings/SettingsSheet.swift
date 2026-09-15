@@ -8,6 +8,8 @@ struct SettingsSheet: View {
     @ObservedObject var sync: SyncService
     /// Experimental (#008AD); inert until a vault is connected.
     @ObservedObject var vault: PasswordVaultService
+    /// Experimental (#008B8); inert below iOS 18.4 and with nothing installed.
+    @ObservedObject var extensions: ExtensionHost
     @Environment(\.dismiss) private var dismiss
     @Environment(\.zenPalette) private var palette
     @State private var editingSpace: Space?
@@ -144,6 +146,8 @@ struct SettingsSheet: View {
                 SyncSettingsSection(sync: sync)
 
                 PasswordsSettingsSection(vault: vault)
+
+                ExtensionsSettingsSection(host: extensions, state: state)
 
                 Section("Spaces") {
                     ForEach(state.spaces) { space in

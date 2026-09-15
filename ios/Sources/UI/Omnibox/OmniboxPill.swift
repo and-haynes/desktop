@@ -39,6 +39,10 @@ struct OmniboxPill: View {
     var onShare: (URL) -> Void = { _ in }
     /// Put the bar away. Owned by whoever animates it (RootView).
     var onHideBar: () -> Void = {}
+    /// The extension runtime, when there is one (#008B8). Optional so the
+    /// customiser's live preview — which draws a bar with nothing behind it —
+    /// keeps working, and so a secondary pane's bar needs no wiring.
+    var extensions: ExtensionHost?
 
     var layout: BarLayout { layoutOverride ?? state.display.barLayout }
 
@@ -235,6 +239,21 @@ struct OmniboxPill: View {
             .disabled(isPreview)
             .accessibilityLabel("More")
             .accessibilityIdentifier("moreMenu")
+        case .extensions:
+            // A menu, like the space switcher: the badge text is the reason
+            // the button is worth having, and a menu is where it can be read.
+            Menu {
+                if let extensions {
+                    ExtensionMenuItems(host: extensions, state: state)
+                } else {
+                    Button("Extensions") { state.isExtensionsPanelPresented = true }
+                }
+            } label: {
+                glyph(for: item.action, enabled: true)
+            }
+            .disabled(isPreview)
+            .accessibilityLabel("Extensions")
+            .accessibilityIdentifier("extensionsMenu")
         case .spaceSwitcher:
             Menu {
                 ForEach(state.spaces) { space in
@@ -501,6 +520,27 @@ struct OmniboxPill: View {
                 Label("Settings", systemImage: "gearshape")
             }
         }
+        // The extension actions hang off the More menu whether or not the
+        // layout carries an `.extensions` slot (#008B8). A deliberate
+        // exception to "the menu is exactly what you put in it": an extension
+        // you installed and cannot find is indistinguishable from one that is
+        // broken, and the submenu is empty — one inert row — when there is
+        // nothing loaded.
+        if let extensions, ExtensionHost.isSupported, extensions.hasAnythingInstalled {
+            Divider()
+            Menu {
+                ExtensionMenuItems(host: extensions, state: state)
+            } label: {
+                Label(extensionsMenuTitle, systemImage: "puzzlepiece.extension")
+            }
+        }
+    }
+
+    /// "Extensions", or "Extensions (3)" when any of them has a badge to
+    /// report — the count is the only thing a collapsed submenu can say.
+    private var extensionsMenuTitle: String {
+        let badged = extensions?.menuActions.filter { !$0.badgeText.isEmpty }.count ?? 0
+        return badged > 0 ? "Extensions (\(badged))" : "Extensions"
     }
 
     /// A submenu (#008B6) replacing the old cycle-only "Layout" row. A

@@ -38,6 +38,11 @@ enum BarAction: String, Codable, CaseIterable, Identifiable, Sendable {
     /// page verbs rather than the places, because what it offers depends
     /// entirely on which page you are on.
     case passwords
+    /// Experimental (#008B8): the installed extensions' toolbar buttons, as a
+    /// menu. A page verb rather than a place, for the same reason `passwords`
+    /// is — an extension action's label, its badge and whether it does
+    /// anything at all are all answers about *this* page.
+    case extensions
 
     // Tabs and spaces
     case sidebar
@@ -84,6 +89,7 @@ enum BarAction: String, Codable, CaseIterable, Identifiable, Sendable {
         case .desktopSite: return "Desktop Site"
         case .popOutVideo: return "Pop Out Video"
         case .passwords: return "Passwords"
+        case .extensions: return "Extensions"
         case .sidebar: return "Tabs"
         case .newTab: return "New Tab"
         case .closeTab: return "Close Tab"
@@ -123,6 +129,7 @@ enum BarAction: String, Codable, CaseIterable, Identifiable, Sendable {
         case .desktopSite: return "desktopcomputer"
         case .popOutVideo: return "pip.enter"
         case .passwords: return "key.fill"
+        case .extensions: return "puzzlepiece.extension"
         case .sidebar: return "sidebar.leading"
         case .newTab: return "plus"
         case .closeTab: return "xmark"
@@ -162,7 +169,8 @@ enum BarAction: String, Codable, CaseIterable, Identifiable, Sendable {
         switch self {
         case .none: return .other
         case .back, .forward, .reloadStop, .scrollToTop: return .navigation
-        case .share, .bookmark, .copyURL, .findInPage, .desktopSite, .popOutVideo, .passwords:
+        case .share, .bookmark, .copyURL, .findInPage, .desktopSite, .popOutVideo, .passwords,
+            .extensions:
             return .page
         case .sidebar, .newTab, .closeTab, .nextTab, .previousTab, .spaceSwitcher:
             return .tabs
@@ -191,7 +199,9 @@ enum BarAction: String, Codable, CaseIterable, Identifiable, Sendable {
 
     /// Presented as a menu rather than a plain tap, which the renderer has to
     /// know before it builds the control.
-    var isMenu: Bool { self == .overflowMenu || self == .spaceSwitcher }
+    var isMenu: Bool {
+        self == .overflowMenu || self == .spaceSwitcher || self == .extensions
+    }
 
     static let slotLibrary: [BarAction] = allCases.filter(\.fitsASlot)
     static let gestureLibrary: [BarAction] = allCases.filter(\.fitsAGesture)

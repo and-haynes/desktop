@@ -2206,4 +2206,171 @@ extension ScreenshotTests {
         settle(2.0)
         try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-SPLITBARS"))
     }
+
+    // MARK: Browser extensions (#008B8)
+
+    /// Open Settings and reach the Extensions screen. Settings is long enough
+    /// now that the row is well below the fold, and XCUITest does not scroll.
+    @discardableResult
+    private func openExtensionsSettings() -> Bool {
+        guard tapMenuItem(matching: "label CONTAINS[c] 'Settings'") else { return false }
+        settle(1.5)
+        let row = app.buttons["extensionsSettingsLink"].firstMatch
+        let cell = app.cells["extensionsSettingsLink"].firstMatch
+        for _ in 0..<8 {
+            if row.exists && row.isHittable { row.tap(); settle(1.5); return true }
+            if cell.exists && cell.isHittable { cell.tap(); settle(1.5); return true }
+            app.swipeUp()
+            settle(0.5)
+        }
+        return false
+    }
+
+    /// Tap Install on whichever install sheet is up, and wait for it to go.
+    @discardableResult
+    private func confirmInstall(timeout: TimeInterval = 12) -> Bool {
+        let button = app.buttons["installExtensionButton"].firstMatch
+        guard button.waitForExistence(timeout: timeout) else { return false }
+        button.tap()
+        settle(2.0)
+        return true
+    }
+
+    /// The end-to-end proof, with the app's own two fixtures: a content script
+    /// that writes into the page, and a declarativeNetRequest rule that stops a
+    /// request. Both are asserted from *the page*, not from the settings list —
+    /// an extension that appears in a list and does nothing is exactly the
+    /// failure this whole feature is trying to avoid.
+    func testTheBuiltInExtensionsActuallyRunInAPage() throws {
+        settle(3.0)
+        XCTAssertTrue(openExtensionsSettings(), "Settings has no Extensions row")
+
+        let installFixtures = app.buttons["installFixturesButton"].firstMatch
+        for _ in 0..<6 where !(installFixtures.exists && installFixtures.isHittable) {
+            app.swipeUp()
+            settle(0.5)
+        }
+        XCTAssertTrue(
+            installFixtures.waitForExistence(timeout: 6), "no built-in extensions button")
+        installFixtures.tap()
+        settle(1.5)
+
+        // Two packages, one sheet each.
+        XCTAssertTrue(confirmInstall(), "the first install sheet never appeared")
+        XCTAssertTrue(confirmInstall(), "the second install sheet never appeared")
+        settle(2.0)
+        capture("49a-extensions-fixtures-installed")
+
+        closeSettings()
+        // The controller is attached when a web view is built, so the page has
+        // to be loaded *after* the install — which is also the honest thing to
+        // check, since that is what a person would do.
+        navigate(to: "example.com")
+        settle(5.0)
+        capture("49b-extension-content-script")
+
+        // The badge is a DOM element the content script inserted, so XCUITest
+        // sees it as page text.
+        let badge = app.staticTexts.containing(
+            NSPredicate(format: "label CONTAINS[c] 'ZEN EXTENSION ACTIVE'")).firstMatch
+        XCTAssertTrue(
+            badge.waitForExistence(timeout: 20),
+            "the content script never ran — the extension controller is not attached to the "
+                + "browsing web view, or the host permission was not granted")
+
+        // And the blocker: the content script fetches a URL the other
+        // extension's rule cancels. A 404 would read "REACHED 404"; only a
+        // cancelled request reads "BLOCKED".
+        let blocked = app.staticTexts.containing(
+            NSPredicate(format: "label CONTAINS[c] 'BLOCKED'")).firstMatch
+        XCTAssertTrue(
+            blocked.waitForExistence(timeout: 20),
+            "declarativeNetRequest did not block — the rule list is not compiled, or the "
+                + "blocker has no host access")
+        capture("49c-extension-blocking-fixture")
+        try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-EXTENSIONS"))
+    }
+
+    /// The popup, opened from the More menu's Extensions submenu.
+    func testTheExtensionActionOpensItsPopup() throws {
+        settle(3.0)
+        navigate(to: "example.com")
+        settle(3.0)
+
+        XCTAssertTrue(
+            tapMenuItem(matching: "label CONTAINS[c] 'Extensions'"),
+            "the More menu carries no Extensions entry")
+        settle(1.5)
+        let action = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS[c] 'Zen Badge'")).firstMatch
+        guard action.waitForExistence(timeout: 6) else {
+            capture("50-extension-popup-missing")
+            throw XCTSkip(
+                "no Zen Badge action — run testTheBuiltInExtensionsActuallyRunInAPage first")
+        }
+        action.tap()
+        settle(3.0)
+        XCTAssertTrue(
+            app.otherElements["extensionPopupSheet"].waitForExistence(timeout: 10)
+                || app.staticTexts["Zen Badge"].waitForExistence(timeout: 4),
+            "the action's popup never came up")
+        capture("50a-extension-popup-fixture")
+    }
+
+    /// The real-world check: two extensions people actually use, fetched from
+    /// addons.mozilla.org through the in-app link field, with the permission
+    /// sheet and the compatibility report shown for each.
+    ///
+    /// Needs the network, like every other screenshot test here.
+    func testCaptureRealExtensionsFromAddonsMozillaOrg() throws {
+        settle(3.0)
+        XCTAssertTrue(openExtensionsSettings(), "Settings has no Extensions row")
+
+        for listing in [
+            "https://addons.mozilla.org/en-GB/firefox/addon/ublock-origin-lite/",
+            "https://addons.mozilla.org/en-GB/firefox/addon/darkreader/",
+        ] {
+            let field = app.textFields["extensionLinkField"].firstMatch
+            for _ in 0..<6 where !(field.exists && field.isHittable) {
+                app.swipeUp()
+                settle(0.5)
+            }
+            guard field.waitForExistence(timeout: 8) else {
+                XCTFail("no link field")
+                return
+            }
+            field.tap()
+            field.typeText(listing)
+            app.buttons["extensionLinkGetButton"].firstMatch.tap()
+            // AMO resolution plus a multi-megabyte download.
+            settle(12.0)
+            if app.otherElements["extensionInstallSheet"].waitForExistence(timeout: 30) {
+                capture("49-install-\(listing.contains("ublock") ? "ubol" : "darkreader")")
+            }
+            XCTAssertTrue(
+                confirmInstall(timeout: 30), "\(listing) never produced an install sheet")
+            settle(3.0)
+        }
+
+        settle(2.0)
+        capture("49-extensions-list")
+
+        closeSettings()
+        navigate(to: "https://en.wikipedia.org/wiki/Web_browser")
+        settle(8.0)
+        capture("51-extension-blocking")
+
+        XCTAssertTrue(
+            tapMenuItem(matching: "label CONTAINS[c] 'Extensions'"),
+            "the More menu carries no Extensions entry")
+        settle(1.5)
+        let action = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS[c] 'Dark Reader'")).firstMatch
+        if action.waitForExistence(timeout: 8) {
+            action.tap()
+            settle(4.0)
+        }
+        capture("50-extension-popup")
+        try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-REALEXT"))
+    }
 }

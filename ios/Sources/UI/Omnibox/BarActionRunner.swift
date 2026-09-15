@@ -104,6 +104,12 @@ enum BarActionRunner {
             // anything matches; opening it with nothing to show is still the
             // right answer, because that is where the setup link lives.
             state.isPasswordsPanelPresented = true
+        case .extensions:
+            // As a *slot* this is a menu and never reaches here — see
+            // `OmniboxPill.slotButton`. Everything else (a gesture, the More
+            // menu, a keyboard — none of which can anchor a popover) gets the
+            // sheet, which is the same list.
+            state.isExtensionsPanelPresented = true
         case .desktopSite:
             state.settings.preferDesktopSite.toggle()
         case .popOutVideo:

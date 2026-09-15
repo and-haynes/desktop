@@ -88,6 +88,61 @@ final class AutoFillSuppressionTests: XCTestCase {
         }
     }
 
+    /// Browser extensions (#008B8) are the newest thing that could plausibly
+    /// break this, and the reason they do not is worth pinning rather than
+    /// assuming: attaching a `WKWebExtensionController` to a configuration adds
+    /// nothing to its `userContentController`. WebKit injects an extension's
+    /// content scripts itself, in its own world, so the array this test walks
+    /// stays exactly as long as it was — which is what keeps the form iOS
+    /// inspects the one the site shipped.
+    @available(iOS 18.4, *)
+    func testAttachingAnExtensionControllerInjectsNothingIntoPages() throws {
+        let host = ExtensionHost(
+            store: ExtensionStore(
+                file: JSONFileStore<[InstalledExtension]>(
+                    url: temporaryDirectory().appendingPathComponent("extensions.json")),
+                root: temporaryDirectory()))
+        let state = BrowserState(restore: false)
+        host.start(state: state, pool: WebViewPool())
+
+        let plain = WebEngine.configuration(for: space(), desktop: false)
+        let withExtensions = WebEngine.configuration(
+            for: space(), desktop: false, extensions: host)
+
+        XCTAssertNotNil(
+            withExtensions.webExtensionController,
+            "the controller has to actually be attached, or this test proves nothing")
+        assertScriptsLeaveFormsAlone(withExtensions)
+        XCTAssertEqual(
+            withExtensions.userContentController.userScripts.count,
+            plain.userContentController.userScripts.count,
+            "attaching an extension controller must not add a user script")
+    }
+
+    /// Focus is the one mode that must never carry extensions: the promise is
+    /// an ephemeral session, and an extension with storage and a background
+    /// page is the opposite of one.
+    @available(iOS 18.4, *)
+    func testFocusGetsNoExtensionController() throws {
+        let host = ExtensionHost(
+            store: ExtensionStore(
+                file: JSONFileStore<[InstalledExtension]>(
+                    url: temporaryDirectory().appendingPathComponent("extensions.json")),
+                root: temporaryDirectory()))
+        let state = BrowserState(restore: false)
+        host.start(state: state, pool: WebViewPool())
+        let configuration = WebEngine.configuration(
+            for: space(), desktop: false, ephemeral: true, extensions: host)
+        XCTAssertNil(configuration.webExtensionController)
+    }
+
+    private func temporaryDirectory() -> URL {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("zen-autofill-ext-\(UUID().uuidString)", isDirectory: true)
+        try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        return url
+    }
+
     /// AutoFill is origin-scoped, and iOS only offers saved logins on an origin
     /// it can name. A non-persistent store does not stop the key appearing, but
     /// a private-mode store would throw away anything the page then saved — so

@@ -63,6 +63,9 @@ final class BrowserState: ObservableObject {
     @Published var isLocalServicesPresented: Bool = false
     /// The vault panel for the current page (#008AD, experimental).
     @Published var isPasswordsPanelPresented: Bool = false
+    /// The extensions panel — the action list, for the paths that cannot show
+    /// a menu (#008B8, experimental).
+    @Published var isExtensionsPanelPresented: Bool = false
     @Published var findInPageQuery: String = ""
     @Published var isFindBarVisible: Bool = false
     /// Live swipe offset in points while a space-switch gesture is in progress.

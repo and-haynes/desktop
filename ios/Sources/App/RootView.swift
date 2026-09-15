@@ -16,6 +16,10 @@ struct RootView: View {
     /// configured, and having it unconditionally means the settings screen can
     /// offer to connect one.
     @StateObject private var vault = PasswordVaultService()
+    /// Experimental (#008B8). Built unconditionally for the same reason the
+    /// vault is: the settings screen has to be able to offer it, and below
+    /// iOS 18.4 it simply never creates a runtime.
+    @StateObject private var extensions = ExtensionHost()
     @StateObject private var pool = PoolBox()
     @Environment(\.colorScheme) private var systemScheme
     @Environment(\.horizontalSizeClass) private var sizeClass
@@ -172,6 +176,7 @@ struct RootView: View {
                 let top = -view.scrollView.contentInset.top
                 view.scrollView.setContentOffset(CGPoint(x: 0, y: top), animated: true)
             }
+            .modifier(ExtensionBridge(state: state, host: extensions))
     }
 
     private var window: some View {
@@ -201,6 +206,12 @@ struct RootView: View {
             Haptics.shared.prepare(Self.warmEvents)
             pool.pool.state = state
             pool.pool.sepiaTintsPages = tintsPages
+            // The runtime holds the browser weakly, so this is the one place
+            // the two are introduced — the same shape as `sync.attach` below
+            // and `pool.vault` above (#008B8).
+            extensions.start(state: state, pool: pool.pool)
+            pool.pool.extensions = extensions
+            extensions.installedChanged()
             // A restored session has icons for nothing it has not yet loaded;
             // fetch them so the sidebar is not a column of monograms.
             Task { await FaviconService.prefetchMissing(for: state) }
@@ -334,13 +345,24 @@ struct RootView: View {
                     .environment(\.zenPalette, palette)
             }
             .sheet(isPresented: $state.isSettingsPresented) {
-                SettingsSheet(state: state, sync: sync, vault: vault).environment(\.zenPalette, palette)
+                SettingsSheet(state: state, sync: sync, vault: vault, extensions: extensions)
+                    .environment(\.zenPalette, palette)
             }
             .sheet(isPresented: $state.isLocalServicesPresented) {
                 LocalSectionSheet(state: state).environment(\.zenPalette, palette)
             }
             .sheet(isPresented: $state.isPasswordsPanelPresented) {
                 PasswordsPanel(state: state, vault: vault, pool: pool.pool)
+                    .environment(\.zenPalette, palette)
+            }
+            .sheet(isPresented: $state.isExtensionsPanelPresented) {
+                ExtensionsPanel(host: extensions, state: state)
+                    .environment(\.zenPalette, palette)
+            }
+            // `item:`, not `isPresented:` — the sheet *is* the web view WebKit
+            // handed us, and there is nothing to show without one.
+            .sheet(item: $extensions.popup) { request in
+                ExtensionPopupSheet(request: request, host: extensions)
                     .environment(\.zenPalette, palette)
             }
             // `item:`, not `isPresented:` — the sheet is built from the
@@ -601,7 +623,8 @@ struct RootView: View {
                     OmniboxPill(
                         state: state, isFloating: barFloats, isLandscape: isLandscape,
                         onShare: { shareItem = $0 },
-                        onHideBar: { hideBarByGesture() }
+                        onHideBar: { hideBarByGesture() },
+                        extensions: extensions
                     )
                     // Any touch on the bar keeps it, for as long as you are on
                     // it. The customised layout is whatever `OmniboxPill`
@@ -988,6 +1011,29 @@ struct RootView: View {
             action()
         }
         .keyboardShortcut(key, modifiers: modifiers)
+    }
+}
+
+/// Keeps the extension runtime told about the tabs (#008B8).
+///
+/// `tabs.query`, `tabs.onUpdated` and `tabs.onActivated` are all answered out
+/// of `BrowserState`, so the runtime has to be nudged whenever the model moves.
+/// A separate layer for the same reason `CompactBarBridge` is one: `RootView`'s
+/// own modifier chain is already as much as the type checker will solve.
+///
+/// Driven from the *view* rather than by subscribing to the model inside the
+/// runtime, because `BrowserState` publishes on every keystroke in the URL bar
+/// and an extension has no business hearing about those.
+private struct ExtensionBridge: ViewModifier {
+    @ObservedObject var state: BrowserState
+    @ObservedObject var host: ExtensionHost
+
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: state.tabs) { _, _ in host.tabsChanged() }
+            .onChange(of: state.activeTabID) { _, _ in host.tabsChanged() }
+            .onChange(of: state.activeSpaceID) { _, _ in host.tabsChanged() }
+            .onChange(of: state.navigationStates) { _, _ in host.tabsChanged() }
     }
 }
 

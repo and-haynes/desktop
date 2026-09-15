@@ -16,5 +16,17 @@
     else { requestAnimationFrame(attach); }
   }
   attach();
+
+  // Second job: prove whether the *other* fixture extension is blocking.
+  //
+  // A 404 and a blocked request look identical to an <img> onerror handler,
+  // which is why this is a fetch: declarativeNetRequest cancels the load and
+  // the promise rejects, where a page that simply has no such file resolves
+  // with a status. So "BLOCKED" here means blocked, not missing.
+  var probe = location.origin + '/zen-blocked-resource.js?t=' + Date.now();
+  fetch(probe, { cache: 'no-store' })
+    .then(function (response) { badge.textContent = 'ZEN EXTENSION ACTIVE - REACHED ' + response.status; })
+    .catch(function () { badge.textContent = 'ZEN EXTENSION ACTIVE - BLOCKED'; });
+
   chrome.runtime.sendMessage({ kind: 'badge-inserted', href: location.href });
 })();

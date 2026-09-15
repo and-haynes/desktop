@@ -61,10 +61,26 @@ enum WebEngine {
     @MainActor
     static func configuration(
         for space: Space, desktop: Bool, ephemeral: Bool = false,
-        blocklist: WKContentRuleList? = nil, sepiaTint: Bool = false
+        blocklist: WKContentRuleList? = nil, sepiaTint: Bool = false,
+        extensions: ExtensionHost? = nil
     ) -> WKWebViewConfiguration {
         let config = WKWebViewConfiguration()
         config.websiteDataStore = ephemeral ? ephemeralDataStore() : dataStore(for: space)
+        // Browser extensions (#008B8). One controller per space, bound to the
+        // same data store as the browsing above — so an extension's storage is
+        // isolated exactly as a site's cookies are. Nil below iOS 18.4 and in
+        // Focus, where extensions deliberately do not run.
+        //
+        // Note what this is *not*: attaching a controller adds nothing to
+        // `userContentController`. WebKit injects an extension's content
+        // scripts itself, in its own world, which is why this can sit next to
+        // the AutoFill invariant below without breaking it —
+        // `AutoFillSuppressionTests` asserts that with a controller attached.
+        if #available(iOS 18.4, *), let extensions,
+            let controller = extensions.controller(for: space, ephemeral: ephemeral)
+        {
+            config.webExtensionController = controller
+        }
         if let blocklist {
             config.userContentController.add(blocklist)
         }
@@ -151,6 +167,10 @@ final class WebViewPool {
     /// keeps the change to the browsing path down to the two lines in
     /// `webView(for:…)` that install the observer (#008AD).
     weak var vault: PasswordVaultService?
+    /// The extension runtime, set by `RootView` at launch. Weak for the same
+    /// reason the vault is: the pool is owned by the view and must not keep
+    /// either alive (#008B8).
+    weak var extensions: ExtensionHost?
     /// Kept alive for as long as their web views are: `WKUserContentController`
     /// holds its message handlers weakly, so an observer that only the
     /// configuration referenced would be gone before the first submit.
@@ -190,7 +210,8 @@ final class WebViewPool {
 
         let config = WebEngine.configuration(
             for: space, desktop: desktop, ephemeral: ephemeral,
-            blocklist: ephemeral ? focusBlocklist : nil, sepiaTint: sepiaTintsPages)
+            blocklist: ephemeral ? focusBlocklist : nil, sepiaTint: sepiaTintsPages,
+            extensions: extensions)
         // Only when a vault is actually connected: with none, Zen injects
         // nothing into page content at all (#008AB).
         if let vault, vault.isConfigured {

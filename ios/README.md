@@ -94,6 +94,7 @@ that Zen has never had:
 | **#008B9** | Navigation helper | Page up, page down, top and bottom as four minimal round buttons that fade in while the page is scrolling and fade out once it settles. Off by default; they take the edge opposite the sidebar, never the first scroll gesture, and step by one *visible* screenful less a small overlap. |
 | **#008BA** | Two-line stacked bar | `Rows: 1 / 2` in Customize bar. Two puts the address on its own line and the buttons on a full-width row below it, raising a side from four glyphs to seven; landscape can collapse it back. |
 | **#008BB** | Per-workspace display | A space can override the layout, appearance, bar layout and fill, compact mode, sidebar edge, text size and the navigation helper. Everything else inherits, and keeps inheriting when the global changes. |
+| **#008B8** | Browser extensions | Firefox/Chrome WebExtension packages loaded by WebKit's `WKWebExtension` (iOS 18.4+). Install from Files, the Share sheet or a pasted addons.mozilla.org link; a compatibility scan says up front which of the APIs the package uses WebKit does not have. One extension controller per space, so an extension's storage is isolated exactly as a site's cookies are — and none in Focus. |
 | **#0089C** | LAN scanner & Local | Settings scans the subnet this device is on, finds what is listening, reads page titles and certificate fingerprints, and keeps the ones you pick under aliases the address bar understands. |
 
 Everything else in this README is shared with `ios`.
@@ -688,6 +689,191 @@ xcodebuild test -scheme Zen -project Zen.xcodeproj \
 - **Organisation ciphers**, which need RSA org-key unwrapping.
 - **Two-factor Bitwarden accounts.** The client carries a `twoFactorToken`
   field; nothing prompts for one.
+
+
+## Extensions
+
+WebKit gained a WebExtensions implementation in iOS 18.4 — `WKWebExtension`
+and friends — and it loads the *same package* Firefox and Chrome load. An XPI
+is a ZIP; a CRX is a ZIP with a signing header on the front; a Safari web
+extension's resource bundle is the unpacked form of the same thing. So Zen can
+install all three, and does.
+
+![Settings → Extensions with two installed](docs/screenshots/49-extensions-list.png)
+
+### The compatibility story
+
+This is the part worth reading, because it is the part that will disappoint
+somebody.
+
+WebKit loads a Firefox extension and then **silently does less with it**. It
+does not refuse the package, it does not log a warning, and the extension does
+not know: `browser.sidebarAction` is simply not there, so the call throws
+inside the extension's own background script where nobody sees it. The result
+is an extension that installs cleanly, appears in the list, and does nothing —
+which is the worst possible outcome for somebody who has just been asked to
+grant it access to every site they visit.
+
+So Zen reads the package **before** it loads it. The install sheet shows the
+permissions and the host access, and next to them a compatibility report: the
+manifest keys and the `browser.`/`chrome.` namespaces the package uses that
+WebKit does not implement, with the file each one was seen in. Nothing here
+refuses an install — it is a warning, not a verdict — and the same report is
+shown again in Settings three weeks later when the question has become "why is
+this not working".
+
+What works, and what does not:
+
+| | |
+|---|---|
+| **Content scripts** | Yes. Injected by WebKit itself, in its own world. |
+| **`declarativeNetRequest`** | Yes — this is how a content blocker blocks. The rules are compiled by WebKit; the app never sees the requests. |
+| **`storage`, `runtime`, `tabs`, `windows`, `scripting`, `alarms`, `cookies`, `webNavigation`, `i18n`, `permissions`, `commands`, `menus`** | Yes. |
+| **Action popups and options pages** | Yes. The popup is WebKit's own web view in a sheet; the options page opens in a tab, as does `runtime.openOptionsPage`. |
+| **Blocking `webRequest`** | **No.** WebKit's `webRequest` is observational: the listener runs, `{cancel: true}` does nothing. This is the single biggest difference, and it is why uBlock Origin *Lite* (declarativeNetRequest) works where classic uBlock Origin (blocking webRequest) does not. |
+| **`sidebarAction` / `sidePanel`** | No. WebKit has no sidebar surface, so a sidebar-only extension has no UI at all. |
+| **`contextualIdentities`** | No. Firefox containers have no WebKit equivalent — though Zen's spaces give you the isolation, if not the API. |
+| **`bookmarks`, `history`, `downloads`, `management`, `privacy`, `proxy`, `sessions`, `topSites`, `idle`, `notifications`, `identity`, `theme`, `devtools`** | No. |
+| **Persistent background pages (MV2 `"persistent": true`)** | **No — a hard failure.** iOS rejects the package outright with `WKWebExtensionErrorInvalidBackgroundPersistence`; only macOS allows one. |
+| **Safari extensions from the App Store** | **No, and not for want of trying.** Apple ships them as app extensions bound to Safari; no third-party browser on any platform can load one. A Safari extension's underlying WebExtension folder installs like any other. |
+
+The supported-permission list the scanner checks against is transcribed
+directly from WebKit's own `WKWebExtensionPermission` constants rather than
+from documentation, so it cannot drift away from what the framework will
+actually match a manifest against. `ExtensionCompatibilityTests` pins it.
+
+The scan is **static** and says so on screen: it reads the manifest and greps
+the package's JavaScript for `browser.X` / `chrome.X`. Minification that
+rewrites `chrome.tabs` to `c[t]` defeats it, and a call behind a feature test
+(`if (browser.sidebarAction)`, which is exactly how a well-written
+cross-browser extension copes) is reported even though the extension handles
+it.
+
+### One controller per space
+
+Zen gives every space its own `WKWebsiteDataStore` so that signing into an
+account in Work does not sign you in in Personal. A `WKWebExtensionController`
+is bound to one data store — so a single shared controller would be a hole
+straight through that isolation: `storage.local` written by an extension in
+Work would be read by the same extension in Personal.
+
+So there is one controller per space. The cost is real and the Settings screen
+says so: an extension enabled in three spaces has three background pages and
+three copies of its storage. For a content blocker that is exactly right; for
+something that syncs state it is surprising.
+
+**Focus mode gets no controller at all.** Focus promises an ephemeral session
+with nothing written down, and an extension with `storage` and a background
+page is the opposite of that. `AutoFillSuppressionTests.testFocusGetsNoExtensionController`
+pins it.
+
+### Tabs
+
+`tabs.query`, `tabs.create`, `tabs.onUpdated` and the rest are answered out of
+`BrowserState` through `WKWebExtensionTab` / `WKWebExtensionWindow`
+(`ExtensionTabProxy`). Zen has more kinds of tab than the API does, so:
+
+- essentials and pinned tabs report `pinned: true`, which is the nearest true
+  thing the API can say about a tab that survives a close;
+- a Glance card that has not been promoted is *not* in the tab list, because it
+  is not in the sidebar either;
+- `zen://newtab` is reported as `about:blank` — the sentinel is ours and means
+  nothing to an extension;
+- Focus tabs are invisible, per above;
+- and `windows.remove` fails with a message rather than silently, because an
+  app cannot close itself on iOS.
+
+Tab events are driven from the view tree rather than by subscribing to the
+model inside the runtime: `BrowserState` publishes on every keystroke in the
+URL bar, and an extension has no business hearing about those.
+
+### Permissions
+
+Granting happens once, on the install sheet, and is editable afterwards in
+Settings — per permission, per host pattern, and per site ("allow", "default",
+"never" for whatever host is open). A runtime `permissions.request()` is
+answered from those stored decisions rather than by throwing a dialog over the
+page; anything not already granted is refused. That makes the install sheet
+mean something, at the price of one more trip to Settings when an extension
+grows a new appetite.
+
+Turning a permission off on the install sheet **denies** it rather than leaving
+it un-granted, and the difference matters: since Zen answers runtime prompts
+from these switches, an un-granted permission would be one nobody is ever
+asked about.
+
+### It does not inject anything into your pages
+
+Attaching a `WKWebExtensionController` to a `WKWebViewConfiguration` adds
+nothing to its `userContentController` — WebKit injects an extension's content
+scripts itself, in its own world. That is what lets extensions coexist with the
+Password AutoFill invariant in the section above, and
+`AutoFillSuppressionTests.testAttachingAnExtensionControllerInjectsNothingIntoPages`
+asserts it rather than trusting this paragraph.
+
+### Checking it works
+
+Settings → Extensions → **Install the two test extensions** installs the app's
+own fixtures:
+
+- **Zen Badge** — an MV3 content script that writes a purple bar across every
+  page, with an action popup, an options page, `storage` and `runtime`
+  messaging. It also fetches one URL and reports whether the request survived.
+- **Zen Blocker** — an MV3 `declarativeNetRequest` ruleset that cancels
+  anything whose address contains `zen-blocked-resource`.
+
+With both installed, `example.com` reads **ZEN EXTENSION ACTIVE - BLOCKED**:
+the first half proves the content script ran, the second proves the rule
+cancelled the request. (A missing file would read `REACHED 404` — the probe is
+a `fetch` precisely so that a block and a 404 are distinguishable, which an
+`<img>` `onerror` handler cannot do.) `ScreenshotTests.testTheBuiltInExtensionsActuallyRunInAPage`
+asserts both from the page.
+
+These are the same two directories the unit tests load — one copy in the
+repository, referenced by both the app target and the test target — so a
+fixture that passes the tests is the fixture that gets installed.
+
+| | |
+|---|---|
+| ![An extension action popup in a sheet](docs/screenshots/50-extension-popup.png) | ![A page with a blocked element](docs/screenshots/51-extension-blocking.png) |
+| An action popup — WebKit's own web view, in a sheet | A page loaded with a content blocker installed |
+
+### Installing
+
+Four routes, all landing on the same install sheet:
+
+- **Files** — an `.xpi`, `.crx` or `.zip`, or an unpacked folder with a
+  `manifest.json` in it.
+- **The Share sheet** — Zen declares the XPI and CRX types, so an extension
+  downloaded in Safari can be handed straight over.
+- **A pasted addons.mozilla.org listing** — resolved to the current version's
+  XPI through Mozilla's public v5 API, rather than by scraping a page that gets
+  redesigned twice a year. A direct link to a package file is used as it
+  stands.
+- **The two built-in fixtures**, above.
+
+The ZIP reader is written here rather than taken from a dependency (this
+project has none) and rather than delegated to WebKit — which *would* take a
+ZIP as a `resourceBaseURL` — for two reasons: the compatibility scan has to
+read the extension's JavaScript before anything is loaded, and an entry named
+`../../Library/Preferences/x.plist` has to be refused before a byte is written.
+It handles STORE and DEFLATE via `Compression`'s raw-DEFLATE decoder, which is
+exactly the codec ZIP method 8 stores; no ZIP64, no encryption, neither of
+which an extension uses.
+
+### Not done
+
+- **Keyboard commands.** `WKWebExtensionContext.commands` is read but nothing
+  binds them to a chord — the iPad shortcut table in Settings is hard-wired.
+- **`contextMenus` in the page's long-press menu.** The API is supported by
+  WebKit and `menuItems(for:)` would supply them; Zen's own context menu does
+  not merge them in yet.
+- **New-tab page overrides.** `overrideNewTabPageURL` is deliberately ignored;
+  Zen's start page is part of the space's identity.
+- **Native messaging.** The permission is listed as supported because WebKit
+  lists it, but Zen ships no companion app, so it reaches nothing.
+- **`WKWebExtensionMessagePort`** (`connectUsing:`) is not implemented, for the
+  same reason.
 
 
 ## Screenshots

@@ -101,6 +101,66 @@
 		<string>_googlecast._tcp</string>
 		<string>_workstation._tcp</string>
 	</array>
+	<!-- Browser extension packages (#008B8). Declaring these is what puts Zen
+	     in the Share sheet and in Files' "Open With" for an .xpi or a .crx, so
+	     an extension downloaded in Safari can be handed straight over. The
+	     types are exported as well as imported because neither Firefox's XPI
+	     nor Chrome's CRX has a system-declared UTI on iOS — without an export
+	     declaration they resolve to `public.data` and every app claims them. -->
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>org.mozilla.xpi</string>
+			<key>UTTypeDescription</key>
+			<string>Firefox Extension</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.zip-archive</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>xpi</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.google.chrome.extension</string>
+			<key>UTTypeDescription</key>
+			<string>Chrome Extension</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>crx</string>
+				</array>
+			</dict>
+		</dict>
+	</array>
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Browser Extension</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>org.mozilla.xpi</string>
+				<string>com.google.chrome.extension</string>
+				<string>public.zip-archive</string>
+			</array>
+		</dict>
+	</array>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 </dict>
