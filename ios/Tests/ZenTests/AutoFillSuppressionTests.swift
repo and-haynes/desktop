@@ -57,22 +57,35 @@ final class AutoFillSuppressionTests: XCTestCase {
     }
 
     /// A user script that rewrites a login form — renaming fields, cloning
-    /// inputs, re-parenting them — stops iOS recognising it. Zen injects
-    /// nothing into page content, and this is the guard on that.
-    func testBrowsingConfigurationInjectsNoUserScripts() {
+    /// inputs, re-parenting them — stops iOS recognising it. Zen's only page
+    /// script observes media playback and runs in the isolated
+    /// `.defaultClient` world; this guards that nothing injected ever
+    /// reaches for a form, an input or a password field.
+    func testBrowsingConfigurationScriptsLeaveFormsAlone() {
         let configuration = WebEngine.configuration(for: space(), desktop: false)
-        XCTAssertTrue(
-            configuration.userContentController.userScripts.isEmpty,
-            "a user script in the browsing configuration can suppress AutoFill; "
-                + "if one is genuinely needed, inject it in `.defaultClient` "
-                + "content world and leave forms alone")
+        assertScriptsLeaveFormsAlone(configuration)
     }
 
     /// Desktop mode takes a different branch through `configuration(for:)`;
-    /// it must not be the one that quietly grows a script.
-    func testDesktopConfigurationInjectsNoUserScriptsEither() {
+    /// it must not be the one that quietly grows a form-touching script.
+    func testDesktopConfigurationScriptsLeaveFormsAloneToo() {
         let configuration = WebEngine.configuration(for: space(), desktop: true)
-        XCTAssertTrue(configuration.userContentController.userScripts.isEmpty)
+        assertScriptsLeaveFormsAlone(configuration)
+    }
+
+    private func assertScriptsLeaveFormsAlone(
+        _ configuration: WKWebViewConfiguration, file: StaticString = #filePath, line: UInt = #line
+    ) {
+        let forbidden = ["<form", "form", "input", "password", "autocomplete", "textarea"]
+        for script in configuration.userContentController.userScripts {
+            let source = script.source.lowercased()
+            for word in forbidden where source.contains(word) {
+                XCTFail(
+                    "a user script mentions `\(word)`; scripts must leave login forms alone "
+                        + "or iOS Password AutoFill goes quiet — inject in `.defaultClient` and "
+                        + "observe media only", file: file, line: line)
+            }
+        }
     }
 
     /// AutoFill is origin-scoped, and iOS only offers saved logins on an origin

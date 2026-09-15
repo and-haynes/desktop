@@ -107,12 +107,13 @@ enum WebEngine {
         // attach to. `forMainFrameOnly: false` so a same-origin iframe — which
         // is how plenty of sites embed their own player — reports too.
         let controller = config.userContentController
-        controller.removeScriptMessageHandler(forName: MediaSession.messageHandlerName)
-        controller.add(MediaSession.shared, name: MediaSession.messageHandlerName)
+        controller.removeScriptMessageHandler(forName: MediaSession.messageHandlerName, contentWorld: .defaultClient)
+        controller.add(MediaSession.shared, contentWorld: .defaultClient, name: MediaSession.messageHandlerName)
         controller.addUserScript(
             WKUserScript(
                 source: VideoPopOut.mediaObserverScript,
-                injectionTime: .atDocumentEnd, forMainFrameOnly: false))
+                injectionTime: .atDocumentEnd, forMainFrameOnly: false,
+                in: .defaultClient))
     }
 }
 
