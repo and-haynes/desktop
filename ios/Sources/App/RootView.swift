@@ -58,7 +58,21 @@ struct RootView: View {
         .environment(\.zenPalette, palette)
         // A themed space can override the system scheme (`shouldBeDarkMode`).
         .preferredColorScheme(state.activeSpace?.theme.forcedDarkMode.map { $0 ? .dark : .light })
-        .onAppear { pool.pool.state = state }
+        .onAppear {
+            pool.pool.state = state
+            // A restored session has icons for nothing it has not yet loaded;
+            // fetch them so the sidebar is not a column of monograms.
+            Task { await FaviconService.prefetchMissing(for: state) }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .zenReloadActiveTab)) { _ in
+            guard let tabID = state.activeTabID else { return }
+            // An unloaded tab has no view to reload; selecting it rebuilds one.
+            if let view = pool.pool.existing(for: tabID) {
+                view.reload()
+            } else {
+                state.select(tabID)
+            }
+        }
         .onChange(of: scenePhase) { _, phase in
             // Flush the session on the way out; a jetsam gives no warning.
             if phase != .active { state.saveNow() }
@@ -139,7 +153,7 @@ struct RootView: View {
                     .background {
                         Rectangle()
                             .fill(.ultraThinMaterial)
-                            .overlay(palette.themedToolbarBG.withAlpha(0.6).color)
+                            .overlay(palette.themedToolbarBG.withAlpha(0.22).color)
                             .ignoresSafeArea()
                     }
                     .zenBigShadow()
@@ -155,8 +169,8 @@ struct RootView: View {
         VStack(spacing: 0) {
             if let space = state.activeSpace {
                 ContentArea(state: state, space: space, pool: pool.pool)
-                    .padding(.horizontal, isPad ? ZenMetrics.splitGap : 0)
-                    .padding(.top, isPad ? ZenMetrics.splitGap : 0)
+                    .padding(.horizontal, ZenMetrics.splitGap)
+                    .padding(.top, ZenMetrics.splitGap)
             }
 
             VStack(spacing: 8) {

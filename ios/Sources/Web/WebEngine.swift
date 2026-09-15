@@ -61,19 +61,8 @@ enum WebEngine {
         config.defaultWebpagePreferences.preferredContentMode = desktop ? .desktop : .mobile
         config.applicationNameForUserAgent = "Zen/0.1"
         config.suppressesIncrementalRendering = false
-
-        // Zen opens cross-domain links from app tabs in a Glance card rather
-        // than navigating away. We surface long-press link targets to Swift via
-        // this handler; see WebView.Coordinator.
-        let source = """
-            document.addEventListener('contextmenu', function (e) {
-              var a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
-              if (a) { window.webkit.messageHandlers.zenLink.postMessage(a.href); }
-            }, true);
-            """
-        let script = WKUserScript(
-            source: source, injectionTime: .atDocumentEnd, forMainFrameOnly: false)
-        config.userContentController.addUserScript(script)
+        // Long-press link targets come from WKUIDelegate's
+        // contextMenuConfigurationForElement, so no script injection is needed.
         return config
     }
 }
@@ -124,7 +113,6 @@ final class WebViewPool {
         view.stopLoading()
         view.navigationDelegate = nil
         view.uiDelegate = nil
-        view.configuration.userContentController.removeScriptMessageHandler(forName: "zenLink")
         view.removeFromSuperview()
         usageOrder.removeAll { $0 == tabID }
         state?.markLoaded(tabID, false)

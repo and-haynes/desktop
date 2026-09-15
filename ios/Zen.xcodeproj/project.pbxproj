@@ -1,0 +1,780 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0D6058BEE7D077BBC0C92DEE /* HistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE1AF5E02B5EB27129E3FECE /* HistoryStore.swift */; };
+		10DB9AA9F73EA1211E61422B /* BrowserStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B7DC3083D917DB62298DF0C /* BrowserStateTests.swift */; };
+		142E6F824884B6B4AFEFD672 /* JSONFileStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FA950A132BEC1CE6A6AB420 /* JSONFileStore.swift */; };
+		16FCB3549AF65A4D8451333E /* OmniboxTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E5240A82F9C160738FAA784 /* OmniboxTextField.swift */; };
+		19308C6E9523C52AE71D9F02 /* NewTabPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFDCADCF735EAA705F326D9F /* NewTabPage.swift */; };
+		1E996B476DF60B64F4DF70C2 /* HistorySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86AA8039EF0952DB0A5EED82 /* HistorySheet.swift */; };
+		22B7AE3B562BF7D102577E75 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5B4C36D8CF492F87328958F /* SidebarView.swift */; };
+		2CC21EEBF42D7505D2710A03 /* SpaceEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7688B6E1EA8ADB19B677A426 /* SpaceEditorView.swift */; };
+		459B0E8FE6A2898F2BA9B24F /* ZenColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACBD665DE4374F9877BC1681 /* ZenColor.swift */; };
+		508BFA96B5CF670C7E44DD59 /* ZenApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E314F1A113B5A944AA437E9 /* ZenApp.swift */; };
+		52D2889E3A1A18B197B46215 /* SearchEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6F50C30E6017F5CE0A3A949 /* SearchEngine.swift */; };
+		577B82B19A735DEC410CC6DE /* SuggestionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C856C6784CFBBAC153B6D5C /* SuggestionEngine.swift */; };
+		6278805F07788A3C8902BD3E /* ZenGradientView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 869895F2D79E90B9042D92DF /* ZenGradientView.swift */; };
+		63FFA95C54695028BABB5ED9 /* Tab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F09F9DBA3529788D7567C97 /* Tab.swift */; };
+		64628C990EAAB96A13FA4A93 /* OmniboxPill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89CF4FD1B002F1922E42F267 /* OmniboxPill.swift */; };
+		6729665B0438F58791DC807C /* FaviconService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6168CC3146B1806766E7BCE /* FaviconService.swift */; };
+		6CB635ECD2442985E99CE502 /* ScreenshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 439FB91CDAB39BD7F4A0FB00 /* ScreenshotTests.swift */; };
+		70EABBE197A464B62C640799 /* TabRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82193B0812A778DE46C01FCA /* TabRowView.swift */; };
+		7C11E3E08187A3225F84258C /* EssentialsGrid.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDFF04967B55ED7F97DCAB72 /* EssentialsGrid.swift */; };
+		7DC61421F4669B027616E8A2 /* Space.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EE8DC3BDB6C2210F2DF96F0 /* Space.swift */; };
+		84C568107DF129441026978B /* ZenEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 926A0C7C35EF2BBD6BF3F07F /* ZenEnvironment.swift */; };
+		8524DB2323656F48E3577C84 /* SessionStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEEEA5047438DAA8F1415FDC /* SessionStoreTests.swift */; };
+		8B405162DEA80D881A245836 /* SplitContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB377F3610015C51D9D15F94 /* SplitContainer.swift */; };
+		8F570F52C083B81FEAEFC734 /* ZenMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61E6535D6C6DA4C195C697FB /* ZenMetrics.swift */; };
+		949E9EB3D92E39E60AAF4890 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 0E42D3A655596C22CAF2E52E /* Assets.xcassets */; };
+		99B7982584DBF60E88CE3242 /* ZenGradient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88B7ABF2AE6B67A857ECDDE5 /* ZenGradient.swift */; };
+		A8CD78D5F722693F189F6F8B /* WebEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1EA773520486C401C1B3FDA /* WebEngine.swift */; };
+		B9A8D252A256882924FC680C /* BrowserState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4297C472C3DEAD2D96846B2E /* BrowserState.swift */; };
+		BE11C6153535B2B4BEC3B996 /* SpaceSwitcherStrip.swift in Sources */ = {isa = PBXBuildFile; fileRef = F389C4484730FF9A1064D894 /* SpaceSwitcherStrip.swift */; };
+		C7213ED0F664C55E58ED8A0C /* SettingsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABA7F8DD18D946F9589A2F55 /* SettingsSheet.swift */; };
+		C8BB21FF2470DED04A6CC9D0 /* ZenPalette.swift in Sources */ = {isa = PBXBuildFile; fileRef = F051304257CF26659B59FCA4 /* ZenPalette.swift */; };
+		DAFDFB5A1A5E21EF209AF052 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D176ECE827382DF9BDDD05E /* RootView.swift */; };
+		E097E01601410B10CFB0504A /* OmniboxOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00702F505256F196432DB86D /* OmniboxOverlay.swift */; };
+		E66D6B0D3739FD864E9BCDAB /* GlanceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 155C7D8391369F0FE52AE2BC /* GlanceView.swift */; };
+		E9384E64A2209CC5EA11CB15 /* ZenColorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8504E45FB01390B4338E9D84 /* ZenColorTests.swift */; };
+		EDCF068803ADEC573CE28C5C /* ContentArea.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B9ECBBC9BB0FBB16B024CA2 /* ContentArea.swift */; };
+		F3638E19ECD10178B6D512D5 /* WebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06CA2FAE5D6C9580B01E013C /* WebView.swift */; };
+		F58099A6CC5B8EE3C77186B9 /* URLDetectorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FD8CD4DF4B3F44BB275D8F1 /* URLDetectorTests.swift */; };
+		F864FDA07CE3E804116B4B92 /* FindBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5B86DDB786B902B992ABB0C /* FindBar.swift */; };
+		F87A3F320E95CFB5DBECCA5E /* SessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFF3EA739DDD841F4DF4C81E /* SessionStore.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		13C49D1156A8AE80DC273F5F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 337DE8555972FB1637F088EE /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D089FE5E099A71F3C3A823A8;
+			remoteInfo = Zen;
+		};
+		E50A3842FD1717BF9B6E047B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 337DE8555972FB1637F088EE /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D089FE5E099A71F3C3A823A8;
+			remoteInfo = Zen;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		00702F505256F196432DB86D /* OmniboxOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OmniboxOverlay.swift; sourceTree = "<group>"; };
+		06CA2FAE5D6C9580B01E013C /* WebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebView.swift; sourceTree = "<group>"; };
+		0E42D3A655596C22CAF2E52E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		155C7D8391369F0FE52AE2BC /* GlanceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlanceView.swift; sourceTree = "<group>"; };
+		1D176ECE827382DF9BDDD05E /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		2B7DC3083D917DB62298DF0C /* BrowserStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserStateTests.swift; sourceTree = "<group>"; };
+		2B9ECBBC9BB0FBB16B024CA2 /* ContentArea.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentArea.swift; sourceTree = "<group>"; };
+		3404D430527EDEFCACF5E757 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		3E5240A82F9C160738FAA784 /* OmniboxTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OmniboxTextField.swift; sourceTree = "<group>"; };
+		4297C472C3DEAD2D96846B2E /* BrowserState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserState.swift; sourceTree = "<group>"; };
+		439FB91CDAB39BD7F4A0FB00 /* ScreenshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotTests.swift; sourceTree = "<group>"; };
+		4E314F1A113B5A944AA437E9 /* ZenApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZenApp.swift; sourceTree = "<group>"; };
+		4FD8CD4DF4B3F44BB275D8F1 /* URLDetectorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLDetectorTests.swift; sourceTree = "<group>"; };
+		5C856C6784CFBBAC153B6D5C /* SuggestionEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuggestionEngine.swift; sourceTree = "<group>"; };
+		61E6535D6C6DA4C195C697FB /* ZenMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZenMetrics.swift; sourceTree = "<group>"; };
+		7688B6E1EA8ADB19B677A426 /* SpaceEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceEditorView.swift; sourceTree = "<group>"; };
+		82193B0812A778DE46C01FCA /* TabRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabRowView.swift; sourceTree = "<group>"; };
+		8504E45FB01390B4338E9D84 /* ZenColorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZenColorTests.swift; sourceTree = "<group>"; };
+		869895F2D79E90B9042D92DF /* ZenGradientView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZenGradientView.swift; sourceTree = "<group>"; };
+		86AA8039EF0952DB0A5EED82 /* HistorySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistorySheet.swift; sourceTree = "<group>"; };
+		88B7ABF2AE6B67A857ECDDE5 /* ZenGradient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZenGradient.swift; sourceTree = "<group>"; };
+		89CF4FD1B002F1922E42F267 /* OmniboxPill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OmniboxPill.swift; sourceTree = "<group>"; };
+		8EE8DC3BDB6C2210F2DF96F0 /* Space.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Space.swift; sourceTree = "<group>"; };
+		8FF289D1C71AF8A70C502CAD /* ZenTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = ZenTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		926A0C7C35EF2BBD6BF3F07F /* ZenEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZenEnvironment.swift; sourceTree = "<group>"; };
+		9F09F9DBA3529788D7567C97 /* Tab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tab.swift; sourceTree = "<group>"; };
+		9FA950A132BEC1CE6A6AB420 /* JSONFileStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONFileStore.swift; sourceTree = "<group>"; };
+		ABA7F8DD18D946F9589A2F55 /* SettingsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsSheet.swift; sourceTree = "<group>"; };
+		ACBD665DE4374F9877BC1681 /* ZenColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZenColor.swift; sourceTree = "<group>"; };
+		B1EA773520486C401C1B3FDA /* WebEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebEngine.swift; sourceTree = "<group>"; };
+		BDFF04967B55ED7F97DCAB72 /* EssentialsGrid.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EssentialsGrid.swift; sourceTree = "<group>"; };
+		C5B4C36D8CF492F87328958F /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
+		C5B86DDB786B902B992ABB0C /* FindBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FindBar.swift; sourceTree = "<group>"; };
+		C616F8839759C7CC58339DBB /* ZenUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = ZenUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		CEEEA5047438DAA8F1415FDC /* SessionStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStoreTests.swift; sourceTree = "<group>"; };
+		CFF3EA739DDD841F4DF4C81E /* SessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStore.swift; sourceTree = "<group>"; };
+		D6168CC3146B1806766E7BCE /* FaviconService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaviconService.swift; sourceTree = "<group>"; };
+		DE219513AAD0EB357271B17B /* Zen.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Zen.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		DFDCADCF735EAA705F326D9F /* NewTabPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewTabPage.swift; sourceTree = "<group>"; };
+		E6F50C30E6017F5CE0A3A949 /* SearchEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchEngine.swift; sourceTree = "<group>"; };
+		EB377F3610015C51D9D15F94 /* SplitContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplitContainer.swift; sourceTree = "<group>"; };
+		F051304257CF26659B59FCA4 /* ZenPalette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZenPalette.swift; sourceTree = "<group>"; };
+		F389C4484730FF9A1064D894 /* SpaceSwitcherStrip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceSwitcherStrip.swift; sourceTree = "<group>"; };
+		FE1AF5E02B5EB27129E3FECE /* HistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryStore.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		119CA5BEAD88CB2073D07110 /* History */ = {
+			isa = PBXGroup;
+			children = (
+				86AA8039EF0952DB0A5EED82 /* HistorySheet.swift */,
+			);
+			path = History;
+			sourceTree = "<group>";
+		};
+		29F17F81A7C57A0CE1021280 /* Persistence */ = {
+			isa = PBXGroup;
+			children = (
+				FE1AF5E02B5EB27129E3FECE /* HistoryStore.swift */,
+				9FA950A132BEC1CE6A6AB420 /* JSONFileStore.swift */,
+				CFF3EA739DDD841F4DF4C81E /* SessionStore.swift */,
+			);
+			path = Persistence;
+			sourceTree = "<group>";
+		};
+		2CE53ADF2B8A847553BA114A /* Glance */ = {
+			isa = PBXGroup;
+			children = (
+				155C7D8391369F0FE52AE2BC /* GlanceView.swift */,
+			);
+			path = Glance;
+			sourceTree = "<group>";
+		};
+		36016152BDB0586A7A7BF8B8 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				0E42D3A655596C22CAF2E52E /* Assets.xcassets */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		3856F5542D0DB10405B43EFF = {
+			isa = PBXGroup;
+			children = (
+				36016152BDB0586A7A7BF8B8 /* Resources */,
+				63691A3F6DBAB09C0FCB441F /* Sources */,
+				3BDBEBCD147D64E15F1D591F /* Tests */,
+				769F42200D53F3F2852057A9 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		3BDBEBCD147D64E15F1D591F /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				D758E038267F8AB982551A74 /* ZenTests */,
+				8214EE5F11A2AD81F0099264 /* ZenUITests */,
+			);
+			path = Tests;
+			sourceTree = "<group>";
+		};
+		3D0E28C090DCB4A3E66312AD /* App */ = {
+			isa = PBXGroup;
+			children = (
+				2B9ECBBC9BB0FBB16B024CA2 /* ContentArea.swift */,
+				3404D430527EDEFCACF5E757 /* Info.plist */,
+				1D176ECE827382DF9BDDD05E /* RootView.swift */,
+				4E314F1A113B5A944AA437E9 /* ZenApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		5E6610BD6F2DB1E8BF8F2A6B /* Omnibox */ = {
+			isa = PBXGroup;
+			children = (
+				00702F505256F196432DB86D /* OmniboxOverlay.swift */,
+				89CF4FD1B002F1922E42F267 /* OmniboxPill.swift */,
+				3E5240A82F9C160738FAA784 /* OmniboxTextField.swift */,
+				5C856C6784CFBBAC153B6D5C /* SuggestionEngine.swift */,
+			);
+			path = Omnibox;
+			sourceTree = "<group>";
+		};
+		63691A3F6DBAB09C0FCB441F /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				3D0E28C090DCB4A3E66312AD /* App */,
+				E225C0279598F5EFF6A9EC01 /* Model */,
+				29F17F81A7C57A0CE1021280 /* Persistence */,
+				C519609CB52548468548354C /* Theme */,
+				DF1E6435AE5C26DF93FB889C /* UI */,
+				69A0C587529E21725974439C /* Web */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		688A4E69D632D37F660CCDBD /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				ABA7F8DD18D946F9589A2F55 /* SettingsSheet.swift */,
+				7688B6E1EA8ADB19B677A426 /* SpaceEditorView.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		69A0C587529E21725974439C /* Web */ = {
+			isa = PBXGroup;
+			children = (
+				D6168CC3146B1806766E7BCE /* FaviconService.swift */,
+				B1EA773520486C401C1B3FDA /* WebEngine.swift */,
+				06CA2FAE5D6C9580B01E013C /* WebView.swift */,
+			);
+			path = Web;
+			sourceTree = "<group>";
+		};
+		769F42200D53F3F2852057A9 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				DE219513AAD0EB357271B17B /* Zen.app */,
+				8FF289D1C71AF8A70C502CAD /* ZenTests.xctest */,
+				C616F8839759C7CC58339DBB /* ZenUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		8214EE5F11A2AD81F0099264 /* ZenUITests */ = {
+			isa = PBXGroup;
+			children = (
+				439FB91CDAB39BD7F4A0FB00 /* ScreenshotTests.swift */,
+			);
+			path = ZenUITests;
+			sourceTree = "<group>";
+		};
+		9C6FA60BDB5EE98406BE7546 /* Sidebar */ = {
+			isa = PBXGroup;
+			children = (
+				BDFF04967B55ED7F97DCAB72 /* EssentialsGrid.swift */,
+				C5B4C36D8CF492F87328958F /* SidebarView.swift */,
+				F389C4484730FF9A1064D894 /* SpaceSwitcherStrip.swift */,
+				82193B0812A778DE46C01FCA /* TabRowView.swift */,
+			);
+			path = Sidebar;
+			sourceTree = "<group>";
+		};
+		C519609CB52548468548354C /* Theme */ = {
+			isa = PBXGroup;
+			children = (
+				ACBD665DE4374F9877BC1681 /* ZenColor.swift */,
+				88B7ABF2AE6B67A857ECDDE5 /* ZenGradient.swift */,
+				869895F2D79E90B9042D92DF /* ZenGradientView.swift */,
+				61E6535D6C6DA4C195C697FB /* ZenMetrics.swift */,
+				F051304257CF26659B59FCA4 /* ZenPalette.swift */,
+			);
+			path = Theme;
+			sourceTree = "<group>";
+		};
+		D758E038267F8AB982551A74 /* ZenTests */ = {
+			isa = PBXGroup;
+			children = (
+				2B7DC3083D917DB62298DF0C /* BrowserStateTests.swift */,
+				CEEEA5047438DAA8F1415FDC /* SessionStoreTests.swift */,
+				4FD8CD4DF4B3F44BB275D8F1 /* URLDetectorTests.swift */,
+				8504E45FB01390B4338E9D84 /* ZenColorTests.swift */,
+			);
+			path = ZenTests;
+			sourceTree = "<group>";
+		};
+		DF1E6435AE5C26DF93FB889C /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				C5B86DDB786B902B992ABB0C /* FindBar.swift */,
+				DFDCADCF735EAA705F326D9F /* NewTabPage.swift */,
+				926A0C7C35EF2BBD6BF3F07F /* ZenEnvironment.swift */,
+				2CE53ADF2B8A847553BA114A /* Glance */,
+				119CA5BEAD88CB2073D07110 /* History */,
+				5E6610BD6F2DB1E8BF8F2A6B /* Omnibox */,
+				688A4E69D632D37F660CCDBD /* Settings */,
+				9C6FA60BDB5EE98406BE7546 /* Sidebar */,
+				F1821755EEB5912EABDCF415 /* Split */,
+			);
+			path = UI;
+			sourceTree = "<group>";
+		};
+		E225C0279598F5EFF6A9EC01 /* Model */ = {
+			isa = PBXGroup;
+			children = (
+				4297C472C3DEAD2D96846B2E /* BrowserState.swift */,
+				E6F50C30E6017F5CE0A3A949 /* SearchEngine.swift */,
+				8EE8DC3BDB6C2210F2DF96F0 /* Space.swift */,
+				9F09F9DBA3529788D7567C97 /* Tab.swift */,
+			);
+			path = Model;
+			sourceTree = "<group>";
+		};
+		F1821755EEB5912EABDCF415 /* Split */ = {
+			isa = PBXGroup;
+			children = (
+				EB377F3610015C51D9D15F94 /* SplitContainer.swift */,
+			);
+			path = Split;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		0A92A14DFE1E1A7288534E6A /* ZenTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 889FA2338401788C38B67243 /* Build configuration list for PBXNativeTarget "ZenTests" */;
+			buildPhases = (
+				C5F4782B951E034D10046D48 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				90AFAA288F9E8208280B5E67 /* PBXTargetDependency */,
+			);
+			name = ZenTests;
+			packageProductDependencies = (
+			);
+			productName = ZenTests;
+			productReference = 8FF289D1C71AF8A70C502CAD /* ZenTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		D089FE5E099A71F3C3A823A8 /* Zen */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9333EA0D6582775232D3E3A6 /* Build configuration list for PBXNativeTarget "Zen" */;
+			buildPhases = (
+				378F2AAADFD46F551070B528 /* Sources */,
+				CF92410739B5EA3974D9C875 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Zen;
+			packageProductDependencies = (
+			);
+			productName = Zen;
+			productReference = DE219513AAD0EB357271B17B /* Zen.app */;
+			productType = "com.apple.product-type.application";
+		};
+		F075F180CCEE6C05D716C2C7 /* ZenUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 79A920A03AB4A6F3689964CA /* Build configuration list for PBXNativeTarget "ZenUITests" */;
+			buildPhases = (
+				85D2F63C0C681DF3E1569C19 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				C8DF61705599B3A281703ADB /* PBXTargetDependency */,
+			);
+			name = ZenUITests;
+			packageProductDependencies = (
+			);
+			productName = ZenUITests;
+			productReference = C616F8839759C7CC58339DBB /* ZenUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		337DE8555972FB1637F088EE /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					0A92A14DFE1E1A7288534E6A = {
+						DevelopmentTeam = XXVMGZB67S;
+						ProvisioningStyle = Automatic;
+					};
+					D089FE5E099A71F3C3A823A8 = {
+						DevelopmentTeam = XXVMGZB67S;
+						ProvisioningStyle = Automatic;
+					};
+					F075F180CCEE6C05D716C2C7 = {
+						DevelopmentTeam = XXVMGZB67S;
+						ProvisioningStyle = Automatic;
+						TestTargetID = D089FE5E099A71F3C3A823A8;
+					};
+				};
+			};
+			buildConfigurationList = 2759C9E99C5EF4D2DF58509C /* Build configuration list for PBXProject "Zen" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 3856F5542D0DB10405B43EFF;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 769F42200D53F3F2852057A9 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				D089FE5E099A71F3C3A823A8 /* Zen */,
+				F075F180CCEE6C05D716C2C7 /* ZenUITests */,
+				0A92A14DFE1E1A7288534E6A /* ZenTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		CF92410739B5EA3974D9C875 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				949E9EB3D92E39E60AAF4890 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		378F2AAADFD46F551070B528 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B9A8D252A256882924FC680C /* BrowserState.swift in Sources */,
+				EDCF068803ADEC573CE28C5C /* ContentArea.swift in Sources */,
+				7C11E3E08187A3225F84258C /* EssentialsGrid.swift in Sources */,
+				6729665B0438F58791DC807C /* FaviconService.swift in Sources */,
+				F864FDA07CE3E804116B4B92 /* FindBar.swift in Sources */,
+				E66D6B0D3739FD864E9BCDAB /* GlanceView.swift in Sources */,
+				1E996B476DF60B64F4DF70C2 /* HistorySheet.swift in Sources */,
+				0D6058BEE7D077BBC0C92DEE /* HistoryStore.swift in Sources */,
+				142E6F824884B6B4AFEFD672 /* JSONFileStore.swift in Sources */,
+				19308C6E9523C52AE71D9F02 /* NewTabPage.swift in Sources */,
+				E097E01601410B10CFB0504A /* OmniboxOverlay.swift in Sources */,
+				64628C990EAAB96A13FA4A93 /* OmniboxPill.swift in Sources */,
+				16FCB3549AF65A4D8451333E /* OmniboxTextField.swift in Sources */,
+				DAFDFB5A1A5E21EF209AF052 /* RootView.swift in Sources */,
+				52D2889E3A1A18B197B46215 /* SearchEngine.swift in Sources */,
+				F87A3F320E95CFB5DBECCA5E /* SessionStore.swift in Sources */,
+				C7213ED0F664C55E58ED8A0C /* SettingsSheet.swift in Sources */,
+				22B7AE3B562BF7D102577E75 /* SidebarView.swift in Sources */,
+				7DC61421F4669B027616E8A2 /* Space.swift in Sources */,
+				2CC21EEBF42D7505D2710A03 /* SpaceEditorView.swift in Sources */,
+				BE11C6153535B2B4BEC3B996 /* SpaceSwitcherStrip.swift in Sources */,
+				8B405162DEA80D881A245836 /* SplitContainer.swift in Sources */,
+				577B82B19A735DEC410CC6DE /* SuggestionEngine.swift in Sources */,
+				63FFA95C54695028BABB5ED9 /* Tab.swift in Sources */,
+				70EABBE197A464B62C640799 /* TabRowView.swift in Sources */,
+				A8CD78D5F722693F189F6F8B /* WebEngine.swift in Sources */,
+				F3638E19ECD10178B6D512D5 /* WebView.swift in Sources */,
+				508BFA96B5CF670C7E44DD59 /* ZenApp.swift in Sources */,
+				459B0E8FE6A2898F2BA9B24F /* ZenColor.swift in Sources */,
+				84C568107DF129441026978B /* ZenEnvironment.swift in Sources */,
+				99B7982584DBF60E88CE3242 /* ZenGradient.swift in Sources */,
+				6278805F07788A3C8902BD3E /* ZenGradientView.swift in Sources */,
+				8F570F52C083B81FEAEFC734 /* ZenMetrics.swift in Sources */,
+				C8BB21FF2470DED04A6CC9D0 /* ZenPalette.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		85D2F63C0C681DF3E1569C19 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6CB635ECD2442985E99CE502 /* ScreenshotTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C5F4782B951E034D10046D48 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				10DB9AA9F73EA1211E61422B /* BrowserStateTests.swift in Sources */,
+				8524DB2323656F48E3577C84 /* SessionStoreTests.swift in Sources */,
+				F58099A6CC5B8EE3C77186B9 /* URLDetectorTests.swift in Sources */,
+				E9384E64A2209CC5EA11CB15 /* ZenColorTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		90AFAA288F9E8208280B5E67 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D089FE5E099A71F3C3A823A8 /* Zen */;
+			targetProxy = 13C49D1156A8AE80DC273F5F /* PBXContainerItemProxy */;
+		};
+		C8DF61705599B3A281703ADB /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D089FE5E099A71F3C3A823A8 /* Zen */;
+			targetProxy = E50A3842FD1717BF9B6E047B /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		65526DE531D79B2F47F92645 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.morton.zen.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Zen.app/Zen";
+			};
+			name = Release;
+		};
+		672EF59B8EAA4197D52D8934 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = XXVMGZB67S;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 0.1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Debug;
+		};
+		9D4DBFBB2CF9589391CBC57D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.morton.zen.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Zen;
+			};
+			name = Debug;
+		};
+		BCB415A90EB518DF4D178589 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.morton.zen.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Zen;
+			};
+			name = Release;
+		};
+		C40EF68D30F0509EA880CC0B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = XXVMGZB67S;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 0.1.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Release;
+		};
+		C4728DF5A805970596A61EE5 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Sources/App/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.morton.zen;
+				PRODUCT_NAME = Zen;
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		D0E80C36B9A787FAC3ABA1E8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Sources/App/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.morton.zen;
+				PRODUCT_NAME = Zen;
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		D3A6244081E4E6899CF0EFF9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.morton.zen.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Zen.app/Zen";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		2759C9E99C5EF4D2DF58509C /* Build configuration list for PBXProject "Zen" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				672EF59B8EAA4197D52D8934 /* Debug */,
+				C40EF68D30F0509EA880CC0B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		79A920A03AB4A6F3689964CA /* Build configuration list for PBXNativeTarget "ZenUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9D4DBFBB2CF9589391CBC57D /* Debug */,
+				BCB415A90EB518DF4D178589 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		889FA2338401788C38B67243 /* Build configuration list for PBXNativeTarget "ZenTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D3A6244081E4E6899CF0EFF9 /* Debug */,
+				65526DE531D79B2F47F92645 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		9333EA0D6582775232D3E3A6 /* Build configuration list for PBXNativeTarget "Zen" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D0E80C36B9A787FAC3ABA1E8 /* Debug */,
+				C4728DF5A805970596A61EE5 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 337DE8555972FB1637F088EE /* Project object */;
+}

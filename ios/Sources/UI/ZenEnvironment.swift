@@ -133,7 +133,7 @@ struct ZenCircleButton: View {
                 .frame(width: size, height: size)
                 .background {
                     Circle()
-                        .fill(tint ?? palette.themedToolbarBG.mix(palette.accent, weight: 0.04).color)
+                        .fill(tint ?? palette.themedToolbarBG.mix(palette.accent, weight: 0.96).color)
                 }
                 .overlay { Circle().strokeBorder(palette.borderContrast.color, lineWidth: 0.5) }
                 // `box-shadow: 0 0 12px 1px rgba(0,0,0,0.07)`

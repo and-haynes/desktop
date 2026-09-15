@@ -32,7 +32,7 @@ struct SpaceEditorView: View {
             initialValue: space?.theme
                 ?? ZenGradientGenerator.theme(
                     seed: ZenColor(hueDegrees: .random(in: 0..<360), saturation: 95, lightness: 60),
-                    harmony: .splitComplementary))
+                    harmony: .analogous))
     }
 
     private var palette: ZenPalette {

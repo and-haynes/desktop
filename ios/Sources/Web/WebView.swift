@@ -40,9 +40,6 @@ struct WebView: UIViewRepresentable {
         view.navigationDelegate = context.coordinator
         view.uiDelegate = context.coordinator
         view.scrollView.delegate = context.coordinator
-        let controller = view.configuration.userContentController
-        controller.removeScriptMessageHandler(forName: Coordinator.linkHandlerName)
-        controller.add(context.coordinator, name: Coordinator.linkHandlerName)
     }
 
     static func dismantleUIView(_ view: ZenWebView, coordinator: Coordinator) {
@@ -54,17 +51,11 @@ struct WebView: UIViewRepresentable {
 
     @MainActor
     final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate,
-        WKScriptMessageHandler, UIScrollViewDelegate
+        UIScrollViewDelegate
     {
-        static let linkHandlerName = "zenLink"
-
         let state: BrowserState
         let pool: WebViewPool
         var tabID: UUID?
-        /// The href under the last long-press, offered to the context menu so
-        /// "Open in Glance" knows what to open.
-        var lastContextLink: URL?
-        private var progressObservation: NSKeyValueObservation?
 
         init(state: BrowserState, pool: WebViewPool) {
             self.state = state
@@ -157,16 +148,7 @@ struct WebView: UIViewRepresentable {
             return nil
         }
 
-        // MARK: Long-press link capture
-
-        func userContentController(
-            _ userContentController: WKUserContentController, didReceive message: WKScriptMessage
-        ) {
-            guard message.name == Self.linkHandlerName, let href = message.body as? String,
-                let url = URL(string: href)
-            else { return }
-            lastContextLink = url
-        }
+        // MARK: Long-press link menu
 
         /// Add "Open in Glance" to WebKit's own link context menu.
         func webView(

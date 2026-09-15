@@ -99,14 +99,18 @@ struct ZenGradientView: View {
         let farthest = max(
             hypot(cx, cy), hypot(size.width - cx, cy),
             hypot(cx, size.height - cy), hypot(size.width - cx, size.height - cy))
+        // The stop percentages in CSS are fractions of the *full* gradient ray
+        // (farthest-corner), so the ray must run the whole way and the stops
+        // sit at `start` and `end` along it. Shortening the ray to `end`
+        // instead would pull the inner stop in with it.
         return RadialGradient(
             stops: [
                 .init(color: c.color, location: start),
-                .init(color: fadeOut(c), location: 1),
+                .init(color: fadeOut(c), location: end),
             ],
             center: centre,
             startRadius: 0,
-            endRadius: max(farthest * end, 1))
+            endRadius: max(farthest, 1))
     }
 
     /// `--zen-grainy-background-opacity` + `mix-blend-mode: hard-light`.
@@ -117,6 +121,9 @@ struct ZenGradientView: View {
     private var grain: some View {
         if theme.texture > 0 {
             ZenGrainView()
+                // Halved against the raw texture value: procedural white noise
+                // is harsher per-pixel than upstream's grain bitmap, so
+                // matching the opacity 1:1 reads as static rather than film.
                 .opacity(theme.texture * 0.5)
                 .blendMode(.overlay)
                 .allowsHitTesting(false)

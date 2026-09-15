@@ -52,7 +52,7 @@ struct Space: Identifiable, Codable, Equatable, Sendable {
                 name: "Personal", icon: "house.fill", isSymbol: true,
                 theme: ZenGradientGenerator.theme(
                     seed: ZenColor(hueDegrees: 265, saturation: 95, lightness: 62),
-                    harmony: .splitComplementary)),
+                    harmony: .analogous)),
             Space(
                 name: "Work", icon: "briefcase.fill", isSymbol: true,
                 theme: ZenGradientGenerator.theme(

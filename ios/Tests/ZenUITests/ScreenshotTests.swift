@@ -1,0 +1,179 @@
+//  ScreenshotTests.swift
+//  Drives the app into each documented state and writes a PNG per state into
+//  the runner's Documents directory, which the build script pulls out with
+//  `xcrun simctl get_app_container`.
+//
+//  This is documentation tooling, not a correctness test — it is in its own
+//  scheme (ZenScreenshots) so it never slows down or flakes the unit tests.
+//  It does assert that each control it needs actually exists, which makes it a
+//  reasonable smoke test of the chrome as a side effect.
+
+import XCTest
+
+final class ScreenshotTests: XCTestCase {
+
+    private var app: XCUIApplication!
+
+    override func setUpWithError() throws {
+        // Keep going after a soft failure: a state we cannot reach should not
+        // cost us the screenshots for every state after it.
+        continueAfterFailure = true
+        app = XCUIApplication()
+        app.launch()
+    }
+
+    // MARK: Capture
+
+    private var outputDirectory: URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+    }
+
+    private func capture(_ name: String) {
+        let screenshot = XCUIScreen.main.screenshot()
+        let url = outputDirectory.appendingPathComponent("\(name).png")
+        try? screenshot.pngRepresentation.write(to: url)
+        // Also attach, so a failed run still leaves evidence in the xcresult.
+        let attachment = XCTAttachment(screenshot: screenshot)
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
+    /// Pages need a moment to paint; there is no "page loaded" signal to wait on
+    /// from outside the app.
+    private func settle(_ seconds: TimeInterval = 2.5) {
+        Thread.sleep(forTimeInterval: seconds)
+    }
+
+    // MARK: Elements
+
+    private var sidebarButton: XCUIElement { app.buttons["Toggle sidebar"] }
+    private var addressBar: XCUIElement { app.buttons["Address and search"] }
+
+    private func openSidebar() {
+        XCTAssertTrue(sidebarButton.waitForExistence(timeout: 10), "sidebar button missing")
+        sidebarButton.tap()
+        settle(1.2)
+    }
+
+    /// The drawer covers the left 280pt of the screen, which is exactly where
+    /// the toolbar's sidebar button and most of the address bar live — XCUITest
+    /// taps an element's frame centre regardless of what is on top of it, so
+    /// tapping either of those would hit the drawer instead. Dismiss via the
+    /// scrim on the right.
+    private func closeSidebar() {
+        let newTab = app.buttons["New Tab"]
+        guard newTab.exists else { return }
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: 0.45)).tap()
+        settle(1.2)
+        guard newTab.exists else { return }
+        // Fall back to the dismiss swipe if the scrim tap did not take.
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.55, dy: 0.5))
+            .press(
+                forDuration: 0.05,
+                thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.5)))
+        settle(1.2)
+    }
+
+    /// Open the floating search box and return its field, dumping the element
+    /// tree if it does not appear so a failed run is debuggable.
+    @discardableResult
+    private func openOmnibox() -> XCUIElement? {
+        guard addressBar.waitForExistence(timeout: 10) else {
+            XCTFail("address bar missing")
+            return nil
+        }
+        addressBar.tap()
+        settle(1.5)
+        let field = app.textFields["omniboxField"]
+        if field.waitForExistence(timeout: 8) { return field }
+
+        let anyField = app.textFields.firstMatch
+        if anyField.waitForExistence(timeout: 3) { return anyField }
+
+        capture("debug-omnibox-missing")
+        try? Data(app.debugDescription.utf8)
+            .write(to: outputDirectory.appendingPathComponent("debug-hierarchy.txt"))
+        XCTFail("omnibox field missing")
+        return nil
+    }
+
+    private func navigate(to text: String) {
+        guard let field = openOmnibox() else { return }
+        field.typeText(text + "\n")
+        settle(4.0)
+    }
+
+    // MARK: The documented states
+
+    func testCaptureAllStates() throws {
+        let isPad = UIDevice.current.userInterfaceIdiom == .pad
+        let suffix = isPad ? "-ipad" : ""
+
+        // 1. The seeded session, already showing a loaded page.
+        settle(4.0)
+        capture("01-page-example\(suffix)")
+
+        // 2. The sidebar: spaces, essentials, pinned and normal tabs.
+        //    On iPad it is already beside the content.
+        if !isPad {
+            openSidebar()
+        }
+        capture("02-sidebar\(suffix)")
+
+        // 3. Glance — reachable from a tab row's context menu.
+        let firstRow = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS[c] 'Hacker News'")).firstMatch
+        if firstRow.waitForExistence(timeout: 5) {
+            firstRow.press(forDuration: 1.1)
+            settle(1.2)
+            let glance = app.buttons["Open in Glance"]
+            if glance.waitForExistence(timeout: 5) {
+                glance.tap()
+                settle(4.0)
+                capture("04-glance\(suffix)")
+                let close = app.buttons["Close Glance"]
+                if close.waitForExistence(timeout: 5) { close.tap() }
+                settle(1.2)
+            } else {
+                // Dismiss the context menu if Glance was not offered.
+                app.tap()
+                settle(0.8)
+            }
+        }
+
+        if !isPad { closeSidebar() }
+
+        // 4. A second real page, and the omnibox open over it.
+        navigate(to: "zen-browser.app")
+        capture("03-page-zen\(suffix)")
+
+        if let field = openOmnibox() {
+            field.typeText("zen brow")
+            settle(2.5)
+            capture("05-omnibox\(suffix)")
+            field.typeText("\n")
+            settle(3.0)
+        }
+
+        // 5. Split view, from the overflow menu.
+        var more = app.buttons["moreMenu"]
+        if !more.waitForExistence(timeout: 6) { more = app.buttons["More"] }
+        if more.waitForExistence(timeout: 6) {
+            more.tap()
+            settle(1.2)
+            let split = app.buttons["Split View"]
+            if split.waitForExistence(timeout: 5) {
+                split.tap()
+                settle(4.0)
+                capture("06-split\(suffix)")
+            } else {
+                app.tap()
+            }
+        }
+
+        // Leave a breadcrumb so the extraction script can tell a completed run
+        // from a crashed one.
+        try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE"))
+    }
+}

@@ -12,7 +12,7 @@ struct OmniboxOverlay: View {
     @ObservedObject var state: BrowserState
     @Environment(\.zenPalette) private var palette
     @StateObject private var engine = SuggestionEngine()
-    @FocusState private var isFieldFocused: Bool
+    @State private var isFieldFocused = false
     @State private var appeared = false
 
     var body: some View {
@@ -60,15 +60,15 @@ struct OmniboxOverlay: View {
                 .font(.system(size: 15, weight: .medium))
                 .foregroundStyle(palette.accent.color)
 
-            TextField("Search or enter address", text: $state.omniboxText)
-                .font(.system(size: 17))
-                .foregroundStyle(palette.text.color)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .keyboardType(.webSearch)
-                .submitLabel(.go)
-                .focused($isFieldFocused)
-                .onSubmit { commit(state.omniboxText) }
+            OmniboxTextField(
+                text: $state.omniboxText,
+                placeholder: "Search or enter address",
+                textColor: palette.text.uiColor,
+                tintColor: palette.accent.uiColor,
+                isFocused: isFieldFocused
+            ) {
+                commit(state.omniboxText)
+            }
 
             if !state.omniboxText.isEmpty {
                 Button {

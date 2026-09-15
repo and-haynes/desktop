@@ -103,8 +103,6 @@ struct OmniboxPill: View {
     private var menuButton: some View {
         Menu {
             Button {
-                state.activeTabID.map { state.markLoaded($0, false) }
-                if let id = state.activeTabID { state.updateTab(id) { $0.scrollY = $0.scrollY } }
                 NotificationCenter.default.post(name: .zenReloadActiveTab, object: nil)
             } label: { Label("Reload", systemImage: "arrow.clockwise") }
 
@@ -149,12 +147,17 @@ struct OmniboxPill: View {
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(palette.text.withAlpha(0.7).color)
                 .frame(width: 32, height: 36)
+                .contentShape(Rectangle())
         }
+        // A SwiftUI Menu does not inherit the accessibility label of its own
+        // label view, so both are set here explicitly.
         .accessibilityLabel("More")
+        .accessibilityIdentifier("moreMenu")
     }
 }
 
 extension Notification.Name {
+    /// Posted by the overflow menu and the "Reload Tab" omnibox action; RootView
+    /// observes it, because only it can reach the web view pool.
     static let zenReloadActiveTab = Notification.Name("zen.reloadActiveTab")
-    static let zenFocusOmnibox = Notification.Name("zen.focusOmnibox")
 }

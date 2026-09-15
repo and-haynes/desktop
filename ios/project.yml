@@ -47,6 +47,23 @@ targets:
         TARGETED_DEVICE_FAMILY: "1,2"   # iPhone + iPad
         SUPPORTS_MACCATALYST: NO
 
+  # Drives the app through each state and writes PNGs into the runner's
+  # Documents directory, which `xcrun simctl get_app_container` can then pull
+  # out to ios/docs/screenshots. Not part of the default test action — it needs
+  # the network and takes much longer than the unit tests.
+  ZenUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: Tests/ZenUITests
+    dependencies:
+      - target: Zen
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.morton.zen.uitests
+        TEST_TARGET_NAME: Zen
+        GENERATE_INFOPLIST_FILE: YES
+
   ZenTests:
     type: bundle.unit-test
     platform: iOS
@@ -65,9 +82,20 @@ schemes:
       targets:
         Zen: all
         ZenTests: [test]
+        ZenUITests: [test]
     run:
       config: Debug
     test:
       config: Debug
       targets:
         - ZenTests
+
+  ZenScreenshots:
+    build:
+      targets:
+        Zen: all
+        ZenUITests: [test]
+    test:
+      config: Debug
+      targets:
+        - ZenUITests
