@@ -154,4 +154,12 @@ final class ZenWebView: WKWebView {
     /// Set while the app is driving a navigation, to avoid feedback loops
     /// between the omnibox text and the delegate's URL updates.
     var isProgrammaticNavigation = false
+    /// The last URL we asked WebKit to load, successful or not.
+    ///
+    /// Without this, a failed load retries forever: the model URL never
+    /// matches `webView.url` (which still holds the last page that *did*
+    /// load), so every SwiftUI update fires the request again — and each
+    /// attempt clears the failure that would have been shown. That is the
+    /// "nothing happens, forever" in #0089A.
+    var lastRequestedURL: URL?
 }

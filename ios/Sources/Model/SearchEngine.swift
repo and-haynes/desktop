@@ -146,6 +146,15 @@ enum URLDetector {
         // localhost, with or without a port or path.
         let hostCandidate = input.prefix(while: { $0 != "/" && $0 != "?" && $0 != "#" })
         let hostOnly = hostCandidate.split(separator: ":").first.map(String.init) ?? ""
+        // A port, if one was given, must be a real port — "10.0.0.80:8006"
+        // navigates, "ratio 3:2" does not.
+        let portPart = hostCandidate.split(separator: ":").dropFirst().first.map(String.init)
+        let portIsValid =
+            portPart.map { part in
+                if let value = Int(part) { return value > 0 && value <= 65535 }
+                return false
+            } ?? true
+        guard portIsValid else { return .search(input) }
         if hostOnly.lowercased() == "localhost" {
             return URL(string: "http://\(input)").map(OmniboxIntent.navigate) ?? .search(input)
         }
@@ -163,6 +172,19 @@ enum URLDetector {
             labels.allSatisfy({ !$0.isEmpty && $0.allSatisfy { $0.isLetter || $0.isNumber || $0 == "-" } })
         {
             return URL(string: "https://\(input)").map(OmniboxIntent.navigate) ?? .search(input)
+        }
+
+        // A single-label name with a port or a path is a host: "meitner:8006"
+        // and "meitner/" can only be a local machine. A *bare* single word is
+        // deliberately still a search — "swift" and "meitner" are
+        // indistinguishable, and turning every one-word search into a failed
+        // navigation would be a far worse trade than the reverse. Typing a
+        // scheme ("http://meitner") always navigates.
+        if !hostOnly.isEmpty, !hostOnly.contains("."),
+            hostOnly.allSatisfy({ $0.isLetter || $0.isNumber || $0 == "-" }),
+            portPart != nil || input.contains("/")
+        {
+            return URL(string: "http://\(input)").map(OmniboxIntent.navigate) ?? .search(input)
         }
 
         return .search(input)

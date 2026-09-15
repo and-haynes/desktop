@@ -44,6 +44,9 @@ struct Tab: Identifiable, Codable, Equatable, Sendable {
     /// Whether a live WKWebView is currently backing this tab. Runtime-only:
     /// everything is unloaded at launch and reloads on first selection.
     var isLoaded: Bool = false
+    /// Why the last load failed, if it did. Runtime-only — a failure is about
+    /// this attempt, not something to restore a week later.
+    var loadFailure: LoadFailure?
 
     private enum CodingKeys: String, CodingKey {
         case id, url, title, kind, spaceID, pinnedURL, scrollY, faviconData

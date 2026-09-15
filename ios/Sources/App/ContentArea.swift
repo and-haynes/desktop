@@ -44,6 +44,25 @@ struct ContentArea: View {
                 } else {
                     WebView(tab: tab, space: space, state: state, pool: pool)
                         .background(palette.mainBrowserBackground.color)
+                    // Over the top rather than instead of: the web view stays
+                    // alive underneath, so Retry is a reload and not a rebuild.
+                    if let failure = tab.loadFailure {
+                        ErrorPageView(failure: failure) {
+                            // Clearing lastRequestedURL is what lets the same
+                            // URL be attempted again; reload() has nothing
+                            // committed to reload after a failed provisional
+                            // load.
+                            pool.existing(for: tab.id)?.lastRequestedURL = nil
+                            state.updateTab(tab.id) { $0.loadFailure = nil }
+                        } onNavigate: { url in
+                            state.updateTab(tab.id) {
+                                $0.url = url
+                                $0.loadFailure = nil
+                                $0.title = ""
+                            }
+                        }
+                        .transition(.opacity)
+                    }
                 }
             }
             // A tab's identity must be stable or SwiftUI recycles the

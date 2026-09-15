@@ -203,6 +203,29 @@ final class ScreenshotTests: XCTestCase {
         try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-COLOUR"))
     }
 
+
+    /// The silent-failure bug (#0089A), reproduced against real endpoints:
+    /// a refused port on a LAN-looking host, which is exactly what
+    /// https://10.0.0.80 does (Proxmox serves :8006, nothing on :443).
+    func testCaptureErrorPage() throws {
+        let suffix = UIDevice.current.userInterfaceIdiom == .pad ? "-ipad" : ""
+        settle(4.0)
+
+        guard let field = openOmnibox() else { return XCTFail("omnibox missing") }
+        // 127.0.0.1 classifies as local and nothing listens on 9999.
+        field.typeText("http://127.0.0.1:9999/\n")
+        settle(6.0)
+
+        let errorPage = app.otherElements["errorPage"].firstMatch
+        let retry = app.buttons["errorRetry"].firstMatch
+        XCTAssertTrue(
+            errorPage.waitForExistence(timeout: 12) || retry.waitForExistence(timeout: 4),
+            "a refused connection must show the error page, not a blank view")
+        capture("17-error-page\(suffix)")
+
+        try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-ERROR"))
+    }
+
     // MARK: The documented states
 
     func testCaptureAllStates() throws {

@@ -70,7 +70,14 @@ struct RootView: View {
             guard let tabID = state.activeTabID else { return }
             // An unloaded tab has no view to reload; selecting it rebuilds one.
             if let view = pool.pool.existing(for: tabID) {
-                view.reload()
+                // A failed load has nothing committed, so reload() is a no-op;
+                // clearing the guard lets the URL be requested again.
+                if state.tab(id: tabID)?.loadFailure != nil {
+                    view.lastRequestedURL = nil
+                    state.updateTab(tabID) { $0.loadFailure = nil }
+                } else {
+                    view.reload()
+                }
             } else {
                 state.select(tabID)
             }

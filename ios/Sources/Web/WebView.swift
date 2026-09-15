@@ -29,7 +29,13 @@ struct WebView: UIViewRepresentable {
         // Only drive a navigation when the model's URL genuinely diverged from
         // what the view is showing — otherwise every SwiftUI update would
         // reload the page.
+        //
+        // `lastRequestedURL` is what stops a *failed* load retrying forever.
+        // A refused connection leaves `view.url` on the previous page, so the
+        // comparison below stays true indefinitely and would re-request on
+        // every update, clearing the error each time.
         guard !tab.isNewTabPage, view.url?.absoluteString != tab.url.absoluteString,
+            view.lastRequestedURL?.absoluteString != tab.url.absoluteString,
             !view.isLoading
         else { return }
         context.coordinator.load(tab.url, in: view)
@@ -56,6 +62,7 @@ struct WebView: UIViewRepresentable {
         let state: BrowserState
         let pool: WebViewPool
         var tabID: UUID?
+        private var watchdog: Task<Void, Never>?
 
         init(state: BrowserState, pool: WebViewPool) {
             self.state = state
@@ -64,12 +71,65 @@ struct WebView: UIViewRepresentable {
 
         func load(_ url: URL, in view: ZenWebView) {
             view.isProgrammaticNavigation = true
-            view.load(URLRequest(url: url))
+            view.lastRequestedURL = url
+            if let tabID {
+                // Deferred: this runs from updateUIView, and mutating observed
+                // state inside a SwiftUI update is how you get a render loop.
+                let id = tabID
+                DispatchQueue.main.async { [weak state] in
+                    state?.updateTab(id) { $0.loadFailure = nil }
+                }
+            }
+            var request = URLRequest(url: url)
+            // WebKit's own default is a minute. For a LAN address nothing is
+            // listening on, that is a minute of staring at a blank page.
+            request.timeoutInterval = LoadFailure.timeout
+            view.load(request)
+            startWatchdog(for: url, in: view)
+        }
+
+        /// WebKit does not always report a failure for an address that simply
+        /// black-holes — it neither commits nor errors. The watchdog turns that
+        /// silence into a visible timeout.
+        private func startWatchdog(for url: URL, in view: ZenWebView) {
+            watchdog?.cancel()
+            let tabID = self.tabID
+            watchdog = Task { [weak view, weak state] in
+                try? await Task.sleep(for: .seconds(LoadFailure.timeout + 1))
+                guard !Task.isCancelled, let view, let state else { return }
+                // Committed or finished means WebKit got somewhere; leave it be.
+                guard view.isLoading, let tabID else { return }
+                view.stopLoading()
+                state.updateTab(tabID) { $0.loadFailure = LoadFailure.timeoutFailure(url: url) }
+            }
+        }
+
+        func cancelWatchdog() {
+            watchdog?.cancel()
+            watchdog = nil
+        }
+
+        /// Retry deliberately: clear the guard so the same URL is attempted
+        /// again, which `reload()` would not do after a failed provisional
+        /// load (there is nothing committed to reload).
+        func retry(in view: ZenWebView) {
+            guard let url = view.lastRequestedURL ?? tabID.flatMap({ state.tab(id: $0)?.url })
+            else { return }
+            view.lastRequestedURL = nil
+            load(url, in: view)
         }
 
         // MARK: Navigation
 
+        func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
+            // Something arrived, so the watchdog's job is done.
+            cancelWatchdog()
+            guard let tabID else { return }
+            state.updateTab(tabID) { $0.loadFailure = nil }
+        }
+
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            cancelWatchdog()
             guard let tabID else { return }
             let zen = webView as? ZenWebView
             zen?.isProgrammaticNavigation = false
@@ -99,12 +159,29 @@ struct WebView: UIViewRepresentable {
             _ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!,
             withError error: Error
         ) {
-            // A cancelled load is normal (a redirect, or the user tapping again).
-            let nsError = error as NSError
-            guard nsError.code != NSURLErrorCancelled else { return }
-            guard let tabID else { return }
+            recordFailure(error, in: webView)
+        }
+
+        func webView(
+            _ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error
+        ) {
+            recordFailure(error, in: webView)
+        }
+
+        /// Turn a WebKit error into something the page can explain. Before
+        /// this, a refused connection left a blank view and a lock glyph with
+        /// nothing to tap — indistinguishable from a page that simply had not
+        /// loaded yet.
+        private func recordFailure(_ error: Error, in webView: WKWebView) {
+            cancelWatchdog()
+            guard let tabID, let tab = state.tab(id: tabID) else { return }
+            let failedURL =
+                (error as NSError).userInfo[NSURLErrorFailingURLErrorKey] as? URL
+                ?? webView.url ?? tab.url
+            guard let failure = LoadFailure.classify(error, url: failedURL) else { return }
             state.updateTab(tabID) { tab in
-                if tab.title.isEmpty { tab.title = "Can't open page" }
+                tab.loadFailure = failure
+                if tab.title.isEmpty { tab.title = URLDetector.prettyHost(failedURL) }
             }
         }
 

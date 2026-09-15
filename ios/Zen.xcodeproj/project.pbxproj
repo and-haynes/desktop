@@ -13,8 +13,10 @@
 		16FCB3549AF65A4D8451333E /* OmniboxTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E5240A82F9C160738FAA784 /* OmniboxTextField.swift */; };
 		19308C6E9523C52AE71D9F02 /* NewTabPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFDCADCF735EAA705F326D9F /* NewTabPage.swift */; };
 		1E996B476DF60B64F4DF70C2 /* HistorySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86AA8039EF0952DB0A5EED82 /* HistorySheet.swift */; };
+		1F4326C74B645F3296BDFDEB /* LoadFailureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 782C96F203ECA8E99702C663 /* LoadFailureTests.swift */; };
 		22B7AE3B562BF7D102577E75 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5B4C36D8CF492F87328958F /* SidebarView.swift */; };
 		2CC21EEBF42D7505D2710A03 /* SpaceEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7688B6E1EA8ADB19B677A426 /* SpaceEditorView.swift */; };
+		37048826351CB638FDF4835F /* ErrorPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 153BE572C4E43DBC0331D37A /* ErrorPageView.swift */; };
 		433232B08F94AA5C2B87019F /* AppearanceMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2F7C793BA7D5491ADCBEB92 /* AppearanceMode.swift */; };
 		459B0E8FE6A2898F2BA9B24F /* ZenColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACBD665DE4374F9877BC1681 /* ZenColor.swift */; };
 		508BFA96B5CF670C7E44DD59 /* ZenApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E314F1A113B5A944AA437E9 /* ZenApp.swift */; };
@@ -36,14 +38,17 @@
 		8F570F52C083B81FEAEFC734 /* ZenMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61E6535D6C6DA4C195C697FB /* ZenMetrics.swift */; };
 		94868B3CD663AB233FF72AB4 /* ZenColorPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = E81C605FB286B4ADB15EF427 /* ZenColorPicker.swift */; };
 		949E9EB3D92E39E60AAF4890 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 0E42D3A655596C22CAF2E52E /* Assets.xcassets */; };
+		99A27F26492BC32939385E59 /* LoadFailure.swift in Sources */ = {isa = PBXBuildFile; fileRef = 850C5604A63AB2C192CAF79A /* LoadFailure.swift */; };
 		99B7982584DBF60E88CE3242 /* ZenGradient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88B7ABF2AE6B67A857ECDDE5 /* ZenGradient.swift */; };
 		A8CD78D5F722693F189F6F8B /* WebEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1EA773520486C401C1B3FDA /* WebEngine.swift */; };
 		AEF649A69239786AB1D0BD15 /* RecentColorsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C98CBB864CCA46E7EE6DDAAE /* RecentColorsStore.swift */; };
 		B8C0AC2A453AF455DD41C648 /* ColorParsing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C89A165A5B3DE33E6C03E0B /* ColorParsing.swift */; };
 		B9A8D252A256882924FC680C /* BrowserState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4297C472C3DEAD2D96846B2E /* BrowserState.swift */; };
 		BE11C6153535B2B4BEC3B996 /* SpaceSwitcherStrip.swift in Sources */ = {isa = PBXBuildFile; fileRef = F389C4484730FF9A1064D894 /* SpaceSwitcherStrip.swift */; };
+		C3C3C63F3F71C8DC7F36F0AB /* LANHostTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF464950DD8915C034DD2E64 /* LANHostTests.swift */; };
 		C7213ED0F664C55E58ED8A0C /* SettingsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABA7F8DD18D946F9589A2F55 /* SettingsSheet.swift */; };
 		C8BB21FF2470DED04A6CC9D0 /* ZenPalette.swift in Sources */ = {isa = PBXBuildFile; fileRef = F051304257CF26659B59FCA4 /* ZenPalette.swift */; };
+		CD5A04A13514E7086261CF17 /* LANHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6A799DF7C2A9E74E14156EE /* LANHost.swift */; };
 		DAFDFB5A1A5E21EF209AF052 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D176ECE827382DF9BDDD05E /* RootView.swift */; };
 		E097E01601410B10CFB0504A /* OmniboxOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00702F505256F196432DB86D /* OmniboxOverlay.swift */; };
 		E66D6B0D3739FD864E9BCDAB /* GlanceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 155C7D8391369F0FE52AE2BC /* GlanceView.swift */; };
@@ -77,6 +82,7 @@
 		00702F505256F196432DB86D /* OmniboxOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OmniboxOverlay.swift; sourceTree = "<group>"; };
 		06CA2FAE5D6C9580B01E013C /* WebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebView.swift; sourceTree = "<group>"; };
 		0E42D3A655596C22CAF2E52E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		153BE572C4E43DBC0331D37A /* ErrorPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorPageView.swift; sourceTree = "<group>"; };
 		155C7D8391369F0FE52AE2BC /* GlanceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlanceView.swift; sourceTree = "<group>"; };
 		1D176ECE827382DF9BDDD05E /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		2B7DC3083D917DB62298DF0C /* BrowserStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserStateTests.swift; sourceTree = "<group>"; };
@@ -91,8 +97,10 @@
 		5C856C6784CFBBAC153B6D5C /* SuggestionEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuggestionEngine.swift; sourceTree = "<group>"; };
 		61E6535D6C6DA4C195C697FB /* ZenMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZenMetrics.swift; sourceTree = "<group>"; };
 		7688B6E1EA8ADB19B677A426 /* SpaceEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceEditorView.swift; sourceTree = "<group>"; };
+		782C96F203ECA8E99702C663 /* LoadFailureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadFailureTests.swift; sourceTree = "<group>"; };
 		82193B0812A778DE46C01FCA /* TabRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabRowView.swift; sourceTree = "<group>"; };
 		8504E45FB01390B4338E9D84 /* ZenColorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZenColorTests.swift; sourceTree = "<group>"; };
+		850C5604A63AB2C192CAF79A /* LoadFailure.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadFailure.swift; sourceTree = "<group>"; };
 		869895F2D79E90B9042D92DF /* ZenGradientView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZenGradientView.swift; sourceTree = "<group>"; };
 		86AA8039EF0952DB0A5EED82 /* HistorySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistorySheet.swift; sourceTree = "<group>"; };
 		88B7ABF2AE6B67A857ECDDE5 /* ZenGradient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZenGradient.swift; sourceTree = "<group>"; };
@@ -124,7 +132,9 @@
 		F051304257CF26659B59FCA4 /* ZenPalette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZenPalette.swift; sourceTree = "<group>"; };
 		F0D144C896B0D8E6CAC17372 /* SplitAndCompactTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplitAndCompactTests.swift; sourceTree = "<group>"; };
 		F389C4484730FF9A1064D894 /* SpaceSwitcherStrip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceSwitcherStrip.swift; sourceTree = "<group>"; };
+		F6A799DF7C2A9E74E14156EE /* LANHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LANHost.swift; sourceTree = "<group>"; };
 		FE1AF5E02B5EB27129E3FECE /* HistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryStore.swift; sourceTree = "<group>"; };
+		FF464950DD8915C034DD2E64 /* LANHostTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LANHostTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -210,6 +220,7 @@
 				3D0E28C090DCB4A3E66312AD /* App */,
 				E225C0279598F5EFF6A9EC01 /* Model */,
 				29F17F81A7C57A0CE1021280 /* Persistence */,
+				DA11BE72A2E822A3254CABA4 /* Security */,
 				C519609CB52548468548354C /* Theme */,
 				DF1E6435AE5C26DF93FB889C /* UI */,
 				69A0C587529E21725974439C /* Web */,
@@ -231,6 +242,7 @@
 			isa = PBXGroup;
 			children = (
 				D6168CC3146B1806766E7BCE /* FaviconService.swift */,
+				850C5604A63AB2C192CAF79A /* LoadFailure.swift */,
 				B1EA773520486C401C1B3FDA /* WebEngine.swift */,
 				06CA2FAE5D6C9580B01E013C /* WebView.swift */,
 			);
@@ -286,6 +298,8 @@
 				4CC1263F0FF95AC80F83EDCB /* AppearanceModeTests.swift */,
 				2B7DC3083D917DB62298DF0C /* BrowserStateTests.swift */,
 				896D79F909A07C86E2E39E1C /* ColorParsingTests.swift */,
+				FF464950DD8915C034DD2E64 /* LANHostTests.swift */,
+				782C96F203ECA8E99702C663 /* LoadFailureTests.swift */,
 				CEEEA5047438DAA8F1415FDC /* SessionStoreTests.swift */,
 				F0D144C896B0D8E6CAC17372 /* SplitAndCompactTests.swift */,
 				4FD8CD4DF4B3F44BB275D8F1 /* URLDetectorTests.swift */,
@@ -294,9 +308,18 @@
 			path = ZenTests;
 			sourceTree = "<group>";
 		};
+		DA11BE72A2E822A3254CABA4 /* Security */ = {
+			isa = PBXGroup;
+			children = (
+				F6A799DF7C2A9E74E14156EE /* LANHost.swift */,
+			);
+			path = Security;
+			sourceTree = "<group>";
+		};
 		DF1E6435AE5C26DF93FB889C /* UI */ = {
 			isa = PBXGroup;
 			children = (
+				153BE572C4E43DBC0331D37A /* ErrorPageView.swift */,
 				C5B86DDB786B902B992ABB0C /* FindBar.swift */,
 				DFDCADCF735EAA705F326D9F /* NewTabPage.swift */,
 				926A0C7C35EF2BBD6BF3F07F /* ZenEnvironment.swift */,
@@ -451,6 +474,7 @@
 				B9A8D252A256882924FC680C /* BrowserState.swift in Sources */,
 				B8C0AC2A453AF455DD41C648 /* ColorParsing.swift in Sources */,
 				EDCF068803ADEC573CE28C5C /* ContentArea.swift in Sources */,
+				37048826351CB638FDF4835F /* ErrorPageView.swift in Sources */,
 				7C11E3E08187A3225F84258C /* EssentialsGrid.swift in Sources */,
 				6729665B0438F58791DC807C /* FaviconService.swift in Sources */,
 				F864FDA07CE3E804116B4B92 /* FindBar.swift in Sources */,
@@ -458,6 +482,8 @@
 				1E996B476DF60B64F4DF70C2 /* HistorySheet.swift in Sources */,
 				0D6058BEE7D077BBC0C92DEE /* HistoryStore.swift in Sources */,
 				142E6F824884B6B4AFEFD672 /* JSONFileStore.swift in Sources */,
+				CD5A04A13514E7086261CF17 /* LANHost.swift in Sources */,
+				99A27F26492BC32939385E59 /* LoadFailure.swift in Sources */,
 				19308C6E9523C52AE71D9F02 /* NewTabPage.swift in Sources */,
 				E097E01601410B10CFB0504A /* OmniboxOverlay.swift in Sources */,
 				64628C990EAAB96A13FA4A93 /* OmniboxPill.swift in Sources */,
@@ -503,6 +529,8 @@
 				52754347A4EE689C839BF1B5 /* AppearanceModeTests.swift in Sources */,
 				10DB9AA9F73EA1211E61422B /* BrowserStateTests.swift in Sources */,
 				E7F82330EA0D9210C94241F7 /* ColorParsingTests.swift in Sources */,
+				C3C3C63F3F71C8DC7F36F0AB /* LANHostTests.swift in Sources */,
+				1F4326C74B645F3296BDFDEB /* LoadFailureTests.swift in Sources */,
 				8524DB2323656F48E3577C84 /* SessionStoreTests.swift in Sources */,
 				61874C43C279ED772781240F /* SplitAndCompactTests.swift in Sources */,
 				F58099A6CC5B8EE3C77186B9 /* URLDetectorTests.swift in Sources */,

@@ -85,7 +85,8 @@ network and takes minutes, where the unit tests take under a second.
 | 4 | **Omnibox** — floating bottom pill | Done | At the bottom on iPhone for thumb reach; upstream's is inline at the top. |
 | 4 | Centered floating search box | Done | 62px, 12px radius, the large soft shadow, 252px result list. |
 | 4 | Suggestions | Done | History (frecency-ranked), engine autocomplete, and a subset of Zen's urlbar global actions. |
-| 4 | URL vs search detection | Done | Covered by tests, including `localhost`, IPv4, `.lan`, and refusing `javascript:`. |
+| 4 | URL vs search detection | Done | Covered by tests, including `localhost`, bare IPs, `IP:port`, `.lan`, and refusing `javascript:`. A *bare* single word (`meitner`) is still a search — it is indistinguishable from `swift`; add a port, a slash or a scheme to navigate. |
+| — | **Load failures** | Done | A real error page with host, port, reason, error code, Retry, scheme flip, common-port suggestions and a Local Network hint. 10s timeout with a watchdog for addresses that neither answer nor fail. |
 | 4 | Search engine choice | Done | DuckDuckGo (default), Google, Bing, Startpage, Ecosia. Startpage has no public autocomplete endpoint and borrows DuckDuckGo's. |
 | 4 | Desktop/mobile user agent | Done | Global setting; applied per web view at creation. |
 | 5 | **Compact mode** | Done | Keeps Zen's two independent toggles (hide sidebar / hide toolbar), persisted. |
@@ -192,6 +193,17 @@ own `WKWebsiteDataStore(forIdentifier:)` (iOS 17+) is strictly stronger.
 | Split view with a draggable divider (stacked in portrait, side by side when wide) | The persistent sidebar on iPad |
 | ![Split view side by side on iPad](docs/screenshots/06-split-ipad.png) | ![The compact-mode grabber](docs/screenshots/10-compact-grabber.png) |
 | Split view on iPad, where the panes sit side by side | Compact mode: the bar is gone, the grabber remains |
+
+### When a page will not load
+
+![The error page for a refused LAN connection](docs/screenshots/17-error-page.png)
+
+A failed load used to leave a blank page and an untappable warning glyph. It
+now explains itself: host, port, reason, the underlying error code in small
+text, Retry, the other scheme, and — when the default port was refused — the
+ports homelab services actually sit on (8006 for Proxmox, 8080, 8443, …).
+LAN addresses also get the Local Network permission hint, because a declined
+prompt fails every connection afterwards with no visible cause.
 
 ### The colour tool
 
