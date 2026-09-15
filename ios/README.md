@@ -189,8 +189,8 @@ own `WKWebsiteDataStore(forIdentifier:)` (iOS 17+) is strictly stronger.
 | The centered floating search box with suggestions | Glance: a link as a card over the dimmed page |
 | ![Split view with two panes](docs/screenshots/06-split.png) | ![The persistent sidebar on iPad](docs/screenshots/02-sidebar-ipad.png) |
 | Split view with a draggable divider (stacked in portrait, side by side when wide) | The persistent sidebar on iPad |
-| ![Split view side by side on iPad](docs/screenshots/06-split-ipad.png) | |
-| Split view on iPad, where the panes sit side by side | |
+| ![Split view side by side on iPad](docs/screenshots/06-split-ipad.png) | ![The compact-mode grabber](docs/screenshots/10-compact-grabber.png) |
+| Split view on iPad, where the panes sit side by side | Compact mode: the bar is gone, the grabber remains |
 
 ## Licence
 

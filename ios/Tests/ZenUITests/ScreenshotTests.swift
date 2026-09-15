@@ -104,6 +104,60 @@ final class ScreenshotTests: XCTestCase {
         settle(4.0)
     }
 
+
+    // MARK: Menu helpers
+
+    private var moreButton: XCUIElement {
+        let identified = app.buttons["moreMenu"]
+        return identified.exists ? identified : app.buttons["More"]
+    }
+
+    /// Open the overflow menu and tap the first item whose label matches.
+    @discardableResult
+    private func tapMenuItem(matching predicate: String) -> Bool {
+        guard moreButton.waitForExistence(timeout: 8) else { return false }
+        moreButton.tap()
+        settle(1.2)
+        let item = app.buttons.matching(NSPredicate(format: predicate)).firstMatch
+        guard item.waitForExistence(timeout: 5) else {
+            // Dismiss the menu rather than leaving it open over the next step.
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.25)).tap()
+            settle(0.8)
+            return false
+        }
+        item.tap()
+        settle(1.6)
+        return true
+    }
+
+    /// Compact mode: the bar is gone and only the grabber remains (#00887).
+    func testCaptureCompactGrabber() throws {
+        let suffix = UIDevice.current.userInterfaceIdiom == .pad ? "-ipad" : ""
+        settle(4.0)
+        navigate(to: "zen-browser.app")
+
+        XCTAssertTrue(
+            tapMenuItem(matching: "label CONTAINS[c] 'Compact Mode'"),
+            "compact mode menu item missing")
+        settle(2.0)
+        capture("10-compact-grabber\(suffix)")
+
+        // Prove the grabber reveals the bar, then leave compact mode so the
+        // session does not carry it into the next run.
+        let grabber = app.otherElements["Show toolbar"].firstMatch
+        let grabberButton = app.buttons["Show toolbar"].firstMatch
+        if grabber.waitForExistence(timeout: 3) {
+            grabber.tap()
+        } else if grabberButton.waitForExistence(timeout: 3) {
+            grabberButton.tap()
+        } else {
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.955)).tap()
+        }
+        settle(1.5)
+        capture("10b-compact-revealed\(suffix)")
+        _ = tapMenuItem(matching: "label CONTAINS[c] 'Compact Mode'")
+    }
+
     // MARK: The documented states
 
     func testCaptureAllStates() throws {

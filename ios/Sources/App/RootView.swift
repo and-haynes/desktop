@@ -231,11 +231,26 @@ struct RootView: View {
             VStack {
                 Spacer()
                 Capsule()
-                    .fill(palette.text.withAlpha(0.35).color)
+                    .fill(palette.text.withAlpha(0.75).color)
                     .frame(
                         width: ZenMetrics.compactGrabberWidth,
                         height: ZenMetrics.compactGrabberHeight)
-                    .shadow(color: .black.opacity(0.25), radius: 3, y: 1)
+                    // The page behind can be any colour, and a bare 35%-alpha
+                    // pill simply vanished against a light one. A material pad
+                    // behind it gives the handle something to sit on, the way
+                    // a system sheet grabber does.
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
+                    .background {
+                        Capsule()
+                            .fill(.ultraThinMaterial)
+                            .overlay { Capsule().fill(palette.brandingBG.withAlpha(0.35).color) }
+                    }
+                    .overlay {
+                        Capsule().strokeBorder(palette.borderContrast.color, lineWidth: 0.5)
+                    }
+                    .clipShape(Capsule())
+                    .shadow(color: .black.opacity(0.28), radius: 6, y: 2)
                     // A 6pt pill is not a touch target; 44pt is.
                     .frame(height: ZenMetrics.compactGrabberHitHeight)
                     .frame(maxWidth: .infinity)
