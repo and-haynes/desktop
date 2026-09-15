@@ -565,6 +565,49 @@ prompt fails every connection afterwards with no visible cause.
 | ![The page running to the top edge with the status bar hidden](docs/screenshots/24-status-bar-hidden.png) | ![The full-width New Tab strip pinned below the tab list](docs/screenshots/25-sidebar-newtab-strip.png) |
 | Hidden by default, so the page runs to the very top edge | New Tab as a pinned full-width strip, not a row that scrolls away |
 
+### Importing a palette for the code lookup
+
+The colour tool's **code lookup** searches a palette file you supply. Zen does
+**not** ship Pantone, RAL or NCS values: those are licensed, and a table of
+approximations published under those names would be both a licence problem and
+simply wrong about the colour. Your own palette is yours to own, so import it.
+
+Tap **Import palette…** under the colour wheel and pick a `.json` file. Three
+shapes are accepted, because all three are what real tools export:
+
+```json
+{
+  "name": "Morton brand",
+  "colors": [
+    { "code": "PB-101", "name": "Deep Sea", "hex": "#0B3D5C" },
+    { "code": "PB-102", "name": "Paper",    "hex": "#F4ECD8" }
+  ]
+}
+```
+
+```json
+[ { "name": "Ink", "hex": "#101010" } ]
+```
+
+```json
+{ "Ink": "#101010", "Paper": "#F4ECD8" }
+```
+
+| Key | Required | Notes |
+|---|---|---|
+| `name` (top level) | no | The palette's title. Falls back to the file name. |
+| `colors` | yes¹ | Also accepted as `swatches`. |
+| `hex` | yes | Also `value`, `color`, `colour`. `#RRGGBB`, `RRGGBB` or `#RGB`. |
+| `code` | no | Also `id`. What the **code lookup** searches. |
+| `name` (per entry) | no | Also `title`. Falls back to `code`, then to the hex. |
+
+¹ Not needed for the flat `{ "Name": "#HEX" }` shape.
+
+An entry with an unreadable colour is dropped rather than failing the whole
+import — one bad row should not cost you the other ninety-nine. Importing a
+palette whose name matches one already there replaces it, so fixing a typo and
+importing again does not leave two near-identical sets to search.
+
 ### The colour tool
 
 | | |

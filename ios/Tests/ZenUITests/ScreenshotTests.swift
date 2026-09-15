@@ -1100,6 +1100,67 @@ final class ScreenshotTests: XCTestCase {
         try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-PREFILL"))
     }
 
+    /// The named-colour library and the code lookup (#0088F).
+    func testCaptureNamedColours() throws {
+        let suffix = UIDevice.current.userInterfaceIdiom == .pad ? "-ipad" : ""
+        settle(4.0)
+        XCTAssertTrue(openSpaceEditor(), "could not reach the space editor")
+        XCTAssertTrue(openAccentPicker(), "accent row missing")
+
+        let search = app.textFields["namedColorSearch"].firstMatch
+        for _ in 0..<6 {
+            if search.exists && search.isHittable { break }
+            app.swipeUp()
+            settle(0.6)
+        }
+        XCTAssertTrue(search.waitForExistence(timeout: 8), "named colour search missing")
+        search.tap()
+        search.typeText("sea")
+        settle(1.5)
+
+        let seagreen = app.buttons.matching(
+            NSPredicate(format: "label BEGINSWITH[c] 'seagreen'")).firstMatch
+        XCTAssertTrue(
+            seagreen.waitForExistence(timeout: 5), "searching 'sea' should find seagreen")
+        capture("16-named-colours\(suffix)")
+
+        // Picking one applies it to the wheel and the hex field.
+        seagreen.tap()
+        settle(1.5)
+        let hex = app.textFields["hexField"].firstMatch
+        if hex.exists {
+            XCTAssertEqual(
+                (hex.value as? String)?.uppercased(), "#2E8B57",
+                "picking a named colour should drive every other control")
+        }
+
+        // The code lookup, and the licence note that explains its shape.
+        // Drag along the left margin: a swipe in the middle lands inside the
+        // swatch grid's own scroll view and never reaches the page.
+        for _ in 0..<5 {
+            if app.staticTexts.matching(
+                NSPredicate(format: "label CONTAINS[c] 'Pantone'")).firstMatch.isHittable
+            {
+                break
+            }
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.04, dy: 0.82))
+                .press(
+                    forDuration: 0.05,
+                    thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.04, dy: 0.2)))
+            settle(0.8)
+        }
+        XCTAssertTrue(
+            app.textFields["paletteCodeSearch"].firstMatch.exists, "code lookup missing")
+        XCTAssertTrue(
+            app.buttons["importPalette"].firstMatch.exists, "no way to import a palette")
+        XCTAssertTrue(
+            app.staticTexts.matching(
+                NSPredicate(format: "label CONTAINS[c] 'Pantone'")).firstMatch.exists,
+            "the licence note must be on the screen, not buried in the README")
+        capture("16b-code-lookup\(suffix)")
+        try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-NAMED"))
+    }
+
     // MARK: The documented states
 
     func testCaptureAllStates() throws {

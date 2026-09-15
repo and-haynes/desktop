@@ -12,6 +12,8 @@ struct SpaceEditorView: View {
     /// nil means "create a new space".
     let space: Space?
     @StateObject private var recents = RecentColorsStore()
+    /// Palettes the owner imported, for the colour tool's code lookup (#0088F).
+    @StateObject private var palettes = ImportedPaletteStore()
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
@@ -158,16 +160,21 @@ struct SpaceEditorView: View {
     /// than a strip of presets — wheel, sliders, and typed hex or RGB. It lives
     /// on its own screen because the controls need the room.
     private var accentRow: some View {
-        NavigationLink {
+        let accent = Binding(
+            get: { theme.primaryDotColor ?? ZenTokens.defaultAccent },
+            set: { newColor in
+                theme = ZenGradientGenerator.theme(seed: newColor, harmony: theme.harmony)
+            })
+        return NavigationLink {
             AccentPickerScreen(
-                color: Binding(
-                    get: { theme.primaryDotColor ?? ZenTokens.defaultAccent },
-                    set: { newColor in
-                        theme = ZenGradientGenerator.theme(
-                            seed: newColor, harmony: theme.harmony)
-                    }),
+                color: accent,
                 gradientStops: theme.dots.map(\.color),
-                recents: recents)
+                recents: recents,
+                // The name and code lookups (#0088F). Injected rather than
+                // built into the picker, so the `ios` branch's picker stays the
+                // faithful one.
+                accessory: AnyView(
+                    NamedColorLibraryView(palettes: palettes) { accent.wrappedValue = $0 }))
         } label: {
             HStack {
                 Text("Accent")

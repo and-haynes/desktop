@@ -18,10 +18,12 @@
 		0FE72F1601819433E87CB438 /* HKDF.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32C4357270600216A7E16AB6 /* HKDF.swift */; };
 		10DB9AA9F73EA1211E61422B /* BrowserStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B7DC3083D917DB62298DF0C /* BrowserStateTests.swift */; };
 		142E6F824884B6B4AFEFD672 /* JSONFileStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FA950A132BEC1CE6A6AB420 /* JSONFileStore.swift */; };
+		143A06EE9437ACDE83EA1F21 /* named-colors.json in Resources */ = {isa = PBXBuildFile; fileRef = DDA775E6F2AD70EDA2551018 /* named-colors.json */; };
 		145E698CD3DF26C2497B756A /* SecurityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F46B5E6DC096FDFE0832321E /* SecurityTests.swift */; };
 		15E51108240C806C47C4D059 /* TabsEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 917EA944DBE84A76F6227467 /* TabsEngine.swift */; };
 		16FCB3549AF65A4D8451333E /* OmniboxTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E5240A82F9C160738FAA784 /* OmniboxTextField.swift */; };
 		19308C6E9523C52AE71D9F02 /* NewTabPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFDCADCF735EAA705F326D9F /* NewTabPage.swift */; };
+		1BD5A162BEE76463B86552E6 /* NamedColorLibraryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD33633950B572673E4F3923 /* NamedColorLibraryTests.swift */; };
 		1E996B476DF60B64F4DF70C2 /* HistorySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86AA8039EF0952DB0A5EED82 /* HistorySheet.swift */; };
 		1F4326C74B645F3296BDFDEB /* LoadFailureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 782C96F203ECA8E99702C663 /* LoadFailureTests.swift */; };
 		22B7AE3B562BF7D102577E75 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5B4C36D8CF492F87328958F /* SidebarView.swift */; };
@@ -37,6 +39,7 @@
 		433232B08F94AA5C2B87019F /* AppearanceMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2F7C793BA7D5491ADCBEB92 /* AppearanceMode.swift */; };
 		44A9497BB0B878DC02904355 /* Haptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2F4BDE6C19B6759139B71F3 /* Haptics.swift */; };
 		459B0E8FE6A2898F2BA9B24F /* ZenColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACBD665DE4374F9877BC1681 /* ZenColor.swift */; };
+		4699799A2A28EF41FC6B7D3C /* NamedColorLibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD2B41BF8055939CD99B474A /* NamedColorLibraryView.swift */; };
 		49497DBB7B64C045BEB5E6D5 /* ClientsEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0384393307C90C69345E3440 /* ClientsEngine.swift */; };
 		4BFDB75AC44DC39DD5AB0EFE /* BarSwipeGesture.swift in Sources */ = {isa = PBXBuildFile; fileRef = C328A5EE18F01699DF47AE6A /* BarSwipeGesture.swift */; };
 		4D86D9F0730D15CBFF2F493A /* JSONValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = D06FE302E103E94A2B0B70FE /* JSONValue.swift */; };
@@ -75,9 +78,11 @@
 		8B405162DEA80D881A245836 /* SplitContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB377F3610015C51D9D15F94 /* SplitContainer.swift */; };
 		8E8DC64D692B707A0DA1BCE9 /* SyncSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D527E0502C91198924E8E5E /* SyncSettingsView.swift */; };
 		8F570F52C083B81FEAEFC734 /* ZenMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61E6535D6C6DA4C195C697FB /* ZenMetrics.swift */; };
+		8F5A14DE18A1B2FDBA36AE18 /* NamedColorLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66265D9AF4193BA335BFC64F /* NamedColorLibrary.swift */; };
 		94868B3CD663AB233FF72AB4 /* ZenColorPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = E81C605FB286B4ADB15EF427 /* ZenColorPicker.swift */; };
 		949E9EB3D92E39E60AAF4890 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 0E42D3A655596C22CAF2E52E /* Assets.xcassets */; };
 		982AB9E72B9E86A050208A62 /* MockSyncServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 773B35E2BE0EA1C9632F70C5 /* MockSyncServer.swift */; };
+		99151490A55F687475AE4691 /* ImportedPaletteStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3042D6B6BD2A9DBD7049169 /* ImportedPaletteStore.swift */; };
 		99A27F26492BC32939385E59 /* LoadFailure.swift in Sources */ = {isa = PBXBuildFile; fileRef = 850C5604A63AB2C192CAF79A /* LoadFailure.swift */; };
 		99B7982584DBF60E88CE3242 /* ZenGradient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88B7ABF2AE6B67A857ECDDE5 /* ZenGradient.swift */; };
 		A52950E464B97B33514E35E5 /* PKCE.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B691F68F07F1F5469400C44 /* PKCE.swift */; };
@@ -180,6 +185,7 @@
 		61E6535D6C6DA4C195C697FB /* ZenMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZenMetrics.swift; sourceTree = "<group>"; };
 		61F848AA634ABBCD5B5552B8 /* SecurityBadgeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecurityBadgeTests.swift; sourceTree = "<group>"; };
 		626F7FF4DA0415ED88BC1361 /* BarSwipeGestureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BarSwipeGestureTests.swift; sourceTree = "<group>"; };
+		66265D9AF4193BA335BFC64F /* NamedColorLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NamedColorLibrary.swift; sourceTree = "<group>"; };
 		6D569AE97E242582B1281AE2 /* Hawk.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Hawk.swift; sourceTree = "<group>"; };
 		70871EF5ED7E073C4BA499AF /* SyncShadow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncShadow.swift; sourceTree = "<group>"; };
 		7688B6E1EA8ADB19B677A426 /* SpaceEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceEditorView.swift; sourceTree = "<group>"; };
@@ -219,6 +225,7 @@
 		AC2674CD6FED7C92BAB5DFC1 /* focus-blocklist.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "focus-blocklist.json"; sourceTree = "<group>"; };
 		ACBD665DE4374F9877BC1681 /* ZenColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZenColor.swift; sourceTree = "<group>"; };
 		AD0ADABE9F93D3BB49D2C777 /* ContentBlocker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentBlocker.swift; sourceTree = "<group>"; };
+		AD33633950B572673E4F3923 /* NamedColorLibraryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NamedColorLibraryTests.swift; sourceTree = "<group>"; };
 		B1EA773520486C401C1B3FDA /* WebEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebEngine.swift; sourceTree = "<group>"; };
 		B2F4BDE6C19B6759139B71F3 /* Haptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Haptics.swift; sourceTree = "<group>"; };
 		B3DDC7AF839E8CA2D86E73F8 /* BrowserLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserLayout.swift; sourceTree = "<group>"; };
@@ -226,6 +233,7 @@
 		BD6FB4CCEF6E71A55F57D23E /* SyncStorageClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncStorageClient.swift; sourceTree = "<group>"; };
 		BDFF04967B55ED7F97DCAB72 /* EssentialsGrid.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EssentialsGrid.swift; sourceTree = "<group>"; };
 		BFF22D092304CD764C2207B1 /* SidebarEdgeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarEdgeTests.swift; sourceTree = "<group>"; };
+		C3042D6B6BD2A9DBD7049169 /* ImportedPaletteStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportedPaletteStore.swift; sourceTree = "<group>"; };
 		C328A5EE18F01699DF47AE6A /* BarSwipeGesture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BarSwipeGesture.swift; sourceTree = "<group>"; };
 		C5B4C36D8CF492F87328958F /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
 		C5B86DDB786B902B992ABB0C /* FindBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FindBar.swift; sourceTree = "<group>"; };
@@ -237,6 +245,7 @@
 		D2312DA65EBBF1984279C59A /* AESCBC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AESCBC.swift; sourceTree = "<group>"; };
 		D2971FAB4405F536C1C76DDA /* HapticsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticsTests.swift; sourceTree = "<group>"; };
 		D6168CC3146B1806766E7BCE /* FaviconService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaviconService.swift; sourceTree = "<group>"; };
+		DDA775E6F2AD70EDA2551018 /* named-colors.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "named-colors.json"; sourceTree = "<group>"; };
 		DE219513AAD0EB357271B17B /* Zen.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Zen.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		DFDCADCF735EAA705F326D9F /* NewTabPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewTabPage.swift; sourceTree = "<group>"; };
 		E020E67FB5E559170245AAC4 /* SyncRecords.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncRecords.swift; sourceTree = "<group>"; };
@@ -253,6 +262,7 @@
 		F59C0B0AEBCD61A88DBBE0CA /* ZenSpacesRecordTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZenSpacesRecordTests.swift; sourceTree = "<group>"; };
 		F6A799DF7C2A9E74E14156EE /* LANHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LANHost.swift; sourceTree = "<group>"; };
 		F8C6A8FF7B9236996859D02C /* HistoryEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryEngine.swift; sourceTree = "<group>"; };
+		FD2B41BF8055939CD99B474A /* NamedColorLibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NamedColorLibraryView.swift; sourceTree = "<group>"; };
 		FDF6169CBA2E26D24C26E444 /* TrustedCertificateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrustedCertificateStore.swift; sourceTree = "<group>"; };
 		FE1AF5E02B5EB27129E3FECE /* HistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryStore.swift; sourceTree = "<group>"; };
 		FF2B26FF99A304C19DF8AD0A /* FxAOAuthClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FxAOAuthClient.swift; sourceTree = "<group>"; };
@@ -272,6 +282,7 @@
 			isa = PBXGroup;
 			children = (
 				FE1AF5E02B5EB27129E3FECE /* HistoryStore.swift */,
+				C3042D6B6BD2A9DBD7049169 /* ImportedPaletteStore.swift */,
 				9FA950A132BEC1CE6A6AB420 /* JSONFileStore.swift */,
 				C98CBB864CCA46E7EE6DDAAE /* RecentColorsStore.swift */,
 				CFF3EA739DDD841F4DF4C81E /* SessionStore.swift */,
@@ -300,6 +311,7 @@
 			children = (
 				0E42D3A655596C22CAF2E52E /* Assets.xcassets */,
 				610E35F1F01B594D1AB4FB01 /* Blocklist */,
+				A8393B1D9EC48768AF28828C /* Colors */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -382,6 +394,7 @@
 		688A4E69D632D37F660CCDBD /* Settings */ = {
 			isa = PBXGroup;
 			children = (
+				FD2B41BF8055939CD99B474A /* NamedColorLibraryView.swift */,
 				ABA7F8DD18D946F9589A2F55 /* SettingsSheet.swift */,
 				7688B6E1EA8ADB19B677A426 /* SpaceEditorView.swift */,
 				9D527E0502C91198924E8E5E /* SyncSettingsView.swift */,
@@ -465,6 +478,14 @@
 			path = Sidebar;
 			sourceTree = "<group>";
 		};
+		A8393B1D9EC48768AF28828C /* Colors */ = {
+			isa = PBXGroup;
+			children = (
+				DDA775E6F2AD70EDA2551018 /* named-colors.json */,
+			);
+			path = Colors;
+			sourceTree = "<group>";
+		};
 		AA8A7CD85AE8A6564F2E972D /* Engines */ = {
 			isa = PBXGroup;
 			children = (
@@ -496,6 +517,7 @@
 			children = (
 				E2F7C793BA7D5491ADCBEB92 /* AppearanceMode.swift */,
 				9C89A165A5B3DE33E6C03E0B /* ColorParsing.swift */,
+				66265D9AF4193BA335BFC64F /* NamedColorLibrary.swift */,
 				ACBD665DE4374F9877BC1681 /* ZenColor.swift */,
 				88B7ABF2AE6B67A857ECDDE5 /* ZenGradient.swift */,
 				869895F2D79E90B9042D92DF /* ZenGradientView.swift */,
@@ -528,6 +550,7 @@
 				FF464950DD8915C034DD2E64 /* LANHostTests.swift */,
 				782C96F203ECA8E99702C663 /* LoadFailureTests.swift */,
 				773B35E2BE0EA1C9632F70C5 /* MockSyncServer.swift */,
+				AD33633950B572673E4F3923 /* NamedColorLibraryTests.swift */,
 				9B97537F2DDF9B5798D7318A /* SchemePrefillTests.swift */,
 				61F848AA634ABBCD5B5552B8 /* SecurityBadgeTests.swift */,
 				F46B5E6DC096FDFE0832321E /* SecurityTests.swift */,
@@ -716,6 +739,7 @@
 			files = (
 				949E9EB3D92E39E60AAF4890 /* Assets.xcassets in Resources */,
 				0201E3B9148D517A4BCC7DE4 /* focus-blocklist.json in Resources */,
+				143A06EE9437ACDE83EA1F21 /* named-colors.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -758,10 +782,13 @@
 				03C2046F99D07C21E5A45B8D /* HistoryEngine.swift in Sources */,
 				1E996B476DF60B64F4DF70C2 /* HistorySheet.swift in Sources */,
 				0D6058BEE7D077BBC0C92DEE /* HistoryStore.swift in Sources */,
+				99151490A55F687475AE4691 /* ImportedPaletteStore.swift in Sources */,
 				142E6F824884B6B4AFEFD672 /* JSONFileStore.swift in Sources */,
 				4D86D9F0730D15CBFF2F493A /* JSONValue.swift in Sources */,
 				CD5A04A13514E7086261CF17 /* LANHost.swift in Sources */,
 				99A27F26492BC32939385E59 /* LoadFailure.swift in Sources */,
+				8F5A14DE18A1B2FDBA36AE18 /* NamedColorLibrary.swift in Sources */,
+				4699799A2A28EF41FC6B7D3C /* NamedColorLibraryView.swift in Sources */,
 				19308C6E9523C52AE71D9F02 /* NewTabPage.swift in Sources */,
 				E097E01601410B10CFB0504A /* OmniboxOverlay.swift in Sources */,
 				64628C990EAAB96A13FA4A93 /* OmniboxPill.swift in Sources */,
@@ -836,6 +863,7 @@
 				C3C3C63F3F71C8DC7F36F0AB /* LANHostTests.swift in Sources */,
 				1F4326C74B645F3296BDFDEB /* LoadFailureTests.swift in Sources */,
 				982AB9E72B9E86A050208A62 /* MockSyncServer.swift in Sources */,
+				1BD5A162BEE76463B86552E6 /* NamedColorLibraryTests.swift in Sources */,
 				EEEC641FDA6E1E752A175E06 /* SchemePrefillTests.swift in Sources */,
 				EBFCBE191E5F56835A65EA01 /* SecurityBadgeTests.swift in Sources */,
 				145E698CD3DF26C2497B756A /* SecurityTests.swift in Sources */,
