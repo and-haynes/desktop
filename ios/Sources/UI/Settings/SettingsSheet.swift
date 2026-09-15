@@ -216,8 +216,6 @@ struct SettingsSheet: View {
         }
     }
 
-    @ViewBuilder
-
     /// The sign-in sheet's three outcomes. Kept out of the body so the Form's
     /// modifier chain stays something the type checker can finish.
     private func handle(_ event: FxASignInEvent) {
