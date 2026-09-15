@@ -4,9 +4,10 @@ Zen Browser's interface, rebuilt natively on WebKit.
 
 ![The vertical tab sidebar with spaces, essentials and pinned tabs](docs/screenshots/02-sidebar.png)
 
-> **This is the `experimental` branch.** It carries three features desktop Zen
+> **This is the `experimental` branch.** It carries the features desktop Zen
 > does not have — see [Experimental additions](#experimental-additions). The
-> `ios` branch is the faithful translation of Zen desktop only.
+> `ios` branch is the faithful translation of Zen desktop only, and its README
+> does not mention anything on this page.
 
 ## Why this is not Gecko
 
@@ -74,16 +75,33 @@ network and takes minutes, where the unit tests take under a second.
 
 ## Experimental additions
 
-Three things on this branch are **not ports of a Zen desktop feature**. They
-are ideas that only make sense on a phone, or that Zen has never had:
+Everything in this section is **not a port of a Zen desktop feature**. These
+are ideas that only make sense on a phone, that a homelab makes necessary, or
+that Zen has never had:
 
 | Ticket | Addition | What it is |
 |---|---|---|
 | **#00887** | Layout cycle | Three states — card, edge to edge, full screen — cycled from the overflow menu or ⇧⌘F. Desktop chrome always frames the content; a phone screen is small enough that the frame is a real cost. |
 | **#00888** | Focus mode | An ephemeral private session modelled on the Firefox Focus app: its own `WKWebsiteDataStore.nonPersistent()`, nothing written to history or session restore, tracker/ad blocking via a compiled `WKContentRuleList`, third-party cookies blocked, a prominent Erase button, and a purple theme so the mode is unmistakable. Optionally locked behind Face ID on return from the background. |
 | **#00889** | LAN certificate approval | A calm, specific prompt for self-signed certificates on home-network hosts, instead of the same red interstitial a public site gets. Approvals are remembered per host *and* SHA-256 fingerprint; a changed certificate re-prompts. |
+| **#00891** | Floating bar fill | Liquid Glass / Matte / Transparent, default Liquid Glass. The full-screen layout floats the bar with no backing material, which is gorgeous over a dark page and invisible over a light one — so the backing became a choice rather than a guess. |
+| **#0089A** | Security badge | The warning glyph in the URL pill is a button: it reopens a waiting certificate prompt, shows an approved certificate's record and fingerprint (with a way to forget it), explains a plain-HTTP connection, or details a failed load. |
+| **#0089B** | Scheme prefill | Typing `10.`, `192.` or `172.` fills in `https://` as ordinary editable text. Narrowly scoped: whole field only, typed not pasted, and never again in the same edit once you delete it. |
+| **#0088F** | Named colours & code lookup | A searchable CSS/X11 + curated swatch library in the colour tool, plus a code search over a palette JSON you import yourself. No licensed colour system is bundled — see below. |
+| **#00890** | Sepia | A third palette base (paper `#F4ECD8` over ink `#5B4636`) run through zen-theme.css's own `color-mix` chain, plus an off-by-default page tint. |
 
 Everything else in this README is shared with `ios`.
+
+### Why there is no Pantone
+
+Pantone, RAL and NCS values are licensed. Shipping a table of approximations
+under those names would be both a licence problem and a lie about colour
+accuracy — the whole value of a colour system is that the number is exact.
+
+So the colour tool's **code lookup** searches a palette file you supply
+instead. The note saying so sits next to the field in the app, not only here,
+because it explains why the control has the shape it does. See
+[Importing a palette](#importing-a-palette-for-the-code-lookup).
 
 ### The Focus blocklist — provenance
 
@@ -160,6 +178,12 @@ cookies outright, scoped to third-party loads so first-party logins survive.
 | — | **Focus mode** (#00888) | Done | Ephemeral space on a non-persistent data store, no history or session writes, compiled blocklist, third-party cookies blocked, Erase button + toast, purple theme. ⇧⌘P or the overflow menu. |
 | — | Focus: Face ID lock | Partial | Locks on return from the background when enabled in Settings. Fails *open* where no authentication is configured — the simulator cannot do biometrics, so this path is exercised only as "unavailable → do not lock". |
 | — | **LAN certificates** (#00889) | Done | Friendly prompt for local hosts with homelab-shaped TLS failures; stern flow otherwise. Trusted list in Settings with swipe-to-forget. |
+| — | **Security badge** (#0089A) | Done | The pill's glyph is a button. Precedence: a failed load outranks everything, a waiting TLS prompt outranks the padlock, an approved self-signed certificate reads as approved rather than as a warning. Presented from the root so it covers a split pane or a glance card, and *queued* behind any other sheet rather than silently dropped. |
+| — | **Bar fill** (#00891) | Done | Liquid Glass / Matte / Transparent, default Liquid Glass. Glass is `glassEffect(.regular, in: Capsule())` in a `GlassEffectContainer`, `.interactive()`, tinted 50% with the chrome surface so palette-coloured glyphs keep their contrast. iOS 26+; `.ultraThinMaterial` below. Covers the compact bar and the split-pane bars. |
+| — | **Scheme prefill** (#0089B) | Done | `10.` / `192.` / `172.` gain `https://`. Whole field only, typed not pasted, never over an existing scheme, and never again in the same edit once deleted. |
+| — | **Named colours** (#0088F) | Done | CSS/X11 plus a curated set, ranked exact → prefix → substring; a pasted hex flips it into a value lookup. |
+| — | **Code lookup** (#0088F) | Done | Searches a palette JSON you import through the Files picker. Nothing licensed is bundled. |
+| — | **Sepia** (#00890) | Done | A third `ZenSurfaceBase` — paper over ink — through the same `color-mix` chain, so the accent still drives every token. Optional off-by-default page tint, as an overlay rather than a root `filter:` so `position: fixed` keeps working. |
 | 12 | **Reader mode** | **TODO** | WebKit exposes no reader/readability API to third-party apps. Implementing it means injecting a Readability port and rendering the result ourselves. |
 
 ### Also not done
@@ -190,6 +214,9 @@ ios/
     Model/                 Space, Tab, SearchEngine + URLDetector, BrowserState
     Persistence/           JSONFileStore (atomic), SessionStore, History/Bookmarks
     Web/                   WebEngine (per-space data stores, LRU pool), WebView
+    Security/              LANHost, the trust evaluator and the trusted-
+                           certificate store; SecurityBadge, which decides
+                           what the URL pill's glyph opens
     Services/              Haptics — the semantic event table and the
                            UIKit / Core Haptics backend behind it
                            MediaSession — who owns the audio session, and
@@ -205,7 +232,7 @@ ios/
                            SyncService — one sync, start to finish
     UI/                    Sidebar/, Omnibox/, Glance/, Split/, History/,
                            Settings/, plus NewTabPage and FindBar
-  Tests/ZenTests/          335 unit tests
+  Tests/ZenTests/          TESTCOUNT unit tests
   Tests/ZenUITests/        the screenshot driver
 ```
 
@@ -430,6 +457,9 @@ assertion there went through our own encryption *and* our own decryption.
 | Status bar always present | Hidden by default | In a browser the page is the app, and on a phone there is nowhere else for 60pt of clock to go. |
 | Sidebar reached from a toolbar button | …or by swiping the URL bar | The button is a 34pt target at the far left of a six-inch screen — the one place a thumb holding the phone cannot reach. |
 | New-tab row at the end of the tab list | A pinned full-width strip | The control you reach for most should not have to be scrolled to. |
+| Two schemes, light and dark | A third: Sepia | Paper and ink instead of grey, derived by the same chain rather than washed over the light palette. |
+| The urlbar always has a surface | The floating bar's backing is a choice | No backing at all is the best look on the pages it works on, and invisible on the rest. |
+| Firefox's URL fixup | Two narrow rules of our own | A bare word offers both readings; a private-network octet gains a scheme. Both are about a homelab, which is what this browser is mostly pointed at. |
 | Chrome always frames the content | A three-state layout cycle | A phone screen is small enough that the frame is a real cost; ⇧⌘F or the overflow menu cycles card → edge to edge → full screen. |
 | — | Address bar selects all on focus | SwiftUI's `TextField` cannot select its contents, so the address bar is a small `UITextField` wrapper. Without it, tapping the bar and typing *appends* to the current URL. |
 | urlbar inline at the top | Floating pill at the *bottom* on iPhone | A phone is held one-handed; the top of a modern iPhone is not thumb-reachable. |
@@ -614,6 +644,17 @@ importing again does not leave two near-identical sets to search.
 |---|---|
 | ![The accent colour picker](docs/screenshots/14-colour-picker.png) | ![Hex entry applied](docs/screenshots/15-colour-hex.png) |
 | Wheel, brightness track, HSB/RGB sliders, recents | Typed hex, validated and applied |
+| ![Searching the named-colour library](docs/screenshots/16-named-colours.png) | ![The code lookup and the licence note](docs/screenshots/16b-code-lookup.png) |
+| Searching `sea` ranks seagreen and Sea Glass above lightseagreen | The code lookup over an imported palette, and why there is no Pantone |
+
+### Sepia, and the bar fill
+
+| | |
+|---|---|
+| ![Sepia chrome over a page](docs/screenshots/17-sepia.png) | ![The sepia sidebar](docs/screenshots/17b-sepia-sidebar.png) |
+| Warm paper chrome, derived rather than tinted | The sidebar and the new-tab strip in paper and ink |
+| ![The bar fill setting](docs/screenshots/20-bar-fill-settings.png) | ![The certificate record behind the pill's badge](docs/screenshots/21-certificate-record.png) |
+| Liquid Glass / Matte / Transparent | The badge opens the certificate record, fingerprint and all |
 ### Focus mode and LAN certificates
 
 | | | |
