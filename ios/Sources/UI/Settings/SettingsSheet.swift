@@ -58,6 +58,21 @@ struct SettingsSheet: View {
                             + "gesture and the toolbar button to match.")
                 }
 
+                Section {
+                    Picker("Bar fill", selection: $state.settings.barFill) {
+                        ForEach(BarFill.allCases) { fill in
+                            Text(fill.displayName).tag(fill)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .accessibilityIdentifier("barFillPicker")
+                } header: {
+                    Text("Bar fill")
+                } footer: {
+                    Text(state.settings.barFill.detail)
+                }
+
                 Section("Search") {
                     Picker("Search engine", selection: $state.settings.searchEngine) {
                         ForEach(SearchEngine.allCases) { engine in

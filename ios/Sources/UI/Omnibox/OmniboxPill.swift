@@ -102,7 +102,7 @@ struct OmniboxPill: View {
         }
         .padding(.horizontal, 6)
         .frame(height: isSecondaryPane ? ZenMetrics.paneBarHeight : ZenMetrics.omniboxPillHeight)
-        .modifier(PillBackground(palette: palette, isFloating: isFloating))
+        .zenBarFill(state.settings.barFill, palette: palette, isFloating: isFloating)
         .opacity(isActivePane ? 1 : 0.82)
         .simultaneousGesture(sidebarSwipe)
     }
@@ -138,26 +138,6 @@ struct OmniboxPill: View {
 
     /// Solid chrome when the bar sits in the layout; a bare outline when it
     /// floats over the page.
-    private struct PillBackground: ViewModifier {
-        let palette: ZenPalette
-        let isFloating: Bool
-
-        func body(content: Content) -> some View {
-            if isFloating {
-                content
-                    .overlay {
-                        RoundedRectangle(cornerRadius: ZenMetrics.rowRadius, style: .continuous)
-                            .strokeBorder(palette.text.withAlpha(0.28).color, lineWidth: 0.5)
-                    }
-                    // The page behind can be any colour, so the glyphs get
-                    // their own shadow rather than relying on a backdrop.
-                    .shadow(color: .black.opacity(0.45), radius: 4, y: 1)
-                    .shadow(color: .black.opacity(0.25), radius: 12, y: 4)
-            } else {
-                content.zenSurface(palette, radius: ZenMetrics.rowRadius, elevated: true)
-            }
-        }
-    }
 
     // MARK: Pieces
 

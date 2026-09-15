@@ -1004,6 +1004,24 @@ final class ScreenshotTests: XCTestCase {
         try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-SIDEBAREDGE"))
     }
 
+    /// The bar-fill choice (#00891). The full-screen bar used to be an outline
+    /// and nothing else; this captures the Settings control that replaces that
+    /// with a real backing.
+    func testCaptureBarFillSettings() throws {
+        let suffix = UIDevice.current.userInterfaceIdiom == .pad ? "-ipad" : ""
+        settle(4.0)
+        XCTAssertTrue(
+            tapMenuItem(matching: "label CONTAINS[c] 'Settings'"), "settings menu item missing")
+        settle(1.5)
+        let picker = app.segmentedControls["barFillPicker"].firstMatch
+        XCTAssertTrue(picker.waitForExistence(timeout: 10), "bar fill picker missing")
+        XCTAssertTrue(
+            picker.buttons["Liquid Glass"].isSelected, "Liquid Glass must be the default")
+        capture("20-bar-fill-settings\(suffix)")
+        dismissSheet()
+        try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-BARFILL"))
+    }
+
     // MARK: The documented states
 
     func testCaptureAllStates() throws {

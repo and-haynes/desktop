@@ -42,6 +42,8 @@ struct ZenSettings: Codable, Equatable, Sendable {
     /// How much of the screen the page gets. Cycled from the overflow menu or
     /// Cmd-Shift-F; persisted alongside compact mode.
     var layout: BrowserLayout = .card
+    /// What sits behind the floating URL bar. Default Liquid Glass.
+    var barFill: BarFill = .liquidGlass
     /// Require Face ID / passcode to return to a Focus session after the app
     /// has been in the background.
     var focusRequiresBiometrics: Bool = false
@@ -57,7 +59,7 @@ struct ZenSettings: Codable, Equatable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case searchEngine, compactModeEnabled, compactHidesSidebar, compactHidesToolbar
         case preferDesktopSite, sidebarPinnedOnPad, appearance, compactHideDelay, hapticLevel
-        case showStatusBar, sidebarEdge, layout, focusRequiresBiometrics
+        case showStatusBar, sidebarEdge, layout, focusRequiresBiometrics, barFill
     }
 
     init(from decoder: Decoder) throws {
@@ -94,6 +96,7 @@ struct ZenSettings: Codable, Equatable, Sendable {
         sidebarEdge =
             try c.decodeIfPresent(SidebarEdge.self, forKey: .sidebarEdge) ?? fallback.sidebarEdge
         layout = try c.decodeIfPresent(BrowserLayout.self, forKey: .layout) ?? fallback.layout
+        barFill = try c.decodeIfPresent(BarFill.self, forKey: .barFill) ?? fallback.barFill
         focusRequiresBiometrics =
             try c.decodeIfPresent(Bool.self, forKey: .focusRequiresBiometrics)
             ?? fallback.focusRequiresBiometrics

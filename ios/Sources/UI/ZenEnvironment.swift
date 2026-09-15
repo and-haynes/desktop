@@ -152,3 +152,127 @@ struct ZenPressStyle: ButtonStyle {
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
+
+// MARK: - The floating bar's backing (#00891)
+
+/// `GlassEffectContainer` is what lets neighbouring glass elements blend into
+/// one another instead of stacking two separate lenses — the find bar and the
+/// URL bar sit 8pt apart and should read as one piece of glass. A no-op below
+/// iOS 26, where there is no Liquid Glass to contain.
+struct ZenGlassContainer<Content: View>: View {
+    var spacing: CGFloat = 8
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        if #available(iOS 26.0, *) {
+            GlassEffectContainer(spacing: spacing) { content() }
+        } else {
+            content()
+        }
+    }
+}
+
+/// Puts the chosen backing behind a bar. `transparent` is the only one that
+/// still depends on context: a floating bar gets an outline and glyph shadows
+/// (which is what the full-screen layout shipped with), and a bar in the
+/// layout flow keeps Zen's ordinary chrome surface.
+struct ZenBarFill: ViewModifier {
+    let fill: BarFill
+    let palette: ZenPalette
+    var isFloating: Bool = true
+    var radius: CGFloat = ZenMetrics.rowRadius
+    /// Glass that can be tapped should respond to the touch; glass that is
+    /// only a backdrop should not.
+    var isInteractive: Bool = true
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        switch fill {
+        case .liquidGlass:
+            glass(content)
+        case .matte:
+            matte(content)
+        case .transparent:
+            transparent(content)
+        }
+    }
+
+    /// Light enough that the page still refracts through the lens, heavy
+    /// enough that the palette's glyph colour keeps its contrast whatever is
+    /// behind it.
+    private var glassTint: Color { palette.urlbarBackground.withAlpha(0.5).color }
+
+    @ViewBuilder
+    private func glass(_ content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            // Tinted with the chrome surface rather than left plain: Liquid
+            // Glass takes its lightness from whatever is behind it, and the
+            // bar's glyphs are coloured from the *space palette*, which does
+            // not move. Untinted, a dark-themed space over a white page put
+            // near-white glyphs on a near-white lens.
+            content
+                .glassEffect(
+                    isInteractive
+                        ? Glass.regular.tint(glassTint).interactive()
+                        : Glass.regular.tint(glassTint),
+                    in: Capsule())
+        } else {
+            // No Liquid Glass below iOS 26. The honest substitute is the
+            // material the sidebar and the omnibox box already use, in the same
+            // capsule, so the choice still changes the bar's shape and weight.
+            content
+                .background { Capsule().fill(.ultraThinMaterial) }
+                .overlay {
+                    Capsule().fill(palette.urlbarBackground.withAlpha(0.45).color)
+                        .allowsHitTesting(false)
+                }
+                .overlay {
+                    Capsule().strokeBorder(palette.borderContrast.color, lineWidth: 0.5)
+                }
+                .clipShape(Capsule())
+                .shadow(color: .black.opacity(palette.isDark ? 0.5 : 0.28), radius: 10, y: 3)
+        }
+    }
+
+    private func matte(_ content: Content) -> some View {
+        let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+        return content
+            // Opaque: `urlbarBackground` carries alpha for the frosted look, so
+            // it is composited over the chrome base first. The page must not
+            // show through at all — that is the whole point of Matte.
+            .background { shape.fill(palette.mainBrowserBackground.color) }
+            .background { shape.fill(palette.urlbarBackground.color) }
+            .overlay { shape.strokeBorder(palette.borderContrast.color, lineWidth: 0.5) }
+            .clipShape(shape)
+            .shadow(color: .black.opacity(palette.isDark ? 0.5 : 0.3), radius: 10, y: 3)
+    }
+
+    @ViewBuilder
+    private func transparent(_ content: Content) -> some View {
+        if isFloating {
+            content
+                .overlay {
+                    RoundedRectangle(cornerRadius: radius, style: .continuous)
+                        .strokeBorder(palette.text.withAlpha(0.28).color, lineWidth: 0.5)
+                }
+                // The page behind can be any colour, so the glyphs get their
+                // own shadow rather than relying on a backdrop.
+                .shadow(color: .black.opacity(0.45), radius: 4, y: 1)
+                .shadow(color: .black.opacity(0.25), radius: 12, y: 4)
+        } else {
+            content.zenSurface(palette, radius: radius, elevated: true)
+        }
+    }
+}
+
+extension View {
+    func zenBarFill(
+        _ fill: BarFill, palette: ZenPalette, isFloating: Bool = true,
+        radius: CGFloat = ZenMetrics.rowRadius, isInteractive: Bool = true
+    ) -> some View {
+        modifier(
+            ZenBarFill(
+                fill: fill, palette: palette, isFloating: isFloating, radius: radius,
+                isInteractive: isInteractive))
+    }
+}

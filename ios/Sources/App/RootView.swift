@@ -377,16 +377,20 @@ struct RootView: View {
     }
 
     private var bottomBar: some View {
-        VStack(spacing: 8) {
-            if state.isFindBarVisible {
-                FindBar(state: state, pool: pool.pool)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-            }
-            if !toolbarHidden {
-                OmniboxPill(
-                    state: state, isFloating: layoutMode.barFloats
-                ) { shareItem = state.activeTab?.url }
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+        // One container for both bars: two pieces of glass 8pt apart should
+        // read as one lens, not as two stacked ones.
+        ZenGlassContainer(spacing: 8) {
+            VStack(spacing: 8) {
+                if state.isFindBarVisible {
+                    FindBar(state: state, pool: pool.pool)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+                if !toolbarHidden {
+                    OmniboxPill(
+                        state: state, isFloating: layoutMode.barFloats
+                    ) { shareItem = state.activeTab?.url }
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
             }
         }
         .padding(.horizontal, 10)

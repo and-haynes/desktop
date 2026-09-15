@@ -9,16 +9,16 @@
 import Foundation
 import WebKit
 
-/// `WKContentRuleListStore.default()` is main-actor isolated (and `cached` is
-/// shared mutable state), so the whole enum is pinned to the main actor rather
-/// than reaching across from a nonisolated context.
-@MainActor
 enum ContentBlocker {
     /// Bumping this invalidates WebKit's compiled cache. Change it whenever the
     /// JSON changes, or an old install keeps running the old rules forever.
     static let identifier = "zen.focus.blocklist.v1"
 
-    private static var cached: WKContentRuleList?
+    /// `WKContentRuleListStore.default()` is main-actor isolated, and this is
+    /// shared mutable state, so the compiled list and the one function that
+    /// touches it live on the main actor. Reading the bundled JSON does not,
+    /// so the tests can still call it directly.
+    @MainActor private static var cached: WKContentRuleList?
 
     enum CompileError: Error, LocalizedError {
         case resourceMissing
@@ -55,6 +55,7 @@ enum ContentBlocker {
     /// Returns nil rather than throwing at the call site — a blocklist that
     /// will not compile should degrade to "no blocking", not "no browser".
     @discardableResult
+    @MainActor
     static func focusRuleList() async -> WKContentRuleList? {
         if let cached { return cached }
         let store = WKContentRuleListStore.default()
@@ -83,6 +84,7 @@ enum ContentBlocker {
 
     /// Drop the in-process handle. WebKit keeps its own compiled cache, so this
     /// is only about not holding the object across an erase.
+    @MainActor
     static func forgetCachedList() {
         cached = nil
     }

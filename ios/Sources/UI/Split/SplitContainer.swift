@@ -64,8 +64,13 @@ struct SplitContainer<Pane: View>: View {
         let showsOwnBar = id == secondaryID && !secondaryBarHidden
         VStack(spacing: 4) {
             if showsOwnBar {
-                OmniboxPill(state: state, tabID: id, isSecondaryPane: true) {}
-                    .transition(.move(edge: .top).combined(with: .opacity))
+                ZenGlassContainer(spacing: 4) {
+                    OmniboxPill(
+                        state: state, tabID: id, isSecondaryPane: true,
+                        isFloating: state.settings.layout.barFloats
+                    ) {}
+                }
+                .transition(.move(edge: .top).combined(with: .opacity))
             }
             paneContent(id, isFocused: isFocused)
         }
