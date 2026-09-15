@@ -84,9 +84,16 @@ def ensure_certificate():
     run(["openssl", "req", "-newkey", "rsa:2048", "-nodes",
          "-keyout", "leaf.key", "-out", "leaf.csr",
          "-subj", "/CN=zen.localtest.me"])
+    # 397 days, not the CA's ten. Apple's TLS policy rejects a *leaf* whose
+    # validity exceeds 398 days outright, and it does so inside the security
+    # framework — before any `URLSessionDelegate` is consulted, so no amount of
+    # "allow a self-signed certificate" in an app can override it. A ten-year
+    # leaf therefore fails every URLSession request with a bare
+    # NSURLErrorSecureConnectionFailed while still loading fine in a WKWebView,
+    # which is a deeply confusing pair of symptoms to debug. (#008AD)
     run(["openssl", "x509", "-req", "-in", "leaf.csr", "-CA", "ca.pem",
          "-CAkey", "ca.key", "-CAcreateserial", "-out", "leaf.pem",
-         "-days", "3650", "-sha256", "-extfile", "ext.cnf"])
+         "-days", "397", "-sha256", "-extfile", "ext.cnf"])
     with open(server_pem, "w") as out:
         for part in ("leaf.pem", "leaf.key"):
             with open(os.path.join(CERT_DIR, part)) as handle:
