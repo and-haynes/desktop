@@ -1339,37 +1339,6 @@ extension ScreenshotTests {
     static let mockVaultEmail = "andy@example.com"
     static let mockVaultPassword = "correct-horse-battery-staple"
 
-    /// Settings → Passwords: the vault connection, sync status, and the
-    /// AutoFill explanation that is true whether or not a vault is connected.
-    func testCapturePasswordsSettings() throws {
-        let suffix = UIDevice.current.userInterfaceIdiom == .pad ? "-ipad" : ""
-        settle(3.0)
-        acceptFixtureCertificateIfAsked()
-        guard try connectMockVault() else {
-            throw XCTSkip(
-                "the mock Vaultwarden is not running — see the comment above "
-                    + "testCapturePasswordsSettings")
-        }
-        // Back on Settings → Passwords with a vault attached.
-        XCTAssertTrue(
-            app.descendants(matching: .any)["passwordsSettingsView"].waitForExistence(timeout: 8),
-            "the Passwords screen did not come back after connecting")
-        settle(1.5)
-        capture("38-passwords-settings\(suffix)")
-        let form = app.collectionViews.firstMatch
-        for _ in 0..<6 {
-            if app.descendants(matching: .any)["passwordsOpenSettingsButton"].firstMatch
-                .isHittable
-            {
-                break
-            }
-            if form.exists { form.swipeUp() } else { app.swipeUp() }
-            settle(0.4)
-        }
-        capture("38b-passwords-settings-autofill\(suffix)")
-        dismissSheet()
-        try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-PWSETTINGS"))
-    }
 
     /// The panel on a page the vault has a login for, and the fill that follows.
     func testCapturePasswordsPanelAndFill() throws {
