@@ -177,6 +177,7 @@ struct RootView: View {
                 view.scrollView.setContentOffset(CGPoint(x: 0, y: top), animated: true)
             }
             .modifier(ExtensionBridge(state: state, host: extensions))
+            .modifier(ExtensionOpenURLBridge(state: state, host: extensions, palette: palette))
     }
 
     private var window: some View {

@@ -120,7 +120,12 @@ final class ExtensionStore: ObservableObject {
 
     /// `.appex`/`.bundle` layouts put `manifest.json` under `Resources`; a
     /// plain unpacked extension has it at the top.
-    static func resolvePackageRoot(_ directory: URL) -> URL {
+    ///
+    /// `nonisolated` because it reads the filesystem and touches nothing on the
+    /// store — `ExtensionInbox` asks it whether a folder the Share sheet handed
+    /// over is an extension at all, before there is any reason to be on the
+    /// main actor.
+    nonisolated static func resolvePackageRoot(_ directory: URL) -> URL {
         let fm = FileManager.default
         if fm.fileExists(atPath: directory.appendingPathComponent("manifest.json").path) {
             return directory
