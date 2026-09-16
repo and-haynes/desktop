@@ -792,6 +792,18 @@ way to tell "blocked" from "failed": against a hostname that does not resolve,
 every probe fails and the test passes whether or not the extension does
 anything.
 
+One thing neither the app nor the test can ask for: **when the rules are
+live**. WebKit compiles a ruleset asynchronously once the context has loaded,
+and publishes no signal for it — `WKWebExtensionContext` has `loaded` and
+nothing about its rules — so `isLoaded` goes true some time before the first
+request is actually blocked. A probe behind a fixed sleep therefore measures
+how busy the machine is rather than what the browser does, and did: both
+blocking tests passed and failed on the same commit within ten minutes of each
+other. They now load the probe page again, on a freshly built view, until it
+blocks or twelve passes have gone by, and report the pass count when they fail
+so a real regression still reads as one. On an idle machine the first pass
+blocks and the retry costs nothing.
+
 ### Tabs
 
 `tabs.query`, `tabs.create`, `tabs.onUpdated` and the rest are answered out of
@@ -869,8 +881,19 @@ Four routes, all landing on the same install sheet:
 
 - **Files** — an `.xpi`, `.crx` or `.zip`, or an unpacked folder with a
   `manifest.json` in it.
-- **The Share sheet** — Zen declares the XPI and CRX types, so an extension
-  downloaded in Safari can be handed straight over.
+- **The Share sheet**, and Files' "Open With" — Zen declares the XPI and CRX
+  types, so an extension downloaded in Safari can be handed straight over.
+  Declaring the types is only half of the job: the system then hands the app a
+  file URL, and an app that does not answer that appears in the sheet, is
+  chosen, launches, and does nothing. `ExtensionOpenURLBridge` answers it and
+  lands on the same install sheet as every other route — scan, then ask, then
+  install, which matters *more* for a package that arrived from outside the app
+  rather than less. Since Zen never edits the file it was handed
+  (`LSSupportsOpeningDocumentsInPlace` is false), what arrives is a copy in
+  `Documents/Inbox` that nothing in the system ever deletes again: Zen deletes
+  it once it has been read, including when it turned out not to be an extension
+  at all. A file picked in Files is somebody's own document and is left exactly
+  where it is.
 - **A pasted addons.mozilla.org listing** — resolved to the current version's
   XPI through Mozilla's public v5 API, rather than by scraping a page that gets
   redesigned twice a year. A direct link to a package file is used as it
