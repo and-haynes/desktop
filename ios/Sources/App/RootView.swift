@@ -405,6 +405,11 @@ struct RootView: View {
                 SecurityDetailSheet(detail: detail, state: state)
                     .environment(\.zenPalette, palette)
             }
+            // Page-level behaviours that need both the pool and a store — page
+            // zoom so far (#008B7). Its own modifier for the same reason the rest
+            // of this chain is split into helpers: `body` is already as long an
+            // expression as the type checker will solve.
+            .modifier(PageZoomBridge(state: state, pool: pool.pool))
             .background { keyboardShortcuts }
     }
 
