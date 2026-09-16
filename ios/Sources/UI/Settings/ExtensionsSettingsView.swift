@@ -82,7 +82,9 @@ struct ExtensionsSettingsView: View {
             if !store.extensions.isEmpty { installedSection }
             addSection
             linkSection
-            fixturesSection
+            // Only for the UI test runner (#008DB): these paint a banner across
+            // every page, and a real person has no reason to want that.
+            if ExtensionStore.allowsBundledFixtures { fixturesSection }
             safariSection
         }
         .navigationTitle("Extensions")

@@ -43,13 +43,17 @@ final class ExtensionStore: ObservableObject {
     let root: URL
     private let file: JSONFileStore<[InstalledExtension]>
 
-    init(file: JSONFileStore<[InstalledExtension]>? = nil, root: URL? = nil) {
+    init(
+        file: JSONFileStore<[InstalledExtension]>? = nil, root: URL? = nil,
+        allowsBundledFixtures: Bool = ExtensionStore.allowsBundledFixtures
+    ) {
         self.file = file ?? JSONFileStore<[InstalledExtension]>(name: "extensions.json")
         self.root =
             root ?? JSONFileStore<[InstalledExtension]>.defaultDirectory
             .appendingPathComponent("Extensions", isDirectory: true)
         extensions = self.file.load() ?? []
         pruneMissingPackages()
+        if !allowsBundledFixtures { evictBundledFixtures() }
         clearStaging()
     }
 
@@ -307,15 +311,44 @@ final class ExtensionStore: ObservableObject {
         file.save(extensions)
     }
 
-    // MARK: The app's own fixtures
+    // MARK: The test fixtures
 
-    /// The two extensions shipped inside the app, used as a smoke test: one
-    /// injects a badge through a content script, one blocks a request through
-    /// `declarativeNetRequest`. They are the same directories the unit tests
-    /// load — there is exactly one copy of each in the repository, referenced
-    /// by both targets, so a fixture that passes the tests is the fixture that
-    /// gets installed.
+    /// The two fixture extensions the UI test suite installs to prove the
+    /// pipeline end to end: one paints a purple bar across every page from a
+    /// content script, one cancels a request through `declarativeNetRequest`.
+    /// They are the same directories the unit tests load — one copy in the
+    /// repository, referenced by both targets.
+    ///
+    /// They are *test rigs*, not features. They used to be offered from
+    /// Settings as "install the two test extensions", and someone who tapped
+    /// that out of curiosity got a banner reading ZEN EXTENSION ACTIVE — BLOCKED
+    /// across the top of every page from then on, with nothing to say where it
+    /// came from (#008DB). So now they only exist for a process launched with
+    /// `-zenTestExtensions` — which is the UI test runner and nobody else —
+    /// and a store that loads without that argument removes any it finds.
     static let bundledFixtureNames = ["zen-badge", "zen-blocker"]
+
+    /// The launch argument that makes the fixtures reachable at all.
+    static let testExtensionsArgument = "-zenTestExtensions"
+
+    /// `nonisolated` because it is the default for an `init` argument, which
+    /// is evaluated before there is an actor to be on.
+    nonisolated static var allowsBundledFixtures: Bool {
+        ProcessInfo.processInfo.arguments.contains(testExtensionsArgument)
+    }
+
+    /// The migration for a store that already holds the fixtures: an app that
+    /// updates past the Settings button must not keep painting the banner it
+    /// no longer offers. Removes the record *and* the package, the same as a
+    /// deliberate uninstall, so `ExtensionHost` has nothing left to load.
+    private func evictBundledFixtures() {
+        let fixtures = extensions.filter {
+            if case .bundled = $0.source { return true }
+            return false
+        }
+        guard !fixtures.isEmpty else { return }
+        for record in fixtures { remove(record.id) }
+    }
 
     static func bundledFixtureURL(_ name: String, bundle: Bundle = .main) -> URL? {
         if let url = bundle.url(forResource: name, withExtension: nil), url.hasDirectoryPath {

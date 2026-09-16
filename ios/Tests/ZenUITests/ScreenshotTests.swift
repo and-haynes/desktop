@@ -2299,6 +2299,13 @@ extension ScreenshotTests {
     /// an extension that appears in a list and does nothing is exactly the
     /// failure this whole feature is trying to avoid.
     func testTheBuiltInExtensionsActuallyRunInAPage() throws {
+        // The fixtures are test rigs, reachable only when the app is told it
+        // is under test (#008DB) — a store launched without the argument
+        // evicts them, and Settings does not offer them.
+        app.terminate()
+        app = XCUIApplication()
+        app.launchArguments += ["-zenTestExtensions"]
+        app.launch()
         settle(5.0)
         XCTAssertTrue(openExtensionsSettings(), "Settings has no Extensions row")
 

@@ -24,11 +24,15 @@ final class ExtensionStoreTests: XCTestCase {
         ExtensionFixtures.cleanUp(scratch)
     }
 
-    private func makeStore() -> ExtensionStore {
+    /// `allowsBundledFixtures` defaults to what a shipped app sees — no test
+    /// argument — so the eviction (#008DB) is the behaviour under test here,
+    /// not something the test runner's own launch arguments decide.
+    private func makeStore(allowsBundledFixtures: Bool = false) -> ExtensionStore {
         ExtensionStore(
             file: JSONFileStore<[InstalledExtension]>(
                 url: scratch.appendingPathComponent("extensions.json")),
-            root: scratch.appendingPathComponent("Extensions", isDirectory: true))
+            root: scratch.appendingPathComponent("Extensions", isDirectory: true),
+            allowsBundledFixtures: allowsBundledFixtures)
     }
 
     // MARK: Preparing
@@ -230,6 +234,40 @@ final class ExtensionStoreTests: XCTestCase {
         XCTAssertEqual(pattern, "*://news.example.com/*")
         XCTAssertEqual(InstalledExtension.hostLabel(pattern), "news.example.com")
         XCTAssertNil(InstalledExtension.hostLabel("<all_urls>"))
+    }
+
+    // MARK: The test fixtures (#008DB)
+
+    /// The migration for a phone that installed the fixtures from the
+    /// Settings button that used to offer them: a store that is not under
+    /// test evicts them at load, package and all, so the banner stops at the
+    /// next launch without anyone having to find where it came from.
+    func testAStoreNotUnderTestEvictsTheBundledFixtures() throws {
+        let underTest = makeStore(allowsBundledFixtures: true)
+        let prepared = try underTest.prepare(
+            directory: try ExtensionFixtures.directory("zen-badge"),
+            source: .bundled(name: "zen-badge"))
+        let record = try underTest.commit(
+            prepared, grantedPermissions: [], grantedHostPatterns: [])
+        XCTAssertEqual(
+            makeStore(allowsBundledFixtures: true).extensions.map(\.id), [record.id],
+            "under test the fixture survives a reload")
+
+        let shipped = makeStore()
+        XCTAssertTrue(shipped.extensions.isEmpty, "outside the test runner the fixture is evicted")
+        XCTAssertFalse(
+            FileManager.default.fileExists(atPath: shipped.directory(for: record.id).path),
+            "eviction removes the package, not just the row")
+        XCTAssertTrue(
+            makeStore(allowsBundledFixtures: true).extensions.isEmpty,
+            "eviction is written back, not just filtered in memory")
+    }
+
+    /// Only the fixtures go. The same package installed from a file is
+    /// something the person chose, and it stays.
+    func testEvictionLeavesOrdinaryInstallsAlone() throws {
+        _ = try storeWithBadge()
+        XCTAssertEqual(makeStore().extensions.count, 1)
     }
 
     // MARK: Plumbing
