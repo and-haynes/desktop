@@ -2384,23 +2384,37 @@ extension ScreenshotTests {
             settle(3.0)
         }
 
-        settle(2.0)
+        // The link field leaves the keyboard up over half the screen.
+        if app.keyboards.element.exists {
+            app.buttons["Return"].firstMatch.tap()
+            settle(0.8)
+        }
+        app.swipeDown()
+        settle(1.5)
         capture("49-extensions-list")
 
         closeSettings()
-        navigate(to: "https://en.wikipedia.org/wiki/Web_browser")
-        settle(8.0)
+        // A page that *reports* what was blocked, rather than one where the
+        // absence of an advert has to be taken on trust. Wikipedia carries no
+        // ads at all, which made the first version of this screenshot a
+        // picture of nothing in particular.
+        navigate(to: "https://d3ward.github.io/toolz/adblock.html")
+        settle(12.0)
         capture("51-extension-blocking")
 
         XCTAssertTrue(
             tapMenuItem(matching: "label CONTAINS[c] 'Extensions'"),
             "the More menu carries no Extensions entry")
         settle(1.5)
+        // uBO Lite, not Dark Reader: Dark Reader is manifest v2 with a
+        // persistent background page, which iOS refuses outright — which the
+        // compatibility report says before the install, and the list says
+        // after it.
         let action = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'Dark Reader'")).firstMatch
+            NSPredicate(format: "label CONTAINS[c] 'uBO'")).firstMatch
         if action.waitForExistence(timeout: 8) {
             action.tap()
-            settle(4.0)
+            settle(5.0)
         }
         capture("50-extension-popup")
         try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-REALEXT"))

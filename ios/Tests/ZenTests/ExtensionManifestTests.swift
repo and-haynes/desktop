@@ -134,6 +134,20 @@ final class ExtensionManifestTests: XCTestCase {
         XCTAssertEqual(manifest.name, "extension name")
     }
 
+    /// A *description* that is only a placeholder is dropped rather than
+    /// de-underscored: "extension description" under the real icon and the
+    /// real version number reads like a bug, which is what Dark Reader 4.9.131
+    /// looked like before this.
+    func testAnMSGPlaceholderDescriptionIsDroppedRatherThanShown() throws {
+        let manifest = try parse(
+            """
+            {"manifest_version": 2, "name": "Dark Reader", "version": "4.9.131",
+             "description": "__MSG_description__"}
+            """)
+        XCTAssertNil(manifest.descriptionText)
+        XCTAssertEqual(manifest.name, "Dark Reader")
+    }
+
     func testABareStringDefaultIconIsAccepted() throws {
         let manifest = try parse(
             #"{"manifest_version": 3, "name": "A", "version": "1", "icons": "icon.png"}"#)

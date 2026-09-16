@@ -188,7 +188,7 @@ struct ExtensionManifest: Equatable, Sendable {
             manifestVersion: manifestVersion,
             name: name,
             version: version,
-            descriptionText: Self.localisedString(root["description"]),
+            descriptionText: Self.localisedString(root["description"], placeholderFallback: false),
             permissions: rawPermissions.filter { !Self.isHostPattern($0) },
             optionalPermissions: rawOptional.filter { !Self.isHostPattern($0) },
             hostPermissions: Self.unique(hosts),
@@ -239,13 +239,18 @@ struct ExtensionManifest: Equatable, Sendable {
     }
 
     /// A name or description may be an `__MSG_name__` placeholder resolved from
-    /// `_locales`. We do not run the localisation machinery — WebKit does, and
-    /// its `displayName` is what the installed list shows. For the install
-    /// sheet the placeholder is stripped to something readable rather than
-    /// shown raw.
-    private static func localisedString(_ any: Any?) -> String? {
+    /// `_locales`, which we do not run — WebKit does, once the package is
+    /// loaded, and the install sheet is shown before that.
+    ///
+    /// `placeholderFallback` is the difference between the two callers. A name
+    /// is mandatory, so `__MSG_extension_name__` is stripped to something
+    /// legible rather than left raw. A description is optional, and
+    /// "extension description" under Dark Reader's own icon is worse than no
+    /// description at all — that is a real one, seen on 4.9.131.
+    private static func localisedString(_ any: Any?, placeholderFallback: Bool = true) -> String? {
         guard let raw = string(any) else { return nil }
         guard raw.hasPrefix("__MSG_"), raw.hasSuffix("__") else { return raw }
+        guard placeholderFallback else { return nil }
         let key = raw.dropFirst(6).dropLast(2)
         return key.isEmpty ? raw : String(key).replacingOccurrences(of: "_", with: " ")
     }
