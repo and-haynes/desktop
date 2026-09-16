@@ -2384,9 +2384,19 @@ extension ScreenshotTests {
             settle(3.0)
         }
 
-        // The link field leaves the keyboard up over half the screen.
+        // The link field leaves the keyboard up over half the screen. Which key
+        // ends it is not something to assert: the field is `.keyboardType(.URL)`
+        // with `.submitLabel(.go)`, so it says **Go**, and a run with a hardware
+        // keyboard attached has no software keyboard at all. Take whichever key
+        // is there and carry on if none is — the screenshot below is the point,
+        // not the keyboard.
         if app.keyboards.element.exists {
-            app.buttons["Return"].firstMatch.tap()
+            for label in ["Go", "Return", "return", "Done"] {
+                let key = app.keyboards.buttons[label].firstMatch
+                guard key.exists else { continue }
+                key.tap()
+                break
+            }
             settle(0.8)
         }
         app.swipeDown()
