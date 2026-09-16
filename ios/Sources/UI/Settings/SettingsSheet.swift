@@ -117,7 +117,7 @@ struct SettingsSheet: View {
                         .disabled(!state.settings.compactModeEnabled)
                     VStack(alignment: .leading, spacing: 2) {
                         HStack {
-                            Text("Hide when still")
+                            Text("Initial hide delay")
                             Spacer()
                             Text(String(format: "%.1fs", state.settings.compactHideDelay))
                                 .foregroundStyle(.secondary)
@@ -131,10 +131,10 @@ struct SettingsSheet: View {
                 } footer: {
                     Text(
                         "Zen keeps hiding the sidebar and hiding the toolbar as separate "
-                            + "settings. The bar falls a step at a time once the page is "
-                            + "still: the full bar becomes a pill showing where you are, and "
-                            + "then goes. Scrolling brings the pill back; tapping it opens "
-                            + "the full bar again. Swipe up from either to reach the tabs.")
+                            + "settings. The delay hides the chrome when compact mode starts. "
+                            + "Tap or pull the grabber to reveal the toolbar; it stays until "
+                            + "you tap or scroll the page. An opened sidebar stays until "
+                            + "you dismiss it or choose a tab.")
                 }
 
                 if UIDevice.current.userInterfaceIdiom == .pad {

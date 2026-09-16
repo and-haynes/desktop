@@ -1,11 +1,8 @@
 //  CompactBarTests.swift
 //  Compact mode's two states, driven on a clock the test owns (#008AF, #008DC).
 //
-//  The countdown is the whole feature, so waiting for it in real time would
-//  make this suite slower than every other test put together and flakier than
-//  all of them. `ManualClock` stands in for `Task.sleep`: nothing fires until
-//  the test says so, which also means a test can assert that something did
-//  *not* fire.
+//  The initial hide countdown runs on a manual clock. Deliberate reveals
+//  cancel it, so no real-time wait is needed to prove they stay open.
 
 import XCTest
 
@@ -122,10 +119,9 @@ final class CompactBarTests: XCTestCase {
 
         bar.grabberRevealed()
         XCTAssertEqual(bar.phase, .expanded)
-        // And it is not permanent — it falls on the same timer.
-        XCTAssertTrue(clock.hasPending)
-        clock.fire()
-        XCTAssertEqual(bar.phase, .hidden)
+        XCTAssertFalse(clock.hasPending, "a deliberate reveal must not time out")
+        XCTAssertFalse(clock.fire())
+        XCTAssertEqual(bar.phase, .expanded)
     }
 
     func testUsingTheBarKeepsIt() {
@@ -136,7 +132,9 @@ final class CompactBarTests: XCTestCase {
             bar.barInteracted()
             XCTAssertEqual(bar.phase, .expanded)
         }
-        clock.fire()
+        XCTAssertFalse(clock.fire())
+        XCTAssertEqual(bar.phase, .expanded)
+        bar.pageDidScroll()
         XCTAssertEqual(bar.phase, .hidden)
     }
 
@@ -159,8 +157,12 @@ final class CompactBarTests: XCTestCase {
         bar.grabberRevealed()
         XCTAssertEqual(bar.phase, .expanded)
 
-        // still → hidden
-        clock.fire()
+        // Deliberate reveal survives idle time and late scroll-end events.
+        bar.scrollDidEnd()
+        XCTAssertFalse(clock.fire())
+        XCTAssertEqual(bar.phase, .expanded)
+
+        bar.pageTapped()
         XCTAssertEqual(bar.phase, .hidden)
     }
 
@@ -197,7 +199,7 @@ final class CompactBarTests: XCTestCase {
 
     /// The overlay covers the bar, so a countdown that runs behind it can only
     /// do harm: it buzzes a hide haptic at someone typing a search.
-    func testACoveredPagePausesTheStillTimer() {
+    func testACoveredPageCancelsTheStillTimer() {
         let bar = makeController()
         bar.coveredDidChange(true)
         XCTAssertEqual(bar.phase, .expanded)
@@ -206,11 +208,11 @@ final class CompactBarTests: XCTestCase {
         haptics = []
         bar.coveredDidChange(false)
         XCTAssertEqual(haptics, [], "closing the omnibox should not buzz")
-        XCTAssertTrue(clock.hasPending, "the timer should resume once the omnibox is gone")
+        XCTAssertFalse(clock.hasPending, "closing the omnibox must not time out the bar")
     }
 
     /// You opened the omnibox from a hidden bar; you get the whole bar back
-    /// when you dismiss it, and it falls on the usual timer.
+    /// when you dismiss it, and it stays until you return to the page.
     func testUncoveringHandsBackTheWholeBar() {
         let bar = makeController()
         clock.fire()
@@ -220,7 +222,43 @@ final class CompactBarTests: XCTestCase {
         XCTAssertEqual(bar.phase, .expanded)
         bar.coveredDidChange(false)
         XCTAssertEqual(bar.phase, .expanded)
-        clock.fire()
+        XCTAssertFalse(clock.fire())
+        XCTAssertEqual(bar.phase, .expanded)
+    }
+
+    func testPageEventsBehindAnOpenDrawerCannotHideChrome() {
+        let bar = makeController()
+        bar.coveredDidChange(true)
+        for _ in 0..<4 {
+            bar.pageDidScroll()
+            bar.scrollDidEnd()
+            bar.pageTapped()
+            XCTAssertFalse(clock.fire())
+            XCTAssertEqual(bar.phase, .expanded)
+        }
+        bar.coveredDidChange(false)
+        bar.pageDidScroll()
+        XCTAssertEqual(bar.phase, .hidden, "scrolling the uncovered page dismisses chrome")
+    }
+
+    func testEnablingCompactModeWithAnOverlayAlreadyOpenKeepsChrome() {
+        let bar = makeController(enabled: false)
+        bar.coveredDidChange(true)
+        bar.isEnabled = true
+        XCTAssertFalse(clock.fire())
+        bar.pageDidScroll()
+        XCTAssertEqual(bar.phase, .expanded)
+        bar.coveredDidChange(false)
+        XCTAssertFalse(clock.hasPending)
+    }
+
+    func testReenteringCompactModeStartsANewInitialCountdown() {
+        let bar = makeController()
+        bar.grabberRevealed()
+        XCTAssertFalse(clock.hasPending)
+        bar.isEnabled = false
+        bar.isEnabled = true
+        XCTAssertTrue(clock.fire())
         XCTAssertEqual(bar.phase, .hidden)
     }
 

@@ -199,11 +199,13 @@ final class ScreenshotTests: XCTestCase {
     }
 
     /// Open the overflow menu and tap the first item whose label matches.
+    /// Revealing compact chrome keeps it open while the menu is used.
     @discardableResult
     func tapMenuItem(matching predicate: String) -> Bool {
         revealChrome()
-        guard moreButton.waitForExistence(timeout: 8) else { return false }
-        moreButton.tap()
+        let more = moreButton
+        guard more.waitForExistence(timeout: 4) else { return false }
+        more.tap()
         settle(1.2)
         var item = app.buttons.matching(NSPredicate(format: predicate)).firstMatch
         // The overflow menu is taller than the screen and scrolls; an item
@@ -300,7 +302,8 @@ final class ScreenshotTests: XCTestCase {
         XCTAssertTrue(
             tapMenuItem(matching: "label CONTAINS[c] 'Compact Mode'"),
             "compact mode menu item missing")
-        settle(9.0)
+        app.webViews.firstMatch.swipeUp()
+        settle(1.0)
 
         let grabber = app.buttons["Show toolbar"]
         XCTAssertTrue(grabber.waitForExistence(timeout: 3), "the grabber never appeared")
@@ -337,7 +340,9 @@ final class ScreenshotTests: XCTestCase {
             app.textFields["omniboxField"].waitForExistence(timeout: 8),
             "tapping the expanded bar's URL area did not open the omnibox")
         app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.06)).tap()
-        settle(1.0)
+        settle(6.0)
+        XCTAssertTrue(addressBar.exists && addressBar.isHittable,
+                      "closing the omnibox must preserve the deliberately revealed bar")
 
         // Leave compact mode, or the setting persists into the next launch and
         // every test after this one starts with no bar to drive. This is why

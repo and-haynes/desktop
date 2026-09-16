@@ -168,6 +168,7 @@
 		ABDBC05D532ED3EB5D93AD6C /* SyncDiagnosticsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A26034667026B42F78A6307 /* SyncDiagnosticsTests.swift */; };
 		ACCF847DDF9D5B32BBC96A28 /* CSSColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1663DBDEE84BFB97790F0D61 /* CSSColor.swift */; };
 		ACF0FE5316E37CB83E7E0D24 /* LocalServiceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B45A1CC7FF5A2C483F051EE /* LocalServiceStore.swift */; };
+		AD1B934E166E1FE449E0D2F9 /* CompactModeUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 714E762ADB17B712E94AE0EE /* CompactModeUITests.swift */; };
 		AD4A6BAB18A3C84ADF14AEFF /* TOTP.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3B4398702F5EF406B19B69A /* TOTP.swift */; };
 		AEF649A69239786AB1D0BD15 /* RecentColorsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C98CBB864CCA46E7EE6DDAAE /* RecentColorsStore.swift */; };
 		B01082CBFCF4CB6B674653A2 /* ExtensionInbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB3FF3C5CF26969F5F38BC59 /* ExtensionInbox.swift */; };
@@ -376,6 +377,7 @@
 		6EA1F9EE1708D3F0066F4A13 /* VideoPopOutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoPopOutTests.swift; sourceTree = "<group>"; };
 		703EAEDBD81798945296A46F /* ReaderExtractionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderExtractionTests.swift; sourceTree = "<group>"; };
 		70871EF5ED7E073C4BA499AF /* SyncShadow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncShadow.swift; sourceTree = "<group>"; };
+		714E762ADB17B712E94AE0EE /* CompactModeUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompactModeUITests.swift; sourceTree = "<group>"; };
 		73ACFDC6C2009EE241695476 /* DomainMatchingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DomainMatchingTests.swift; sourceTree = "<group>"; };
 		7688B6E1EA8ADB19B677A426 /* SpaceEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceEditorView.swift; sourceTree = "<group>"; };
 		773B35E2BE0EA1C9632F70C5 /* MockSyncServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockSyncServer.swift; sourceTree = "<group>"; };
@@ -774,6 +776,7 @@
 		8214EE5F11A2AD81F0099264 /* ZenUITests */ = {
 			isa = PBXGroup;
 			children = (
+				714E762ADB17B712E94AE0EE /* CompactModeUITests.swift */,
 				439FB91CDAB39BD7F4A0FB00 /* ScreenshotTests.swift */,
 			);
 			path = ZenUITests;
@@ -1402,6 +1405,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AD1B934E166E1FE449E0D2F9 /* CompactModeUITests.swift in Sources */,
 				6CB635ECD2442985E99CE502 /* ScreenshotTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

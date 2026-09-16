@@ -26,7 +26,7 @@ struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var shareItem: URL?
-    /// Compact mode's three-state machine (#008AF). Owned here because only
+    /// Compact mode's two-state machine. Owned here because only
     /// the root sees the page-scroll notifications and the grabber at once.
     @StateObject private var compactBar = CompactBarController()
     /// The page-stepping buttons' own show/hide machine (#008B9). Owned here
@@ -472,6 +472,7 @@ struct RootView: View {
     }
 
     private var showPadSidebar: Bool {
+        if state.isSidebarVisible { return true }
         guard state.settings.sidebarPinnedOnPad else { return state.isSidebarVisible }
         return !sidebarHidden
     }
@@ -626,20 +627,26 @@ struct RootView: View {
                     FindBar(state: state, pool: pool.pool)
                         .transition(.move(edge: edge).combined(with: .opacity))
                 }
-                if !barHidden {
-                    OmniboxPill(
-                        state: state, isFloating: barFloats, isLandscape: isLandscape,
-                        onShare: { shareItem = $0 },
-                        onHideBar: { hideBarByGesture() },
-                        extensions: extensions
-                    )
-                    // Any touch on the bar keeps it, for as long as you are on
-                    // it. The customised layout is whatever `OmniboxPill`
-                    // draws, so expanding the pill gives back *your* bar
-                    // rather than a default one (#008AF).
-                    .simultaneousGesture(TapGesture().onEnded { compactBar.barInteracted() })
-                    .transition(.move(edge: edge).combined(with: .opacity))
+                Group {
+                    if !barHidden {
+                        OmniboxPill(
+                            state: state, isFloating: barFloats, isLandscape: isLandscape,
+                            onShare: { shareItem = $0 },
+                            onHideBar: { hideBarByGesture() },
+                            extensions: extensions
+                        )
+                        // Any touch on the bar keeps it, for as long as you are on
+                        // it. The customised layout is whatever `OmniboxPill`
+                        // draws, so expanding the pill gives back *your* bar
+                        // rather than a default one (#008AF).
+                        .simultaneousGesture(TapGesture().onEnded { compactBar.barInteracted() })
+                        .transition(.move(edge: edge).combined(with: .opacity))
+                    }
                 }
+                // The disappearing bar must yield the grabber's gesture and
+                // cannot receive touches through an open phone drawer.
+                .allowsHitTesting(!barHidden && (isPad || !state.isSidebarVisible))
+                .accessibilityHidden(barHidden || (!isPad && state.isSidebarVisible))
             }
         }
         // The margin is the layout's, except that a full-width bar keeps a
@@ -781,24 +788,31 @@ struct RootView: View {
             .frame(height: ZenMetrics.compactGrabberHitHeight)
             .frame(maxWidth: .infinity)
             .contentShape(Rectangle())
-            .onTapGesture { revealChrome() }
             .gesture(
                 DragGesture(minimumDistance: 8)
                     .onChanged { _ in Haptics.shared.prepare(.grabberDrag) }
-                    .onEnded { value in
-                        // Pull *away from the edge the bar is on* to reveal; the
-                        // other direction is the user reaching for the home
-                        // gesture (or the notification shade).
-                        let towardsCentre =
-                            barPosition.isTop ? value.translation.height > 8
-                            : value.translation.height < -8
-                        if towardsCentre {
-                            Haptics.shared.fire(.grabberDrag)
+                    .exclusively(before: TapGesture())
+                    .onEnded { gesture in
+                        switch gesture {
+                        case .second:
                             revealChrome()
+                        case .first(let value):
+                            // Pull *away from the edge the bar is on* to reveal; the
+                            // other direction is the user reaching for the home
+                            // gesture (or the notification shade).
+                            let towardsCentre =
+                                barPosition.isTop
+                                ? value.translation.height > 8
+                                : value.translation.height < -8
+                            if towardsCentre {
+                                Haptics.shared.fire(.grabberDrag)
+                                revealChrome()
+                            }
                         }
                     }
             )
             .accessibilityLabel("Show toolbar")
+            .accessibilityAction { revealChrome() }
             .accessibilityAddTraits(.isButton)
     }
 
@@ -911,17 +925,12 @@ struct RootView: View {
         }
     }
 
-    /// Scrolling brings the bar back for as long as you keep scrolling. Each
-    /// scroll event restarts the countdown, so a long flick does not flicker.
-    /// Scrolling brings back the *pill* and only the pill — a full toolbar for
-    /// every flick is the noise compact mode exists to remove (#008AF).
+    /// Using the page dismisses a deliberate reveal; scrolling never reveals.
     private func revealChromeWhileScrolling() {
         compactBar.pageDidScroll()
     }
 
-    /// Start the fade-out countdown. Cancelled by any further scrolling, so
-    /// the bar only goes when the page has actually settled.
-    /// Scrolling settled; everything from here is the still-timer.
+    /// A scroll ending must not start a timer for deliberately opened chrome.
     private func scheduleCompactHide() {
         compactBar.scrollDidEnd()
     }
@@ -1128,8 +1137,7 @@ private struct CompactBarBridge: ViewModifier {
             .onChange(of: state.display.compactModeEnabled) { _, _ in sync() }
             .onChange(of: state.settings.compactHideDelay) { _, _ in sync() }
             .onChange(of: controller.phase) { _, phase in state.compactBarPhase = phase }
-            // Anything covering the page pauses the countdown and hands the bar
-            // back whole on the way out — see `coveredDidChange`.
+            // Selected chrome stays open through covering and uncovering.
             .onChange(of: isCovered) { _, covered in
                 controller.coveredDidChange(covered)
             }
@@ -1146,6 +1154,7 @@ private struct CompactBarBridge: ViewModifier {
     /// *toolbar* follows it.
     private func sync() {
         controller.stillDelay = state.settings.compactHideDelay
+        controller.coveredDidChange(isCovered)
         controller.isEnabled = state.display.compactModeEnabled
         state.compactBarPhase = controller.phase
     }
