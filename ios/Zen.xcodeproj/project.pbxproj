@@ -87,7 +87,6 @@
 		4D76FE9AEA01B9EAC61CFDAE /* PasswordVaultService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61A91F73EB04E1F6A5D09522 /* PasswordVaultService.swift */; };
 		4D86D9F0730D15CBFF2F493A /* JSONValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = D06FE302E103E94A2B0B70FE /* JSONValue.swift */; };
 		508BFA96B5CF670C7E44DD59 /* ZenApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E314F1A113B5A944AA437E9 /* ZenApp.swift */; };
-		508D81EAE3B70903F088B707 /* CompactPill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D06C8D8148A3844473E549E /* CompactPill.swift */; };
 		51F1FB7AEAD30E024D1731A0 /* BarLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4EE1F1C848DA15375B71211 /* BarLayoutTests.swift */; };
 		52754347A4EE689C839BF1B5 /* AppearanceModeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CC1263F0FF95AC80F83EDCB /* AppearanceModeTests.swift */; };
 		52D2889E3A1A18B197B46215 /* SearchEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6F50C30E6017F5CE0A3A949 /* SearchEngine.swift */; };
@@ -422,7 +421,6 @@
 		9B97537F2DDF9B5798D7318A /* SchemePrefillTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SchemePrefillTests.swift; sourceTree = "<group>"; };
 		9C89A165A5B3DE33E6C03E0B /* ColorParsing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorParsing.swift; sourceTree = "<group>"; };
 		9CC16663B504765C17227A6A /* ReaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderView.swift; sourceTree = "<group>"; };
-		9D06C8D8148A3844473E549E /* CompactPill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompactPill.swift; sourceTree = "<group>"; };
 		9D527E0502C91198924E8E5E /* SyncSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncSettingsView.swift; sourceTree = "<group>"; };
 		9EF563E57E6FC87DE20BB0F4 /* VaultIndex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultIndex.swift; sourceTree = "<group>"; };
 		9F09F9DBA3529788D7567C97 /* Tab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tab.swift; sourceTree = "<group>"; };
@@ -658,7 +656,6 @@
 				14D9FF5859A605EAFB0CC40F /* BarActionRunner.swift */,
 				C328A5EE18F01699DF47AE6A /* BarSwipeGesture.swift */,
 				C6C6D1F5A9CFA5AF58CC7A93 /* CompactBarController.swift */,
-				9D06C8D8148A3844473E549E /* CompactPill.swift */,
 				00702F505256F196432DB86D /* OmniboxOverlay.swift */,
 				89CF4FD1B002F1922E42F267 /* OmniboxPill.swift */,
 				3E5240A82F9C160738FAA784 /* OmniboxTextField.swift */,
@@ -1262,7 +1259,6 @@
 				49497DBB7B64C045BEB5E6D5 /* ClientsEngine.swift in Sources */,
 				B8C0AC2A453AF455DD41C648 /* ColorParsing.swift in Sources */,
 				B1628A6E9B29E1648C35D3FD /* CompactBarController.swift in Sources */,
-				508D81EAE3B70903F088B707 /* CompactPill.swift in Sources */,
 				EDCF068803ADEC573CE28C5C /* ContentArea.swift in Sources */,
 				AA57230D44D6BDDB17DB8D95 /* ContentBlocker.swift in Sources */,
 				05F34E7154C201FD8C122312 /* DomainMatching.swift in Sources */,

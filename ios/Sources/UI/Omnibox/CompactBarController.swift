@@ -1,47 +1,39 @@
 //  CompactBarController.swift
-//  What the URL bar does in compact mode (#008AF).
+//  What the URL bar does in compact mode (#008AF, #008DC).
 //
 //  Zen desktop's compact mode hides the chrome and gives it back on hover. A
 //  phone has no hover, and the first translation — "show the whole bar while
 //  you scroll, hide it shortly after" — put a full toolbar back on screen for
-//  every flick. What you actually want while reading is the page, with just
-//  enough left to know where you are.
+//  every flick. What you actually want while reading is the page.
 //
-//  So there are three states rather than two:
+//  So there are two states:
 //
-//      hidden  ──scroll──▶  pill  ──tap──▶  expanded
-//         ▲                  │ ▲              │
-//         └──── still ───────┘ └──── still ───┘
+//      hidden  ──grabber──▶  expanded
+//         ▲                     │
+//         └──── still / scroll ─┘
 //
-//  * **hidden** — nothing but the page. The grabber above the home indicator
-//    stays as the fallback way back.
-//  * **pill** — favicon and domain, nothing else. Where you are, and no more.
+//  * **hidden** — nothing but the page, and the grabber above the home
+//    indicator as the way back.
 //  * **expanded** — the full bar, every button.
 //
-//  The two rules that matter: *scrolling never expands the bar* (only a tap
-//  does — otherwise reading a long page is a toolbar flashing at you), and
-//  every state falls one step at a time down the same still-timer, so there is
-//  one number in Settings rather than three.
+//  There was a third, a bare pill between the two that scrolling summoned
+//  (#008AF), but it sat directly above the grabber and the two read as one
+//  affordance drawn twice (#008DC). The grabber does the whole job now.
+//
+//  The rules that matter: *scrolling never expands the bar* (only the grabber
+//  does — otherwise reading a long page is a toolbar flashing at you), and an
+//  expanded bar falls back to hidden on the still-timer, which is the one
+//  number in Settings.
 //
 //  The countdown runs on an injected clock so the whole machine is testable in
 //  microseconds rather than in multiples of three seconds.
 
 import Foundation
 
-/// The three states the compact bar can be in.
+/// The two states the compact bar can be in.
 enum CompactBarPhase: String, Equatable, Sendable, CaseIterable {
     case hidden
-    case pill
     case expanded
-
-    /// One step closer to gone. `hidden` is the floor.
-    var collapsed: CompactBarPhase {
-        switch self {
-        case .expanded: return .pill
-        case .pill: return .hidden
-        case .hidden: return .hidden
-        }
-    }
 }
 
 /// The countdown the compact bar runs on.
@@ -80,8 +72,7 @@ final class CompactBarController: ObservableObject {
     /// setting itself.
     @Published private(set) var phase: CompactBarPhase = .expanded
 
-    /// How long "still" is, in seconds. The same number governs every step of
-    /// the ladder, so the bar always fades at the rate Settings advertises.
+    /// How long "still" is, in seconds — the number Settings advertises.
     var stillDelay: TimeInterval = ZenSettings().compactHideDelay
 
     /// Compact mode's toolbar half. Off means the bar is simply always there.
@@ -115,29 +106,20 @@ final class CompactBarController: ObservableObject {
 
     // MARK: Events
 
-    /// The page is being scrolled. Brings the bar back as far as the *pill*
-    /// and no further — and takes an expanded bar back down to the pill, since
-    /// scrolling the page is not using the bar.
+    /// The page is being scrolled. Never brings the bar back — and takes an
+    /// expanded bar away, since scrolling the page is not using the bar.
+    /// Silently: mid-flick is no time for a buzz, and the bar going is what
+    /// you asked for by scrolling.
     func pageDidScroll() {
         guard isEnabled else { return }
         clock.cancel()
-        switch phase {
-        case .hidden: set(.pill, haptic: .compactBarShow)
-        case .expanded: set(.pill, haptic: nil)
-        case .pill: break
-        }
+        set(.hidden, haptic: nil)
     }
 
-    /// Scrolling settled. Everything from here is the still-timer.
+    /// Scrolling settled. Nothing to count down from once the bar is hidden,
+    /// which `startCountdown` already knows.
     func scrollDidEnd() {
         guard isEnabled else { return }
-        startCountdown()
-    }
-
-    /// The collapsed pill was tapped: the one gesture that expands the bar.
-    func pillTapped() {
-        guard isEnabled else { return }
-        set(.expanded, haptic: .compactBarExpand)
         startCountdown()
     }
 
@@ -175,8 +157,8 @@ final class CompactBarController: ObservableObject {
         }
     }
 
-    /// The deliberate reveal from the grabber. Goes straight to the full bar,
-    /// and then behaves like any other chrome touch.
+    /// The deliberate reveal from the grabber: the one gesture that expands
+    /// the bar. It then behaves like any other chrome touch.
     func grabberRevealed() {
         guard isEnabled else { return }
         set(.expanded, haptic: .compactBarShow)
@@ -190,14 +172,10 @@ final class CompactBarController: ObservableObject {
         set(.hidden, haptic: .compactBarHide)
     }
 
-    /// The still-timer fired: fall one step.
+    /// The still-timer fired: the bar goes.
     private func timerFired() {
         guard isEnabled else { return }
-        let next = phase.collapsed
-        guard next != phase else { return }
-        set(next, haptic: next == .hidden ? .compactBarHide : nil)
-        // The ladder has another rung below `pill`, so keep counting.
-        if next != .hidden { startCountdown() }
+        set(.hidden, haptic: .compactBarHide)
     }
 
     // MARK: Plumbing

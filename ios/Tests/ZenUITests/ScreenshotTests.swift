@@ -52,26 +52,11 @@ final class ScreenshotTests: XCTestCase {
         // behind the pill, so an address bar that is invisible and
         // untappable still reports as existing.
         if addressBar.exists && addressBar.isHittable { return true }
-        // The compact-mode pill (#008AF) is a specific element with its own
-        // tap handler, not a coordinate to guess at — a blind screen tap can
-        // land on a zero-frame decoy in the same region and silently do
-        // nothing. Scrolling first is what actually shows the pill if the
-        // bar is currently fully hidden (the 3 s still-timer, #008AF); tap
-        // it once that exists, then fall back to the grabber (#00895) and
-        // finally to coordinate taps for whatever layout has neither.
-        let pill = app.buttons["compactPill"]
-        if !pill.exists {
-            app.swipeUp(velocity: .slow)
-            app.swipeDown(velocity: .slow)
-        }
-        if pill.waitForExistence(timeout: 2.5) {
-            pill.tap()
-            if addressBar.waitForExistence(timeout: 2.5) { return true }
-        }
-        // The grabber (#00895) carries no identifier of its own, only the
-        // label "Show toolbar" — distinct from the pill's own label, which is
-        // always "Show toolbar — <something>", so an exact match cannot
-        // collide with it.
+        // The grabber (#00895) is the one way back from a hidden compact bar
+        // (#008DC) — a specific element with its own tap handler, not a
+        // coordinate to guess at. It carries no identifier of its own, only
+        // the label "Show toolbar"; coordinate taps are the fallback for
+        // whatever layout has no grabber either.
         let grabber = app.buttons["Show toolbar"]
         if grabber.exists {
             grabber.tap()
@@ -302,13 +287,14 @@ final class ScreenshotTests: XCTestCase {
     }
 
 
-    /// Compact mode's middle state (#008AF): scrolling brings back the pill —
-    /// favicon and domain, nothing else — and only a *tap* on it expands the
-    /// full bar.
-    func testCaptureCompactPillAndExpansion() throws {
+    /// Compact mode's hidden state (#008AF, #008DC): once the page is still
+    /// the bar goes, the grabber is the *only* thing left of it — no second
+    /// pill stacked above — scrolling never brings the bar back, and a tap on
+    /// the grabber does.
+    func testCaptureCompactGrabberAndExpansion() throws {
         let suffix = UIDevice.current.userInterfaceIdiom == .pad ? "-ipad" : ""
         settle(4.0)
-        // A page long enough to scroll, which is what summons the pill.
+        // A page long enough to scroll.
         navigate(to: "https://news.ycombinator.com")
 
         XCTAssertTrue(
@@ -316,24 +302,35 @@ final class ScreenshotTests: XCTestCase {
             "compact mode menu item missing")
         settle(9.0)
 
-        let pill = app.descendants(matching: .any)["compactPill"].firstMatch
-        XCTAssertTrue(scrollToThePill(pill), "scrolling did not bring back the collapsed pill")
-        capture("39-compact-pill\(suffix)")
-
-        // Scrolling must never expand it — only the tap does.
+        let grabber = app.buttons["Show toolbar"]
+        XCTAssertTrue(grabber.waitForExistence(timeout: 3), "the grabber never appeared")
         XCTAssertFalse(
-            app.buttons["Address and search"].exists,
-            "scrolling expanded the bar; it should only ever bring back the pill")
+            app.buttons["Address and search"].isHittable,
+            "the bar should have fallen away by now")
+        XCTAssertFalse(
+            app.descendants(matching: .any)["compactPill"].exists,
+            "a second pill is stacked above the grabber (#008DC)")
+        capture("39-compact-hidden\(suffix)")
 
-        XCTAssertTrue(scrollToThePill(pill), "the pill did not come back for the tap")
-        pill.tap()
+        // Scrolling must never expand it — only the grabber does.
+        for _ in 0..<3 {
+            app.swipeUp()
+            settle(0.4)
+        }
+        XCTAssertFalse(
+            app.buttons["Address and search"].isHittable,
+            "scrolling expanded the bar; only the grabber should")
+        XCTAssertTrue(grabber.exists, "scrolling should leave the grabber in place")
+
+        grabber.tap()
         settle(0.8)
         XCTAssertTrue(
-            app.buttons["Address and search"].waitForExistence(timeout: 3),
-            "tapping the pill did not expand the bar")
+            app.buttons["Address and search"].waitForExistence(timeout: 3)
+                && app.buttons["Address and search"].isHittable,
+            "tapping the grabber did not expand the bar")
         capture("40-compact-expanded\(suffix)")
 
-        // (c) The URL area of the *expanded* bar is still the way into the
+        // The URL area of the *expanded* bar is still the way into the
         // omnibox — expanding and searching are two taps, not one.
         app.buttons["Address and search"].tap()
         XCTAssertTrue(
@@ -342,33 +339,12 @@ final class ScreenshotTests: XCTestCase {
         app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.06)).tap()
         settle(1.0)
 
-        // (d) Up from the *pill* reaches the drawer, without expanding first.
-        XCTAssertTrue(scrollToThePill(pill), "the pill did not come back for the swipe")
-        pill.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-            .press(
-                forDuration: 0.05,
-                thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.35)))
-        XCTAssertTrue(
-            app.buttons["New Tab"].waitForExistence(timeout: 5),
-            "swiping up from the pill did not open the sidebar")
-        closeSidebar()
-
         // Leave compact mode, or the setting persists into the next launch and
         // every test after this one starts with no bar to drive. This is why
         // `tapMenuItem` reveals first: by now the bar has long since fallen.
         XCTAssertTrue(
             tapMenuItem(matching: "label CONTAINS[c] 'Compact Mode'"),
             "could not leave compact mode — the next test will launch with no bar")
-    }
-
-    /// Scroll the page and catch the pill before the still-timer takes it. The
-    /// timer is three seconds by default, so this is deliberately brisk.
-    private func scrollToThePill(_ pill: XCUIElement) -> Bool {
-        for _ in 0..<4 {
-            app.swipeUp()
-            if pill.waitForExistence(timeout: 1.2) { return true }
-        }
-        return false
     }
 
     // MARK: Video (#008B0)

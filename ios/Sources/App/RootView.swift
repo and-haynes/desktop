@@ -95,9 +95,11 @@ struct RootView: View {
         state.display.compactModeEnabled && compactBar.phase != .expanded
     }
 
-    /// Which of compact mode's three states the bar is in (#008AF).
+    /// Which of compact mode's two states the bar is in (#008AF, #008DC).
     /// `expanded` whenever compact mode's toolbar half is off, so everything
-    /// below reads one value and never the setting.
+    /// below reads one value and never the setting. When the bar is away, the
+    /// grabber is the one and only way back — there is no intermediate pill
+    /// standing above it.
     private var barPhase: CompactBarPhase {
         guard state.display.compactModeEnabled, state.settings.compactHidesToolbar else {
             return .expanded
@@ -105,13 +107,6 @@ struct RootView: View {
         return compactBar.phase
     }
 
-    /// The collapsed pill stands in for the bar rather than nothing at all —
-    /// but only where *compact mode* is what put the bar away. A bar hidden by
-    /// a deliberate `hideBar` gesture stays hidden; that is what deliberate
-    /// means.
-    private var showsCompactPill: Bool {
-        barPhase == .pill && !barHiddenByGesture
-    }
     private var sidebarHidden: Bool {
         chromeHidden && state.settings.compactHidesSidebar
     }
@@ -644,9 +639,6 @@ struct RootView: View {
                     // rather than a default one (#008AF).
                     .simultaneousGesture(TapGesture().onEnded { compactBar.barInteracted() })
                     .transition(.move(edge: edge).combined(with: .opacity))
-                } else if showsCompactPill {
-                    CompactPill(state: state) { compactBar.pillTapped() }
-                        .transition(.scale(scale: 0.88).combined(with: .opacity))
                 }
             }
         }
