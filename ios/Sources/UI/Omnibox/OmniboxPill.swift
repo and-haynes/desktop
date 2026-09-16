@@ -417,22 +417,53 @@ struct OmniboxPill: View {
     @ViewBuilder
     private var overflowItems: some View {
         ForEach(layout.overflowSlots) { item in
-            Button {
-                run(item.action)
-            } label: {
-                Label(
-                    menuTitle(item.action),
-                    systemImage: item.action.symbol(
-                        isLoading: navigation.isLoading,
-                        isBookmarked: BarActionRunner.isOn(
-                            .bookmark, state: state, tabID: tabID)))
+            if item.action == .layoutCycle {
+                layoutMenu
+            } else {
+                Button {
+                    run(item.action)
+                } label: {
+                    Label(
+                        menuTitle(item.action),
+                        systemImage: item.action.symbol(
+                            isLoading: navigation.isLoading,
+                            isBookmarked: BarActionRunner.isOn(
+                                .bookmark, state: state, tabID: tabID)))
+                }
+                .disabled(!BarActionRunner.isEnabled(item.action, state: state, tabID: tabID))
             }
-            .disabled(!BarActionRunner.isEnabled(item.action, state: state, tabID: tabID))
         }
         if layout.overflowSlots.isEmpty {
             Button { state.isSettingsPresented = true } label: {
                 Label("Settings", systemImage: "gearshape")
             }
+        }
+    }
+
+    /// A submenu (#008B6) replacing the old cycle-only "Layout" row. A
+    /// `Picker` nested inside a `Menu` renders as a real iOS submenu and
+    /// checks the active case natively, so all three layouts are one tap
+    /// away instead of a cycle you might have to step through twice. The
+    /// binding writes `state.settings.layout` directly — the same property
+    /// `cycleLayout()` (⇧⌘F, and the "Layout cycle" bar action everywhere
+    /// else) reads and writes — so `content`'s `.animation(value: layoutMode)`
+    /// in RootView picks up the change and animates it exactly as a cycle
+    /// step does, with no bespoke animation code needed here.
+    @ViewBuilder
+    private var layoutMenu: some View {
+        Menu {
+            Picker(
+                "Layout",
+                selection: Binding(
+                    get: { state.settings.layout },
+                    set: { state.settings.layout = $0 })
+            ) {
+                ForEach(BrowserLayout.allCases) { option in
+                    Label(option.displayName, systemImage: option.symbol).tag(option)
+                }
+            }
+        } label: {
+            Label(menuTitle(.layoutCycle), systemImage: BarAction.layoutCycle.symbol)
         }
     }
 
