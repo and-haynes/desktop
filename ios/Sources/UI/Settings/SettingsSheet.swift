@@ -335,7 +335,8 @@ struct SettingsSheet: View {
         let info = Bundle.main.infoDictionary
         let short = info?["CFBundleShortVersionString"] as? String ?? "0.1.0"
         let build = info?["CFBundleVersion"] as? String ?? "1"
-        return "\(short) (\(build))"
+        let commit = info?["ZenGitCommit"] as? String ?? "dev"
+        return "\(short) (\(build)) · \(commit)"
     }
 
     private func shortcut(_ label: String, _ keys: String) -> some View {

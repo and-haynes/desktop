@@ -18,7 +18,11 @@ settings:
   base:
     SWIFT_VERSION: "5.9"
     MARKETING_VERSION: "0.1.0"
+    # Overridden at build time by the orchestrator:
+    #   CURRENT_PROJECT_VERSION=$(git rev-list --count HEAD) ZEN_GIT_COMMIT=$(git rev-parse --short HEAD)
+    # so a phone install can be told apart from the last one (#008B6).
     CURRENT_PROJECT_VERSION: "1"
+    ZEN_GIT_COMMIT: dev
     # Andy's free PERSONAL team (Apple ID andrew.haynes@me.com). Personal-team
     # caveats: on-device profiles expire after 7 days, max 3 sideloaded apps.
     # Simulator builds pass CODE_SIGNING_ALLOWED=NO and ignore this entirely.
