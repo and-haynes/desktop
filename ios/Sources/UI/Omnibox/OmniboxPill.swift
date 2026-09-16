@@ -498,7 +498,7 @@ struct OmniboxPill: View {
         // Not a slot: text size is a *control*, two buttons on one row, and
         // the slot system only knows how to draw single glyphs (#008B7).
         TextSizeMenuSection(state: state, zoom: state.pageZoom, tabID: tabID)
-        // Also not a slot yet (#008D4 tracks giving reader mode a proper
+        // Also not a slot yet (#008D5 tracks giving reader mode a proper
         // BarAction so it can join the customisable bar itself): the probe is
         // a heuristic, and it says no to plenty of pages that read perfectly
         // well in the reader, so the menu item is how you overrule it.
