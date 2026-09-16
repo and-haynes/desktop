@@ -1,10 +1,10 @@
 //  CompactPill.swift
 //  The collapsed URL bar (#008AF).
 //
-//  Where you are, and nothing else: a favicon and a domain in a capsule that
-//  hugs its own text, so most of the bar's width goes back to the page. It is
-//  what scrolling brings back — a full toolbar for every flick is exactly the
-//  noise compact mode is supposed to remove.
+//  A bare pill, nothing in it — not even the favicon or the domain. Andy's
+//  call (#008CD): the point of compact mode is the page, and a label here is
+//  still a label. It is what scrolling brings back, sized to be an obvious
+//  target without reading as content.
 //
 //  Tapping it is the only thing that expands the bar. It carries the same
 //  swipe-to-the-sidebar gesture the full bar has, so the drawer is reachable
@@ -21,40 +21,25 @@ struct CompactPill: View {
 
     private var tab: Tab? { state.activeTab }
 
-    private var label: String {
+    /// Spoken, never shown — VoiceOver still needs to know where a blank
+    /// pill will take you.
+    private var accessibilityDescription: String {
         guard let tab, !tab.isNewTabPage else { return "New Tab" }
         let host = URLDetector.prettyHost(tab.url)
         return host.isEmpty ? tab.url.absoluteString : host
     }
 
     var body: some View {
-        HStack(spacing: 7) {
-            if let tab {
-                FaviconView(tab: tab, size: 15)
-            } else {
-                Image(systemName: "globe")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(palette.text.withAlpha(0.6).color)
-            }
-            Text(label)
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(palette.text.color)
-                .lineLimit(1)
-                .truncationMode(.middle)
-        }
-        .padding(.horizontal, 12)
-        .frame(height: ZenMetrics.compactPillHeight)
-        // Never so wide that it stops being a pill.
-        .frame(maxWidth: ZenMetrics.compactPillMaxWidth)
-        .fixedSize(horizontal: true, vertical: false)
-        .zenSurface(palette, radius: ZenMetrics.compactPillHeight / 2, elevated: true)
-        .contentShape(Capsule())
-        .onTapGesture { onTap() }
-        .simultaneousGesture(sidebarSwipe)
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("compactPill")
-        .accessibilityLabel("Show toolbar — \(label)")
-        .accessibilityAddTraits(.isButton)
+        Color.clear
+            .frame(width: ZenMetrics.compactPillMinWidth, height: ZenMetrics.compactPillHeight)
+            .contentShape(Capsule())
+            .zenSurface(palette, radius: ZenMetrics.compactPillHeight / 2, elevated: true)
+            .onTapGesture { onTap() }
+            .simultaneousGesture(sidebarSwipe)
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("compactPill")
+            .accessibilityLabel("Show toolbar — \(accessibilityDescription)")
+            .accessibilityAddTraits(.isButton)
     }
 
     /// The same table the full bar uses (`BarSwipeGesture`), so up opens the
