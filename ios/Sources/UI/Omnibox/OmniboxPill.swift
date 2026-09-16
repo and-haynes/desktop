@@ -506,20 +506,21 @@ struct OmniboxPill: View {
     /// A submenu (#008B6) replacing the old cycle-only "Layout" row. A
     /// `Picker` nested inside a `Menu` renders as a real iOS submenu and
     /// checks the active case natively, so all three layouts are one tap
-    /// away instead of a cycle you might have to step through twice. The
-    /// binding writes `state.settings.layout` directly — the same property
-    /// `cycleLayout()` (⇧⌘F, and the "Layout cycle" bar action everywhere
-    /// else) reads and writes — so `content`'s `.animation(value: layoutMode)`
-    /// in RootView picks up the change and animates it exactly as a cycle
-    /// step does, with no bespoke animation code needed here.
+    /// away instead of a cycle you might have to step through twice. Reads
+    /// `state.display.layout` and writes through `state.setLayout(_:)` —
+    /// the same accessor `cycleLayout()` (⇧⌘F, and the "Layout cycle" bar
+    /// action everywhere else) goes through (#008BB) — so a space that
+    /// overrides its layout shows and sets the right one here too, and
+    /// `content`'s `.animation(value: layoutMode)` in RootView picks up the
+    /// change exactly as a cycle step does, with no bespoke animation code.
     @ViewBuilder
     private var layoutMenu: some View {
         Menu {
             Picker(
                 "Layout",
                 selection: Binding(
-                    get: { state.settings.layout },
-                    set: { state.settings.layout = $0 })
+                    get: { state.display.layout },
+                    set: { state.setLayout($0) })
             ) {
                 ForEach(BrowserLayout.allCases) { option in
                     Label(option.displayName, systemImage: option.symbol).tag(option)
