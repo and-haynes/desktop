@@ -29,7 +29,12 @@ final class ScreenshotTests: XCTestCase {
     /// missing", which says nothing about the thing it was testing. This
     /// happened; hence both this and `revealChrome` below.
     private func recoverFromStuckCompactMode() {
-        guard !addressBar.waitForExistence(timeout: 6) else { return }
+        // `.waitForExistence` alone is exactly the trap the comment above
+        // describes: compact mode's full bar keeps its subviews mounted
+        // while visually collapsed, so a stuck-hidden bar still reports as
+        // existing and this guard used to let it straight through.
+        _ = addressBar.waitForExistence(timeout: 6)
+        guard !(addressBar.exists && addressBar.isHittable) else { return }
         guard revealChrome() else { return }
         _ = tapMenuItem(matching: "label CONTAINS[c] 'Compact Mode'")
         settle(1.0)
@@ -42,7 +47,36 @@ final class ScreenshotTests: XCTestCase {
     /// first phone it met.
     @discardableResult
     private func revealChrome() -> Bool {
-        if addressBar.exists { return true }
+        // `.exists` alone is not enough here: compact mode's full bar
+        // (#008AF) keeps its subviews mounted while visually collapsed
+        // behind the pill, so an address bar that is invisible and
+        // untappable still reports as existing.
+        if addressBar.exists && addressBar.isHittable { return true }
+        // The compact-mode pill (#008AF) is a specific element with its own
+        // tap handler, not a coordinate to guess at — a blind screen tap can
+        // land on a zero-frame decoy in the same region and silently do
+        // nothing. Scrolling first is what actually shows the pill if the
+        // bar is currently fully hidden (the 3 s still-timer, #008AF); tap
+        // it once that exists, then fall back to the grabber (#00895) and
+        // finally to coordinate taps for whatever layout has neither.
+        let pill = app.buttons["compactPill"]
+        if !pill.exists {
+            app.swipeUp(velocity: .slow)
+            app.swipeDown(velocity: .slow)
+        }
+        if pill.waitForExistence(timeout: 2.5) {
+            pill.tap()
+            if addressBar.waitForExistence(timeout: 2.5) { return true }
+        }
+        // The grabber (#00895) carries no identifier of its own, only the
+        // label "Show toolbar" — distinct from the pill's own label, which is
+        // always "Show toolbar — <something>", so an exact match cannot
+        // collide with it.
+        let grabber = app.buttons["Show toolbar"]
+        if grabber.exists {
+            grabber.tap()
+            if addressBar.waitForExistence(timeout: 2.5) { return true }
+        }
         for dy in [0.945, 0.965, 0.925] {
             app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: dy)).tap()
             if addressBar.waitForExistence(timeout: 2.5) { return true }
