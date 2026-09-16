@@ -73,6 +73,10 @@ final class BrowserState: ObservableObject {
     @Published var isExtractingReader = false
     @Published var isHistorySheetPresented: Bool = false
     @Published var isSettingsPresented: Bool = false
+    @Published var browserMenu: BrowserMenuRequest?
+    /// Remains true until the sheet has finished dismissing, including a handoff
+    /// to Settings or Share. The page and certificate prompt must wait for it.
+    @Published var isBrowserMenuActive = false
     /// The Local section — imported LAN services — as its own sheet (#0089C).
     @Published var isLocalServicesPresented: Bool = false
     /// The vault panel for the current page (#008AD, experimental).
@@ -794,7 +798,14 @@ final class BrowserState: ObservableObject {
     /// gated binding in RootView.
     var isBlockingSheetPresented: Bool {
         isHistorySheetPresented || isSettingsPresented || isLocalServicesPresented
-            || securityDetail != nil
+            || securityDetail != nil || isBrowserMenuActive
+    }
+
+    func openBrowserMenu(tabID: UUID? = nil) {
+        guard !isBrowserMenuActive else { return }
+        if display.barLayout.haptics { Haptics.shared.fire(.menuOpen) }
+        isBrowserMenuActive = true
+        browserMenu = BrowserMenuRequest(tabID: tabID ?? activeTabID)
     }
 
     /// What the glyph at the left of a tab's URL pill is saying.

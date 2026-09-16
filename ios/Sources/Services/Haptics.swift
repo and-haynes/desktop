@@ -197,6 +197,8 @@ enum HapticEvent: String, CaseIterable, Equatable, Sendable {
     /// One tap of the navigation helper (#008B9). The page is about to move a
     /// long way on its own; the tap is the only thing confirming you asked.
     case navigationStep
+    case menuOpen
+    case menuSelection
     /// One rung of the page-zoom ladder (#008B7). A discrete change with a
     /// visible result, so it ticks like a picker rather than thumping.
     case textSizeStep
@@ -260,6 +262,8 @@ enum HapticEvent: String, CaseIterable, Equatable, Sendable {
         case .layoutChange: return .impact(.rigid, intensity: 0.7)
         case .textSizeStep: return .impact(.light, intensity: 0.6)
         case .navigationStep: return .impact(.light, intensity: 0.7)
+        case .menuOpen: return .impact(.soft, intensity: 0.6)
+        case .menuSelection: return .selection
 
         case .glanceOpen: return .signature(.glanceOpen, fallback: .init(.medium, 0.8))
         case .glanceExpand: return .impact(.rigid, intensity: 0.8)

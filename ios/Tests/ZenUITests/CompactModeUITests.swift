@@ -89,5 +89,7 @@ final class CompactModeUITests: XCTestCase {
         app.buttons["moreMenu"].tap()
         XCTAssertTrue(compact.waitForExistence(timeout: 5))
         compact.tap()
+        // Flush the session before the next test force-terminates the app.
+        XCUIDevice.shared.press(.home)
     }
 }

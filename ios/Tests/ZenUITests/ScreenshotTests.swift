@@ -202,21 +202,23 @@ final class ScreenshotTests: XCTestCase {
     /// Revealing compact chrome keeps it open while the menu is used.
     @discardableResult
     func tapMenuItem(matching predicate: String) -> Bool {
-        revealChrome()
-        let more = moreButton
-        guard more.waitForExistence(timeout: 4) else { return false }
-        more.tap()
-        settle(1.2)
+        if !app.buttons["menuSettings"].exists {
+            revealChrome()
+            let more = moreButton
+            guard more.waitForExistence(timeout: 4) else { return false }
+            more.tap()
+            settle(1.2)
+        }
         var item = app.buttons.matching(NSPredicate(format: predicate)).firstMatch
         // The overflow menu is taller than the screen and scrolls; an item
         // below the fold is not merely off-screen to XCUITest, it does not
         // exist. Scroll before giving up.
-        if !item.waitForExistence(timeout: 3) {
+        if !item.waitForExistence(timeout: 3) || !item.isHittable {
             for _ in 0..<3 {
-                app.swipeUp()
+                app.scrollViews["browserMenuScroll"].swipeUp()
                 settle(0.6)
                 item = app.buttons.matching(NSPredicate(format: predicate)).firstMatch
-                if item.exists { break }
+                if item.exists && item.isHittable { break }
             }
         }
         guard item.waitForExistence(timeout: 5) else {
@@ -227,7 +229,7 @@ final class ScreenshotTests: XCTestCase {
             try? Data(app.debugDescription.utf8)
                 .write(to: outputDirectory.appendingPathComponent("debug-menu-hierarchy.txt"))
             // Dismiss the menu rather than leaving it open over the next step.
-            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.25)).tap()
+            app.buttons["closeBrowserMenu"].tap()
             settle(0.8)
             return false
         }
@@ -250,15 +252,15 @@ final class ScreenshotTests: XCTestCase {
 
         // b. edgeToEdge — content to the very top, bar still in the flow.
         XCTAssertTrue(
-            tapMenuItem(matching: "label BEGINSWITH 'Layout:'"), "layout menu item missing")
+            tapMenuItem(matching: "identifier == 'menuLayout-edgeToEdge'"), "layout choice missing")
         capture("08-layout-edge\(suffix)")
 
         // c. fullScreen — content everywhere, bar floating with no material.
-        XCTAssertTrue(tapMenuItem(matching: "label BEGINSWITH 'Layout:'"))
+        XCTAssertTrue(tapMenuItem(matching: "identifier == 'menuLayout-fullScreen'"))
         capture("09-layout-full\(suffix)")
 
         // Back to card so the compact shot is not confounded by the layout.
-        XCTAssertTrue(tapMenuItem(matching: "label BEGINSWITH 'Layout:'"))
+        XCTAssertTrue(tapMenuItem(matching: "identifier == 'menuLayout-card'"))
 
         // Compact mode: the bar goes away and only the grabber remains.
         XCTAssertTrue(
@@ -1361,18 +1363,14 @@ final class ScreenshotTests: XCTestCase {
         larger.tap()
         settle(1.2)
 
-        // Two more steps, reopening the menu each time — a SwiftUI Menu closes
-        // on any tap inside it, which is the one place this differs from
-        // Safari's own AA row.
+        // The panel stays open so repeated changes are one tap apiece.
         for _ in 0..<2 {
-            _ = revealChrome()
-            moreButton.tap()
-            settle(1.0)
             let button = app.buttons["textSizeLarger"]
             guard button.waitForExistence(timeout: 4) else { break }
             button.tap()
             settle(1.0)
         }
+        app.buttons["closeBrowserMenu"].tap()
         capture("45c-text-size-150")
 
         // And the readout, which is also the reset: the label carries the
@@ -1386,6 +1384,7 @@ final class ScreenshotTests: XCTestCase {
             readout.label.contains("%"), "the readout should say a percentage: \(readout.label)")
         readout.tap()
         settle(1.5)
+        app.buttons["closeBrowserMenu"].tap()
         capture("45d-text-size-reset")
     }
 }

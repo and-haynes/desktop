@@ -26,6 +26,7 @@ struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var shareItem: URL?
+    @State private var pendingMenuAction: (() -> Void)?
     /// Compact mode's two-state machine. Owned here because only
     /// the root sees the page-scroll notifications and the grabber at once.
     @StateObject private var compactBar = CompactBarController()
@@ -78,7 +79,7 @@ struct RootView: View {
     /// its tap tens of milliseconds late, which reads as a glitch rather than
     /// as feedback; these are the events most likely to be the first one felt.
     private static let warmEvents: [HapticEvent] = [
-        .tabSelect, .tabOpen, .tabClose, .swipeCloseThreshold, .omniboxOpen, .urlCommit,
+        .tabSelect, .tabOpen, .tabClose, .swipeCloseThreshold, .omniboxOpen, .urlCommit, .menuOpen,
         .sidebarSnap, .spaceSwitchTick,
     ]
 
@@ -341,7 +342,7 @@ struct RootView: View {
     /// *gated* against the others — see the binding below — and that gate reads
     /// `isBlockingSheetPresented`, which has to know about all of them.
     private var sheets: some View {
-        window
+        browserMenuSheet
             .sheet(isPresented: $state.isHistorySheetPresented) {
                 HistorySheet(state: state, history: state.history, bookmarks: state.bookmarks)
                     .environment(\.zenPalette, palette)
@@ -413,6 +414,29 @@ struct RootView: View {
             // expression as the type checker will solve.
             .modifier(PageZoomBridge(state: state, pool: pool.pool))
             .background { keyboardShortcuts }
+    }
+
+    private var browserMenuSheet: some View {
+        window.sheet(item: $state.browserMenu, onDismiss: {
+            let action = pendingMenuAction
+            pendingMenuAction = nil
+            // Set the next presentation before releasing the cover, so compact
+            // mode and pending certificate prompts see one continuous cover.
+            action?()
+            state.isBrowserMenuActive = false
+        }) { request in
+            BrowserMenuSheet(
+                state: state, zoom: state.pageZoom, extensions: extensions, tabID: request.tabID,
+                context: BarActionContext(
+                    tabID: request.tabID, share: { shareItem = $0 },
+                    hideBar: { hideBarByGesture() }, hapticFeedback: false),
+                onChoose: { action in
+                    pendingMenuAction = action
+                    state.browserMenu = nil
+                }
+            )
+            .environment(\.zenPalette, palette)
+        }
     }
 
     // MARK: Background
@@ -548,6 +572,7 @@ struct RootView: View {
             ContentArea(
                 state: state, space: space, pool: pool.pool,
                 topContentInset: webTopInset, bottomContentInset: webBottomInset,
+                navigationHelperBottomInset: helperBottomInset,
                 rounded: layoutMode.framesContent,
                 navigationHelper: navigationHelper
             )
@@ -615,6 +640,12 @@ struct RootView: View {
     private var webBottomInset: CGFloat {
         guard barFloats, !barPosition.isTop, !barHidden else { return 0 }
         return barExtent + bottomBarInset + 12
+    }
+
+    private var helperBottomInset: CGFloat {
+        let safeBottom = topEdgesIgnored.contains(.bottom) ? safeAreaBottom : 0
+        let grabber = showsGrabber && !barPosition.isTop ? ZenMetrics.compactGrabberHitHeight : 0
+        return max(webBottomInset, safeBottom + grabber)
     }
 
     private var barStack: some View {
@@ -1146,7 +1177,7 @@ private struct CompactBarBridge: ViewModifier {
     /// The page is not what you are looking at right now.
     private var isCovered: Bool {
         state.isOmniboxOpen || state.isSettingsPresented || state.isHistorySheetPresented
-            || state.isSidebarVisible || state.focusLocked
+            || state.isSidebarVisible || state.focusLocked || state.isBrowserMenuActive
     }
 
     /// The machine runs whenever compact mode is on, whichever halves of the

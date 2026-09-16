@@ -123,7 +123,7 @@ struct OmniboxPill: View {
     private var context: BarActionContext {
         BarActionContext(
             tabID: tabID, share: onShare, hideBar: onHideBar,
-            showActionMenu: {})
+            showActionMenu: { state.openBrowserMenu(tabID: tab?.id) })
     }
 
     var body: some View {
@@ -140,7 +140,7 @@ struct OmniboxPill: View {
             .modifier(
                 BarGestures(
                     state: state, layout: layout, context: context, enabled: !isPreview,
-                    lastDrag: $lastBarDrag, overflow: { AnyView(overflowItems) }))
+                    lastDrag: $lastBarDrag))
     }
 
     /// One line, or two.
@@ -187,7 +187,8 @@ struct OmniboxPill: View {
             Image(systemName: isActivePane ? "circle.fill" : "circle")
                 .font(.system(size: 8, weight: .bold))
                 .foregroundStyle(
-                    isActivePane ? accent.color : palette.text.withAlpha(0.3).color)
+                    isActivePane ? accent.color : palette.text.withAlpha(0.3).color
+                )
                 .frame(width: 22, height: glyphHeight)
                 .accessibilityLabel(isActivePane ? "Active pane" : "Inactive pane")
         } else {
@@ -231,12 +232,13 @@ struct OmniboxPill: View {
     private func slotButton(_ item: BarSlotItem) -> some View {
         switch item.action {
         case .overflowMenu:
-            Menu {
-                overflowItems
+            Button {
+                state.openBrowserMenu(tabID: tab?.id)
             } label: {
                 glyph(for: item.action, enabled: true)
             }
             .disabled(isPreview)
+            .buttonStyle(ZenPressStyle())
             .accessibilityLabel("More")
             .accessibilityIdentifier("moreMenu")
         case .extensions:
@@ -358,11 +360,24 @@ struct OmniboxPill: View {
         // `accessibilityElement(children:)` is needed — and adding one stops it
         // publishing as a button at all, which is how the duplicate-element
         // problem got traded for an invisible one.
-        Button { addressTapped() } label: { content }
-            .buttonStyle(ZenPressStyle(pressedScale: 0.99))
-            .disabled(isPreview)
-            .accessibilityLabel("Address and search")
-            .accessibilityIdentifier("addressBar")
+        Button {
+            addressTapped()
+        } label: {
+            content
+        }
+        .buttonStyle(ZenPressStyle(pressedScale: 0.99))
+        .disabled(isPreview)
+        .modifier(
+            AddressHold(action: layout.gestures[.longPress], enabled: !isPreview) { action in
+                pendingAddressTap?.cancel()
+                lastAddressTap = .distantPast
+                lastBarDrag = Date()
+                if action != .actionMenu && action != .overflowMenu { fire(.longPressMenu) }
+                run(action)
+            }
+        )
+        .accessibilityLabel("Address and search")
+        .accessibilityIdentifier("addressBar")
     }
 
     /// How long a second tap has to arrive to count as a double tap. The same
@@ -400,7 +415,7 @@ struct OmniboxPill: View {
     }
 
     private func openOmnibox() {
-        guard !isPreview else { return }
+        guard !isPreview, !state.isBrowserMenuActive else { return }
         fire(.omniboxOpen)
         // Selecting first makes the tapped pane the active one, so the
         // suggestions and the commit both land where you looked.
@@ -489,125 +504,6 @@ struct OmniboxPill: View {
         }
     }
 
-    // MARK: The overflow menu
-
-    /// Built from the layout's overflow slot, so what is in the menu is as
-    /// customisable as what is on the bar.
-    @ViewBuilder
-    private var overflowItems: some View {
-        // Not a slot: text size is a *control*, two buttons on one row, and
-        // the slot system only knows how to draw single glyphs (#008B7).
-        TextSizeMenuSection(state: state, zoom: state.pageZoom, tabID: tabID)
-        // Also not a slot yet (#008D5 tracks giving reader mode a proper
-        // BarAction so it can join the customisable bar itself): the probe is
-        // a heuristic, and it says no to plenty of pages that read perfectly
-        // well in the reader, so the menu item is how you overrule it.
-        Button {
-            NotificationCenter.default.post(name: .zenToggleReaderView, object: nil)
-        } label: {
-            Label(
-                state.isReaderOpen ? "Hide Reader" : "Show Reader",
-                systemImage: "doc.plaintext")
-        }
-        ForEach(layout.overflowSlots) { item in
-            if item.action == .layoutCycle {
-                layoutMenu
-            } else {
-                Button {
-                    run(item.action)
-                } label: {
-                    Label(
-                        menuTitle(item.action),
-                        systemImage: item.action.symbol(
-                            isLoading: navigation.isLoading,
-                            isBookmarked: BarActionRunner.isOn(
-                                .bookmark, state: state, tabID: tabID)))
-                }
-                .disabled(!BarActionRunner.isEnabled(item.action, state: state, tabID: tabID))
-            }
-        }
-        if layout.overflowSlots.isEmpty {
-            Button { state.isSettingsPresented = true } label: {
-                Label("Settings", systemImage: "gearshape")
-            }
-        }
-        // The extension actions hang off the More menu whether or not the
-        // layout carries an `.extensions` slot (#008B8). A deliberate
-        // exception to "the menu is exactly what you put in it": an extension
-        // you installed and cannot find is indistinguishable from one that is
-        // broken.
-        //
-        // Gated on something actually being installed, and *not* also put in
-        // the shipped preset's overflow slots, because the two together would
-        // be the same thing twice. The shipped overflow already fills the
-        // menu's visible height — a thirteenth entry pushes Settings below the
-        // fold, which is how this was found.
-        if let extensions, ExtensionHost.isSupported, extensions.hasAnythingInstalled {
-            Divider()
-            Menu {
-                ExtensionMenuItems(host: extensions, state: state)
-            } label: {
-                Label(extensionsMenuTitle, systemImage: "puzzlepiece.extension")
-            }
-        }
-    }
-
-    /// "Extensions", or "Extensions (3)" when any of them has a badge to
-    /// report — the count is the only thing a collapsed submenu can say.
-    private var extensionsMenuTitle: String {
-        let badged = extensions?.menuActions.filter { !$0.badgeText.isEmpty }.count ?? 0
-        return badged > 0 ? "Extensions (\(badged))" : "Extensions"
-    }
-
-    /// A submenu (#008B6) replacing the old cycle-only "Layout" row. A
-    /// `Picker` nested inside a `Menu` renders as a real iOS submenu and
-    /// checks the active case natively, so all three layouts are one tap
-    /// away instead of a cycle you might have to step through twice. Reads
-    /// `state.display.layout` and writes through `state.setLayout(_:)` —
-    /// the same accessor `cycleLayout()` (⇧⌘F, and the "Layout cycle" bar
-    /// action everywhere else) goes through (#008BB) — so a space that
-    /// overrides its layout shows and sets the right one here too, and
-    /// `content`'s `.animation(value: layoutMode)` in RootView picks up the
-    /// change exactly as a cycle step does, with no bespoke animation code.
-    @ViewBuilder
-    private var layoutMenu: some View {
-        Menu {
-            Picker(
-                "Layout",
-                selection: Binding(
-                    get: { state.display.layout },
-                    set: { state.setLayout($0) })
-            ) {
-                ForEach(BrowserLayout.allCases) { option in
-                    Label(option.displayName, systemImage: option.symbol).tag(option)
-                }
-            }
-        } label: {
-            Label(menuTitle(.layoutCycle), systemImage: BarAction.layoutCycle.symbol)
-        }
-    }
-
-    /// A menu row says what it will do, not what the thing is called — the
-    /// glyph on the bar has no room for "Exit Split View" but a menu does.
-    private func menuTitle(_ action: BarAction) -> String {
-        switch action {
-        case .reloadStop: return navigation.isLoading ? "Stop" : "Reload"
-        case .splitView: return state.isSplitActive ? "Exit Split View" : "Split View"
-        case .compactToggle:
-            return state.display.compactModeEnabled ? "Exit Compact Mode" : "Compact Mode"
-        case .focusMode: return state.isFocusMode ? "Leave Focus (erases)" : "Focus Mode"
-        case .desktopSite:
-            return state.settings.preferDesktopSite ? "Request Mobile Site" : "Request Desktop Site"
-        case .bookmark:
-            return BarActionRunner.isOn(.bookmark, state: state, tabID: tabID)
-                ? "Remove Bookmark" : "Add Bookmark"
-        case .layoutCycle: return "Layout: \(state.display.layout.displayName)"
-        case .sidebar: return "Tabs"
-        case .localServices: return "Local"
-        default: return action.title
-        }
-    }
-
     // MARK: Plumbing
 
     private func run(_ action: BarAction) {
@@ -663,11 +559,26 @@ private struct SlotLongPress: ViewModifier {
 
 // MARK: - Gestures on the bar itself
 
-/// Swipes, the long press and the double tap, resolved through the layout's
-/// gesture table (#00896). The double tap lives on the address area — see
-/// `addressArea` — because it has to be arbitrated against the tap that opens
-/// the omnibox; everything else can sit on the whole bar.
-private struct BarGestures<Menu: View>: ViewModifier {
+/// A held address has priority over its ordinary tap. Keeping this on the
+/// address area leaves each slot's own long-press action intact.
+private struct AddressHold: ViewModifier {
+    let action: BarAction?
+    let enabled: Bool
+    let run: (BarAction) -> Void
+
+    func body(content: Content) -> some View {
+        if enabled, let action, action != .none {
+            content.highPriorityGesture(
+                LongPressGesture(minimumDuration: 0.5).onEnded { _ in run(action) })
+        } else {
+            content
+        }
+    }
+}
+
+/// Swipes use the whole bar. Tap, double tap and hold arbitrate on the address
+/// area; a slot's hold keeps its separately assigned action.
+private struct BarGestures: ViewModifier {
     @ObservedObject var state: BrowserState
     let layout: BarLayout
     let context: BarActionContext
@@ -675,26 +586,13 @@ private struct BarGestures<Menu: View>: ViewModifier {
     /// Stamped when the drag passes its minimum distance, so the address
     /// button can tell a swipe from a tap.
     @Binding var lastDrag: Date
-    let overflow: () -> Menu
 
     func body(content: Content) -> some View {
-        guard enabled else { return AnyView(content) }
-        var view = AnyView(content.simultaneousGesture(swipe))
-        switch layout.gestures[.longPress] {
-        case .some(.actionMenu):
-            // The system's own long-press menu: it is the only thing that can
-            // put a menu next to a bar with no anchor of its own.
-            view = AnyView(view.contextMenu { overflow() })
-        case .some(let action) where action != .none:
-            view = AnyView(
-                view.onLongPressGesture(minimumDuration: 0.5) {
-                    if layout.haptics { Haptics.shared.fire(.longPressMenu) }
-                    BarActionRunner.perform(action, state: state, context: context)
-                })
-        default:
-            break
+        if enabled {
+            content.simultaneousGesture(swipe)
+        } else {
+            content
         }
-        return view
     }
 
     /// `simultaneousGesture` with a non-zero minimum distance: the tap that

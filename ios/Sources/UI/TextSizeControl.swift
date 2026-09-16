@@ -2,11 +2,8 @@
 //  The text-size row in the More menu, its keyboard equivalents, and the one
 //  place a zoom change actually happens (#008B7).
 //
-//  Safari puts *smaller* and *larger* side by side on one row with the current
-//  percentage between them, and that shape is worth copying exactly: two
-//  glyphs stacked vertically would be two menu rows spent on one idea, and a
-//  slider in a menu is a thing nobody can hit. `ControlGroup` inside a `Menu`
-//  is SwiftUI's own name for that row.
+//  BrowserMenuSheet draws the smaller / percentage / larger controls. The
+//  commands here are also shared by the keyboard shortcuts.
 //
 //  The change itself goes out as a notification rather than being applied
 //  here, for the same reason reload and the navigation verbs do: only
@@ -69,62 +66,6 @@ enum PageZoomCommand {
         store.set(next, for: url)
         Haptics.shared.fire(.textSizeStep)
         return next
-    }
-}
-
-// MARK: - The menu row
-
-/// `ControlGroup` — smaller / larger side by side — plus the readout, which is
-/// also the reset. Drawn inside a `Menu`'s content, so it is a *section* of the
-/// More menu rather than a view with a frame of its own.
-struct TextSizeMenuSection: View {
-    @ObservedObject var state: BrowserState
-    @ObservedObject var zoom: PageZoomStore
-    /// Which pane's page this is about. nil means the active tab.
-    var tabID: UUID?
-
-    private var url: URL? {
-        let tab = tabID.flatMap { state.tab(id: $0) } ?? state.activeTab
-        guard let tab, !tab.isNewTabPage else { return nil }
-        return tab.url
-    }
-
-    private var current: Double {
-        zoom.zoom(for: url, default: state.display.textSize)
-    }
-
-    var body: some View {
-        ControlGroup {
-            Button {
-                PageZoomCommand.post(.smaller, tabID: tabID)
-            } label: {
-                Label("Smaller", systemImage: "textformat.size.smaller")
-            }
-            .disabled(url == nil || PageZoom.isAtMinimum(current))
-            .accessibilityIdentifier("textSizeSmaller")
-
-            Button {
-                PageZoomCommand.post(.larger, tabID: tabID)
-            } label: {
-                Label("Larger", systemImage: "textformat.size.larger")
-            }
-            .disabled(url == nil || PageZoom.isAtMaximum(current))
-            .accessibilityIdentifier("textSizeLarger")
-        }
-
-        // The readout doubles as the reset, which is why it is a button and
-        // not a `Text`: a percentage you cannot undo is a number that stares
-        // at you.
-        Button {
-            PageZoomCommand.post(.reset, tabID: tabID)
-        } label: {
-            Label(
-                "Text size \(PageZoom.percentLabel(current))",
-                systemImage: zoom.hasOverride(for: url)
-                    ? "arrow.counterclockwise" : "textformat.size")
-        }
-        .disabled(url == nil || !zoom.hasOverride(for: url))
-        .accessibilityIdentifier("textSizeReadout")
     }
 }
 

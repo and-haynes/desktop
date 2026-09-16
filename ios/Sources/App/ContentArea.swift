@@ -16,6 +16,8 @@ struct ContentArea: View {
     /// keeps a site's own fixed header below the Dynamic Island (#008A9).
     var topContentInset: CGFloat = 0
     var bottomContentInset: CGFloat = 0
+    /// Also clears the home indicator and the compact grabber when the bar is away.
+    var navigationHelperBottomInset: CGFloat = 0
     /// Card layout rounds and clips the page; the other two do not.
     var rounded: Bool = true
     /// The page-stepping buttons (#008B9). Drawn over the *active* pane, so a
@@ -57,7 +59,7 @@ struct ContentArea: View {
                 // The floating bar's inset is already the measure of how much
                 // of the page it covers, so the buttons clear it without
                 // knowing anything about where the bar is.
-                .padding(.bottom, bottomContentInset + 12)
+                .padding(.bottom, navigationHelperBottomInset + 12)
                 .padding(.top, topContentInset + 12)
         }
     }

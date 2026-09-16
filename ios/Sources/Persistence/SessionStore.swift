@@ -65,6 +65,8 @@ struct ZenSettings: Codable, Equatable, Sendable {
     /// Which edge they sit on, or nil for automatic — which is the opposite of
     /// `sidebarEdge`. See `EffectiveDisplay.navigationHelperSide`.
     var navigationHelperSide: SidebarEdge?
+    /// The side stack remains the default for existing sessions.
+    var navigationHelperPlacement: NavigationHelperPlacement = .side
     /// How an article opens in reader mode on a site that has no opinion of its
     /// own (#008BC). Per-site overrides live in `ReaderSiteStore`, not here —
     /// this is only the fallback.
@@ -83,7 +85,7 @@ struct ZenSettings: Codable, Equatable, Sendable {
         case preferDesktopSite, sidebarPinnedOnPad, appearance, compactHideDelay, hapticLevel
         case showStatusBar, sidebarEdge, layout, focusRequiresBiometrics, barFill, sepiaTintsPages
         case barLayout, defaultPageZoom
-        case navigationHelperEnabled, navigationHelperSide
+        case navigationHelperEnabled, navigationHelperSide, navigationHelperPlacement
         case readerDefaults
     }
 
@@ -141,6 +143,9 @@ struct ZenSettings: Codable, Equatable, Sendable {
         // from either edge, so it must not fall back to one.
         navigationHelperSide = try? c.decodeIfPresent(
             SidebarEdge.self, forKey: .navigationHelperSide)
+        navigationHelperPlacement =
+            (try? c.decodeIfPresent(NavigationHelperPlacement.self, forKey: .navigationHelperPlacement))
+            ?? fallback.navigationHelperPlacement
         readerDefaults =
             (try c.decodeIfPresent(ReaderSettings.self, forKey: .readerDefaults)
             ?? fallback.readerDefaults).clamped()

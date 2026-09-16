@@ -20,8 +20,11 @@ struct BarActionContext {
     /// Put the bar away — the `hideBar` action, which is auto-hide's manual
     /// equivalent and belongs to the view that owns the animation.
     var hideBar: () -> Void = {}
-    /// Show the long-press action menu anchored on the bar.
+    /// Show the browser action panel.
     var showActionMenu: () -> Void = {}
+    /// A menu can confirm the touch before dismissing, then run the action
+    /// without a second, delayed tap from the same control.
+    var hapticFeedback = true
 }
 
 @MainActor
@@ -68,6 +71,10 @@ enum BarActionRunner {
     static func perform(_ action: BarAction, state: BrowserState, context: BarActionContext) {
         let tabID = context.tabID ?? state.activeTabID
         let tab = state.tab(id: tabID)
+        let fire: (HapticEvent, BrowserState) -> Void = { event, state in
+            guard context.hapticFeedback, state.display.barLayout.haptics else { return }
+            Haptics.shared.fire(event)
+        }
 
         switch action {
         case .none:
@@ -174,8 +181,7 @@ enum BarActionRunner {
             state.isSettingsPresented = true
 
         case .overflowMenu:
-            // The menu presents itself; there is nothing to run.
-            return
+            context.showActionMenu()
         case .omnibox:
             fire(.omniboxOpen, state)
             state.openOmnibox(
@@ -189,12 +195,6 @@ enum BarActionRunner {
         case .actionMenu:
             context.showActionMenu()
         }
-    }
-
-    /// Haptics are opt-out per layout, on top of the global level.
-    private static func fire(_ event: HapticEvent, _ state: BrowserState) {
-        guard state.display.barLayout.haptics else { return }
-        Haptics.shared.fire(event)
     }
 
     private static func post(_ name: Notification.Name, _ tabID: UUID?) {

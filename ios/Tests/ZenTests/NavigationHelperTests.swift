@@ -266,6 +266,21 @@ final class NavigationHelperTests: XCTestCase {
         XCTAssertFalse(helper.isVisible)
     }
 
+    func testScrollingBehindAMenuCannotBringTheControlsBack() {
+        let helper = makeHelper()
+        helper.pageDidScroll()
+        helper.coveredDidChange(true)
+        helper.pageDidScroll()
+        helper.scrollDidEnd()
+        helper.stepTapped()
+        XCTAssertFalse(helper.isVisible)
+        XCTAssertFalse(clock.hasPending)
+        XCTAssertTrue(haptics.isEmpty)
+        helper.coveredDidChange(false)
+        helper.pageDidScroll()
+        XCTAssertTrue(helper.isVisible)
+    }
+
     // MARK: Off
 
     func testWithTheHelperOffNothingEverAppears() {
@@ -342,5 +357,34 @@ final class NavigationHelperTests: XCTestCase {
         let restored = try JSONDecoder().decode(
             ZenSettings.self, from: JSONEncoder().encode(settings))
         XCTAssertNil(restored.navigationHelperSide)
+    }
+
+    func testBottomPlacementPersistsWithoutLosingTheChosenSide() throws {
+        var settings = ZenSettings()
+        settings.navigationHelperEnabled = true
+        settings.navigationHelperSide = .leading
+        settings.navigationHelperPlacement = .bottom
+        let restored = try JSONDecoder().decode(
+            ZenSettings.self, from: JSONEncoder().encode(settings))
+        XCTAssertEqual(restored.navigationHelperPlacement, .bottom)
+        XCTAssertEqual(restored.navigationHelperSide, .leading)
+        XCTAssertTrue(restored.navigationHelperEnabled)
+        var overrides = DisplayOverrides()
+        overrides.sidebarEdge = .trailing
+        XCTAssertEqual(
+            EffectiveDisplay.resolve(settings: restored, overrides: overrides).navigationHelperPlacement,
+            .bottom)
+    }
+
+    func testOlderAndUnknownPlacementsKeepExistingSessionsReadable() throws {
+        for json in [
+            #"{"navigationHelperEnabled":true,"navigationHelperSide":"trailing"}"#,
+            #"{"navigationHelperEnabled":true,"navigationHelperSide":"trailing","navigationHelperPlacement":"future"}"#,
+        ] {
+            let restored = try JSONDecoder().decode(ZenSettings.self, from: Data(json.utf8))
+            XCTAssertEqual(restored.navigationHelperPlacement, .side)
+            XCTAssertEqual(restored.navigationHelperSide, .trailing)
+            XCTAssertTrue(restored.navigationHelperEnabled)
+        }
     }
 }

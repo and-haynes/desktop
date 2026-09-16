@@ -37,6 +37,7 @@
 		15E51108240C806C47C4D059 /* TabsEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 917EA944DBE84A76F6227467 /* TabsEngine.swift */; };
 		16FCB3549AF65A4D8451333E /* OmniboxTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E5240A82F9C160738FAA784 /* OmniboxTextField.swift */; };
 		19308C6E9523C52AE71D9F02 /* NewTabPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFDCADCF735EAA705F326D9F /* NewTabPage.swift */; };
+		19A27D8CE691957691C8E912 /* MenuFeelUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84A6D3E1578EC1EE40568D37 /* MenuFeelUITests.swift */; };
 		1B73E184B0CF2F116C3BEE7A /* Fixtures in Resources */ = {isa = PBXBuildFile; fileRef = 55263DC7938F20CEA599547E /* Fixtures */; };
 		1BD5A162BEE76463B86552E6 /* NamedColorLibraryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD33633950B572673E4F3923 /* NamedColorLibraryTests.swift */; };
 		1C58705A17589E5E3BC54ED3 /* PasswordVaultServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A4B81AB81AA7FFAB6F90E89 /* PasswordVaultServiceTests.swift */; };
@@ -95,6 +96,7 @@
 		5731C9F9D5D7B75417242CC6 /* SepiaAppearanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD6A2F487DD82BAC47DCC018 /* SepiaAppearanceTests.swift */; };
 		577B82B19A735DEC410CC6DE /* SuggestionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C856C6784CFBBAC153B6D5C /* SuggestionEngine.swift */; };
 		5785FD4568159BBA320E5BDF /* SyncState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BAFD832A24640A112AF65B1 /* SyncState.swift */; };
+		5AC715933CD5D573845F6704 /* BrowserMenuSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AB87A726A8ED154915A278A /* BrowserMenuSheet.swift */; };
 		5C2B8C351A95340A2F15A1BF /* ZenSpacesRecords.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EF927EF7B88CDA97759FFF1 /* ZenSpacesRecords.swift */; };
 		61874C43C279ED772781240F /* SplitAndCompactTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0D144C896B0D8E6CAC17372 /* SplitAndCompactTests.swift */; };
 		626899AF2E80A8FC5AFD45AF /* PasswordsPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AA573AAD15C0740C1D5D159 /* PasswordsPanel.swift */; };
@@ -307,6 +309,7 @@
 		27C2D0393E6DEBBFEBA29BE3 /* ReaderTemplateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderTemplateTests.swift; sourceTree = "<group>"; };
 		29075B937C9F7E6A0FAA6987 /* WebAuthnAvailabilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebAuthnAvailabilityTests.swift; sourceTree = "<group>"; };
 		2AA573AAD15C0740C1D5D159 /* PasswordsPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordsPanel.swift; sourceTree = "<group>"; };
+		2AB87A726A8ED154915A278A /* BrowserMenuSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserMenuSheet.swift; sourceTree = "<group>"; };
 		2AEDCE4B1F5AACF8E73E5DFA /* SecurityDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecurityDetailSheet.swift; sourceTree = "<group>"; };
 		2B39F3D08AE876742212DAC6 /* BrowserLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserLayoutTests.swift; sourceTree = "<group>"; };
 		2B7DC3083D917DB62298DF0C /* BrowserStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserStateTests.swift; sourceTree = "<group>"; };
@@ -395,6 +398,7 @@
 		82193B0812A778DE46C01FCA /* TabRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabRowView.swift; sourceTree = "<group>"; };
 		82E8DD82802A5C2CE14CD71C /* ReaderSettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderSettingsTests.swift; sourceTree = "<group>"; };
 		84672DDEFAD5E426AE5F4EC7 /* LoginFormObserver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginFormObserver.swift; sourceTree = "<group>"; };
+		84A6D3E1578EC1EE40568D37 /* MenuFeelUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuFeelUITests.swift; sourceTree = "<group>"; };
 		8504E45FB01390B4338E9D84 /* ZenColorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZenColorTests.swift; sourceTree = "<group>"; };
 		850C5604A63AB2C192CAF79A /* LoadFailure.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadFailure.swift; sourceTree = "<group>"; };
 		856D26B820B996AD65C24C1B /* SyncEndToEndTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncEndToEndTests.swift; sourceTree = "<group>"; };
@@ -657,6 +661,7 @@
 			children = (
 				14D9FF5859A605EAFB0CC40F /* BarActionRunner.swift */,
 				C328A5EE18F01699DF47AE6A /* BarSwipeGesture.swift */,
+				2AB87A726A8ED154915A278A /* BrowserMenuSheet.swift */,
 				C6C6D1F5A9CFA5AF58CC7A93 /* CompactBarController.swift */,
 				00702F505256F196432DB86D /* OmniboxOverlay.swift */,
 				89CF4FD1B002F1922E42F267 /* OmniboxPill.swift */,
@@ -777,6 +782,7 @@
 			isa = PBXGroup;
 			children = (
 				714E762ADB17B712E94AE0EE /* CompactModeUITests.swift */,
+				84A6D3E1578EC1EE40568D37 /* MenuFeelUITests.swift */,
 				439FB91CDAB39BD7F4A0FB00 /* ScreenshotTests.swift */,
 			);
 			path = ZenUITests;
@@ -1254,6 +1260,7 @@
 				E0E3DC7B5EE872AD19704C25 /* BitwardenVaultProvider.swift in Sources */,
 				C4649229BE972D7E8FDD6516 /* BookmarksEngine.swift in Sources */,
 				3685FE2FFD8188B9037C476D /* BrowserLayout.swift in Sources */,
+				5AC715933CD5D573845F6704 /* BrowserMenuSheet.swift in Sources */,
 				278AF6D17B5B2EDADCA4EEE4 /* BrowserState+Sync.swift in Sources */,
 				B9A8D252A256882924FC680C /* BrowserState.swift in Sources */,
 				ACCF847DDF9D5B32BBC96A28 /* CSSColor.swift in Sources */,
@@ -1406,6 +1413,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				AD1B934E166E1FE449E0D2F9 /* CompactModeUITests.swift in Sources */,
+				19A27D8CE691957691C8E912 /* MenuFeelUITests.swift in Sources */,
 				6CB635ECD2442985E99CE502 /* ScreenshotTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

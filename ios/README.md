@@ -83,6 +83,8 @@ Everything in this section is **not a port of a Zen desktop feature**. These
 are ideas that only make sense on a phone, that a homelab makes necessary, or
 that Zen has never had:
 
+The More button (or holding the address with the default gestures) opens an action panel with spring press feedback, immediate selection haptics, and a fixed Settings button. Text-size changes keep it open; selecting a destination dismisses the panel before presenting the next sheet. Controls respect the haptic settings and Reduce Motion.
+
 | Ticket | Addition | What it is |
 |---|---|---|
 | **#00887** | Layout cycle | Three states — card, edge to edge, full screen — cycled from the overflow menu or ⇧⌘F. Desktop chrome always frames the content; a phone screen is small enough that the frame is a real cost. |
@@ -95,7 +97,7 @@ that Zen has never had:
 | **#00890** | Sepia | A third palette base (paper `#F4ECD8` over ink `#5B4636`) run through zen-theme.css's own `color-mix` chain, plus an off-by-default page tint. |
 | **#00896** | Customisable bar | One persisted `BarLayout` describes the whole URL bar — where it sits, how big it is, what is inside the pill, which buttons it carries, what its gestures do and when it hides. Four presets, ones you save, and JSON import/export. |
 | **#008B7** | Text size | Safari's `AA` row — smaller and larger side by side in the More menu, with the percentage between them — on `WKWebView.pageZoom`, remembered per registrable domain, with a global default in Settings and ⌘+ / ⌘− / ⌘0 on iPad. |
-| **#008B9** | Navigation helper | Page up, page down, top and bottom as four minimal round buttons that fade in while the page is scrolling and fade out once it settles. Off by default; they take the edge opposite the sidebar, never the first scroll gesture, and step by one *visible* screenful less a small overlap. |
+| **#008B9** | Navigation helper | Page up, page down, top and bottom as four minimal round buttons that fade in while the page is scrolling and fade out once it settles. Off by default; Settings → Navigation helper → Position chooses a Side stack or a Bottom row. The side can follow the edge opposite the sidebar. Both clear the toolbar and compact grabber, never take the first scroll gesture, and step by one *visible* screenful less a small overlap. |
 | **#008BA** | Two-line stacked bar | `Rows: 1 / 2` in Customize bar. Two puts the address on its own line and the buttons on a full-width row below it, raising a side from four glyphs to seven; landscape can collapse it back. |
 | **#008BB** | Per-workspace display | A space can override the layout, appearance, bar layout and fill, compact mode, sidebar edge, text size and the navigation helper. Everything else inherits, and keeps inheriting when the global changes. |
 | **#008B8** | Browser extensions | Firefox/Chrome WebExtension packages loaded by WebKit's `WKWebExtension` (iOS 18.4+). Install from Files, the Share sheet or a pasted addons.mozilla.org link; a compatibility scan says up front which of the APIs the package uses WebKit does not have. One extension controller per space, so an extension's storage is isolated exactly as a site's cookies are — and none in Focus. |

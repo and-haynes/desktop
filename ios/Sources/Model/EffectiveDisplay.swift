@@ -109,6 +109,7 @@ struct EffectiveDisplay: Equatable, Sendable {
     var navigationHelperEnabled: Bool
     /// Already resolved from Automatic — see `navigationHelperSide` below.
     var navigationHelperSide: SidebarEdge
+    var navigationHelperPlacement: NavigationHelperPlacement
 
     /// The bar's backing, with the layout's own override applied. Here rather
     /// than at each call site so "the layout can pin a fill" is decided once.
@@ -148,7 +149,8 @@ struct EffectiveDisplay: Equatable, Sendable {
             // one, or a space that moved its sidebar would put the helper
             // under the same thumb.
             navigationHelperSide: settings.navigationHelperSide
-                ?? (sidebarEdge == .leading ? .trailing : .leading))
+                ?? (sidebarEdge == .leading ? .trailing : .leading),
+            navigationHelperPlacement: settings.navigationHelperPlacement)
     }
 
     /// A full layout beats a preset id beats the global. A preset id that

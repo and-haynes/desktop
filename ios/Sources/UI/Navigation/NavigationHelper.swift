@@ -28,6 +28,14 @@
 
 import SwiftUI
 
+enum NavigationHelperPlacement: String, Codable, CaseIterable, Identifiable, Sendable {
+    case side
+    case bottom
+
+    var id: String { rawValue }
+    var displayName: String { self == .side ? "Side" : "Bottom" }
+}
+
 // MARK: - What a button does
 
 enum PageScrollStep: String, CaseIterable, Identifiable, Sendable {
@@ -151,6 +159,7 @@ final class NavigationHelperController: ObservableObject {
 
     private let clock: CompactBarClock
     private let fire: @MainActor (HapticEvent) -> Void
+    private var isCovered = false
 
     init(
         clock: CompactBarClock? = nil,
@@ -165,7 +174,7 @@ final class NavigationHelperController: ObservableObject {
     /// The page is moving. Brings the buttons in and stops any countdown — a
     /// long flick must not fade them out halfway through.
     func pageDidScroll() {
-        guard isEnabled else { return }
+        guard isEnabled, !isCovered else { return }
         clock.cancel()
         isVisible = true
     }
@@ -179,7 +188,7 @@ final class NavigationHelperController: ObservableObject {
     /// A button was used. Keeps them for as long as you are paging — tapping
     /// Page Down four times in a row should not be a race against a timer.
     func stepTapped() {
-        guard isEnabled else { return }
+        guard isEnabled, !isCovered else { return }
         // The page's own dismiss-tap is a `simultaneousGesture` on the view
         // these buttons are drawn over, so it fires for a touch on a button
         // too. Whichever of the two SwiftUI delivers first, the helper must
@@ -198,9 +207,11 @@ final class NavigationHelperController: ObservableObject {
     /// They go at once and do not come back until the page is scrolled again,
     /// because there is nothing behind the cover for them to page.
     func coveredDidChange(_ covered: Bool) {
-        guard isEnabled, covered else { return }
+        isCovered = covered
+        guard covered else { return }
         clock.cancel()
         isVisible = false
+        ignoreNextPageTap = false
     }
 
     /// The page was tapped: put them away now rather than on the timer, as
@@ -236,7 +247,7 @@ final class NavigationHelperController: ObservableObject {
 
 // MARK: - The buttons
 
-/// Four minimal round buttons, stacked, in the bar's own fill.
+/// Four page controls, as a side stack or a single bottom pill.
 ///
 /// Drawn over the *pane* rather than the window so a split shows them against
 /// the page you are actually in — and so they clear a docked bar without
@@ -247,49 +258,81 @@ struct NavigationHelperStack: View {
     /// The pane this belongs to; the scroll goes to this tab's web view.
     var tabID: UUID?
     @Environment(\.zenPalette) private var palette
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// A minimal target: big enough for the Apple minimum with the hit area
     /// around it, small enough not to be a toolbar down the side of the page.
-    private static let diameter: CGFloat = 38
-    private static let spacing: CGFloat = 8
+    private static let diameter: CGFloat = 44
+    private static let spacing: CGFloat = 6
 
     private var side: SidebarEdge { state.display.navigationHelperSide }
     private var fill: BarFill { state.display.resolvedBarFill }
+    private var isBottom: Bool { state.display.navigationHelperPlacement == .bottom }
 
     var body: some View {
-        VStack(spacing: Self.spacing) {
-            ForEach(PageScrollStep.stacked) { step in
-                button(step)
+        controls
+            .offset(y: helper.isVisible || reduceMotion ? 0 : 8)
+            .opacity(helper.isVisible ? 1 : 0)
+            .animation(
+                reduceMotion
+                    ? .easeOut(duration: 0.15) : .spring(response: 0.3, dampingFraction: 0.86),
+                value: helper.isVisible
+            )
+            .padding(.horizontal, 10)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment)
+            // The whole point of (2) in the file comment: no touch reaches a
+            // helper that is not on screen, so the flick that summons them is the
+            // flick that scrolls.
+            .allowsHitTesting(helper.isVisible)
+            .accessibilityHidden(!helper.isVisible)
+    }
+
+    @ViewBuilder
+    private var controls: some View {
+        if isBottom {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 4) {
+                    ForEach(PageScrollStep.stacked) { step in button(step) }
+                }
+                .padding(4)
+                .fixedSize(horizontal: true, vertical: false)
+                .zenBarFill(fill, palette: palette, isFloating: true, radius: 26)
+                // A narrow split pane must keep all four full-size targets.
+                sideControls
             }
+        } else {
+            sideControls
         }
-        .padding(.horizontal, 10)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment)
-        .opacity(helper.isVisible ? 1 : 0)
-        // The whole point of (2) in the file comment: no touch reaches a
-        // helper that is not on screen, so the flick that summons them is the
-        // flick that scrolls.
-        .allowsHitTesting(helper.isVisible)
-        .animation(.easeInOut(duration: 0.22), value: helper.isVisible)
-        .accessibilityHidden(!helper.isVisible)
+    }
+
+    private var sideControls: some View {
+        VStack(spacing: Self.spacing) {
+            ForEach(PageScrollStep.stacked) { step in button(step, individualFill: true) }
+        }
     }
 
     private var alignment: Alignment {
-        side == .leading ? .bottomLeading : .bottomTrailing
+        isBottom ? .bottom : (side == .leading ? .bottomLeading : .bottomTrailing)
     }
 
-    private func button(_ step: PageScrollStep) -> some View {
+    private func button(_ step: PageScrollStep, individualFill: Bool = false) -> some View {
         Button {
             helper.stepTapped()
             PageScrollCommand.post(step, tabID: tabID ?? state.activeTabID)
         } label: {
             Image(systemName: step.symbol)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(palette.text.withAlpha(0.75).color)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(palette.text.withAlpha(0.9).color)
                 .frame(width: Self.diameter, height: Self.diameter)
-                .contentShape(Circle())
-                .zenBarFill(
-                    fill, palette: palette, isFloating: true, radius: Self.diameter / 2,
-                    isInteractive: true)
+                .background {
+                    if individualFill {
+                        Circle().fill(.clear)
+                            .zenBarFill(
+                                fill, palette: palette, isFloating: true,
+                                radius: Self.diameter / 2, isInteractive: true)
+                    }
+                }
+                .contentShape(Rectangle())
         }
         .buttonStyle(ZenPressStyle())
         .accessibilityLabel(step.title)
@@ -320,6 +363,7 @@ struct NavigationHelperBridge: ViewModifier {
     @ObservedObject var state: BrowserState
     @ObservedObject var helper: NavigationHelperController
     let pool: WebViewPool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func body(content: Content) -> some View {
         content
@@ -342,12 +386,14 @@ struct NavigationHelperBridge: ViewModifier {
     /// `CompactBarBridge` uses, for the same reason.
     private var isCovered: Bool {
         state.isOmniboxOpen || state.isSettingsPresented || state.isHistorySheetPresented
-            || state.isSidebarVisible || state.focusLocked
+            || state.isSidebarVisible || state.focusLocked || state.isBrowserMenuActive
+            || state.isReaderOpen
     }
 
     private func sync() {
         helper.stillDelay = state.settings.compactHideDelay
         helper.isEnabled = state.display.navigationHelperEnabled
+        helper.coveredDidChange(isCovered)
     }
 
     private func scroll(_ note: Notification) {
@@ -366,6 +412,7 @@ struct NavigationHelperBridge: ViewModifier {
             topInset: scrollView.contentInset.top,
             bottomInset: scrollView.contentInset.bottom)
         guard abs(target - scrollView.contentOffset.y) > 0.5 else { return }
-        scrollView.setContentOffset(CGPoint(x: scrollView.contentOffset.x, y: target), animated: true)
+        scrollView.setContentOffset(
+            CGPoint(x: scrollView.contentOffset.x, y: target), animated: !reduceMotion)
     }
 }

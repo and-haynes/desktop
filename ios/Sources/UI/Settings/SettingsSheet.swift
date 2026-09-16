@@ -414,15 +414,28 @@ struct SettingsSheet: View {
         Section {
             Toggle("Navigation helper", isOn: $state.settings.navigationHelperEnabled)
                 .accessibilityIdentifier("navigationHelperToggle")
-            Picker("Side", selection: $state.settings.navigationHelperSide) {
-                Text("Automatic").tag(SidebarEdge?.none)
-                ForEach(SidebarEdge.allCases) { edge in
-                    Text(edge.displayName).tag(SidebarEdge?.some(edge))
+            Picker("Position", selection: $state.settings.navigationHelperPlacement) {
+                ForEach(NavigationHelperPlacement.allCases) { placement in
+                    Text(placement.displayName).tag(placement)
                 }
             }
             .pickerStyle(.segmented)
             .disabled(!state.settings.navigationHelperEnabled)
-            .accessibilityIdentifier("navigationHelperSidePicker")
+            .accessibilityIdentifier("navigationHelperPlacementPicker")
+            .onChange(of: state.settings.navigationHelperPlacement) { _, _ in
+                Haptics.shared.fire(.layoutChange)
+            }
+            if state.settings.navigationHelperPlacement == .side {
+                Picker("Side", selection: $state.settings.navigationHelperSide) {
+                    Text("Automatic").tag(SidebarEdge?.none)
+                    ForEach(SidebarEdge.allCases) { edge in
+                        Text(edge.displayName).tag(SidebarEdge?.some(edge))
+                    }
+                }
+                .pickerStyle(.segmented)
+                .disabled(!state.settings.navigationHelperEnabled)
+                .accessibilityIdentifier("navigationHelperSidePicker")
+            }
         } header: {
             Text("Navigation helper")
         } footer: {
@@ -434,13 +447,11 @@ struct SettingsSheet: View {
     /// interpolation inside a `Form` this large is what tips the type checker
     /// over, and the error it gives names no cause.
     private var navigationHelperFooter: String {
-        let side = state.display.navigationHelperSide.displayName
-        return "Page up, page down, top and bottom, as four small buttons that "
-            + "fade in while the page is scrolling and fade out once it settles "
-            + "— on the same delay as compact mode, so the chrome and the "
-            + "buttons go together. A page step is one screenful less a little "
-            + "overlap, so you keep your place. Automatic puts them on the edge "
-            + "opposite the sidebar; right now that is " + side + "."
+        let position = state.settings.navigationHelperPlacement == .bottom
+            ? "Bottom puts all four controls in a row near the bottom of the page."
+            : "Automatic places them opposite the sidebar."
+        return "Jump to the top or bottom, or move one screenful at a time. "
+            + "Controls appear as you scroll and fade after the compact-mode delay. " + position
     }
 
     /// The sign-in sheet's three outcomes. Kept out of the body so the Form's

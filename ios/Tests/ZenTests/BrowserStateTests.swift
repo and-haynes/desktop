@@ -47,6 +47,31 @@ final class BrowserStateTests: XCTestCase {
         XCTAssertFalse(state.essentials.isEmpty)
     }
 
+    func testMenuKeepsItsTabAndBlocksOtherSheetsThroughDismissal() throws {
+        let state = makeState()
+        let tab = try XCTUnwrap(state.newTab(url: url(1)))
+        state.openBrowserMenu(tabID: tab.id)
+        let request = try XCTUnwrap(state.browserMenu)
+        XCTAssertTrue(state.isBlockingSheetPresented)
+        _ = state.newTab(url: url(2))
+        state.openBrowserMenu()
+        XCTAssertEqual(state.browserMenu?.id, request.id, "A second tap must not replace an open menu")
+        XCTAssertEqual(state.browserMenu?.tabID, tab.id)
+        state.browserMenu = nil
+        XCTAssertTrue(state.isBlockingSheetPresented, "Dismissal is still in progress")
+        state.isBrowserMenuActive = false
+        XCTAssertFalse(state.isBlockingSheetPresented)
+    }
+
+    func testBothMenuActionsReachThePresenter() {
+        let state = makeState()
+        var presentations = 0
+        let context = BarActionContext(showActionMenu: { presentations += 1 })
+        BarActionRunner.perform(.actionMenu, state: state, context: context)
+        BarActionRunner.perform(.overflowMenu, state: state, context: context)
+        XCTAssertEqual(presentations, 2)
+    }
+
     // MARK: Sections
 
     func testTabsAreGroupedIntoThreeTiers() {

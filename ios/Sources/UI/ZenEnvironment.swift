@@ -143,13 +143,21 @@ struct ZenCircleButton: View {
     }
 }
 
-/// `:active { scale: 0.98 }`
+/// A quick compression followed by a short, settled spring on release.
+/// Reduced Motion keeps the opacity feedback without moving the target.
 struct ZenPressStyle: ButtonStyle {
     var pressedScale: CGFloat = 0.96
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? pressedScale : 1)
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed && !reduceMotion ? pressedScale : 1)
+            .opacity(configuration.isPressed ? 0.72 : 1)
+            .animation(
+                reduceMotion || configuration.isPressed
+                    ? .easeOut(duration: 0.08)
+                    : .spring(response: 0.28, dampingFraction: 0.72),
+                value: configuration.isPressed)
     }
 }
 
