@@ -86,6 +86,9 @@ struct OmniboxPill: View {
                 .buttonStyle(ZenPressStyle())
                 .accessibilityLabel("Close split pane")
             } else {
+                if state.isReaderAvailable(tab?.id) || state.isReaderOpen {
+                    readerButton
+                }
                 if let tab, !tab.isNewTabPage {
                     bookmarkButton(tab)
                 }
@@ -166,6 +169,27 @@ struct OmniboxPill: View {
         .accessibilityLabel("Toggle sidebar")
     }
 
+    /// Safari puts its reader button in the bar and so does Firefox, because
+    /// the whole affordance is "this page *could* be nicer" — a fact about the
+    /// page you are looking at, which belongs next to the address rather than
+    /// two taps into a menu. It appears only where the probe said there is an
+    /// article (#008BC).
+    private var readerButton: some View {
+        let open = state.isReaderOpen
+        return Button {
+            Haptics.shared.fire(open ? .glanceClose : .glanceOpen)
+            NotificationCenter.default.post(name: .zenToggleReaderView, object: nil)
+        } label: {
+            Image(systemName: open ? "doc.plaintext.fill" : "doc.plaintext")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(open ? palette.accent.color : palette.text.withAlpha(0.6).color)
+                .frame(width: 30, height: 36)
+        }
+        .buttonStyle(ZenPressStyle())
+        .accessibilityLabel(open ? "Close reader" : "Reader view")
+        .accessibilityIdentifier("readerButton")
+    }
+
     private func bookmarkButton(_ tab: Tab) -> some View {
         let saved = state.bookmarks.isBookmarked(tab.url)
         return Button {
@@ -197,6 +221,17 @@ struct OmniboxPill: View {
             Button {
                 state.isFindBarVisible = true
             } label: { Label("Find in Page", systemImage: "text.magnifyingglass") }
+
+            // In the menu as well as in the bar: the probe is a heuristic, and
+            // it says no to plenty of pages that read perfectly well in the
+            // reader. The menu item is how you overrule it.
+            Button {
+                NotificationCenter.default.post(name: .zenToggleReaderView, object: nil)
+            } label: {
+                Label(
+                    state.isReaderOpen ? "Hide Reader" : "Show Reader",
+                    systemImage: "doc.plaintext")
+            }
 
             Toggle(isOn: $state.settings.preferDesktopSite) {
                 Label("Request Desktop Site", systemImage: "desktopcomputer")
@@ -265,4 +300,9 @@ extension Notification.Name {
     /// overflow menu and the page's context menu; RootView observes it, for the
     /// same reason as `zenReloadActiveTab` — the web view lives in the pool.
     static let zenPopOutVideo = Notification.Name("zen.popOutVideo")
+    /// Open the reader on the active tab, or close it if it is open (#008BC).
+    /// Posted by the bar button and the overflow menu; RootView observes it,
+    /// for the same reason as the two above — extraction runs against the web
+    /// view, and only the root can reach the pool.
+    static let zenToggleReaderView = Notification.Name("zen.toggleReaderView")
 }

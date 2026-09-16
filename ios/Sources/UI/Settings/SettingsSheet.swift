@@ -102,6 +102,8 @@ struct SettingsSheet: View {
                     }
                 }
 
+                ReaderSettingsSection(state: state)
+
                 SyncSettingsSection(sync: sync)
 
                 PasswordsSettingsSection()

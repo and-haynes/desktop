@@ -57,6 +57,16 @@ final class BrowserState: ObservableObject {
     /// A one-line transient message over the page (#008B0). Replaced rather
     /// than queued — the newest message describes what you just did.
     @Published var toast: ZenToastMessage?
+    /// The tab currently being read in reader mode, if any (#008BC). The tab's
+    /// own web view is untouched underneath, which is what makes leaving the
+    /// reader put you back at the same scroll position for free.
+    @Published var readerTabID: UUID?
+    /// Which tabs have something Readability thinks it can extract. Answered by
+    /// the cheap `isProbablyReaderable` probe when a page finishes loading, and
+    /// the only thing that decides whether the reader affordance is offered —
+    /// a reader button on a page with no article is a button that can only
+    /// disappoint.
+    @Published private(set) var readerAvailability: [UUID: Bool] = [:]
     @Published var isHistorySheetPresented: Bool = false
     @Published var isSettingsPresented: Bool = false
     @Published var findInPageQuery: String = ""
@@ -259,6 +269,8 @@ final class BrowserState: ObservableObject {
         tabs.remove(at: index)
         if glanceTabID == tabID { glanceTabID = nil }
         if splitSecondaryTabID == tabID { splitSecondaryTabID = nil }
+        if readerTabID == tabID { readerTabID = nil }
+        readerAvailability[tabID] = nil
 
         guard let spaceID, activeTabIDBySpace[spaceID] == tabID else {
             scheduleSave()
@@ -469,6 +481,31 @@ final class BrowserState: ObservableObject {
         let next = ((current + delta) % ordered.count + ordered.count) % ordered.count
         select(ordered[next].id)
     }
+
+    // MARK: Reader mode (#008BC)
+
+    /// Is the reader worth offering on this tab?
+    func isReaderAvailable(_ tabID: UUID?) -> Bool {
+        guard let tabID else { return false }
+        return readerAvailability[tabID] == true
+    }
+
+    func setReaderAvailable(_ available: Bool, for tabID: UUID) {
+        guard readerAvailability[tabID] != available else { return }
+        readerAvailability[tabID] = available
+        // Navigating away from an article while reading it would otherwise
+        // leave the reader showing the page before last.
+        if !available && readerTabID == tabID { readerTabID = nil }
+    }
+
+    /// A tab that is navigating has not been probed yet, and the last page's
+    /// answer is not this page's.
+    func clearReaderAvailability(for tabID: UUID) {
+        guard readerAvailability[tabID] != nil else { return }
+        readerAvailability[tabID] = nil
+    }
+
+    var isReaderOpen: Bool { readerTabID != nil }
 
     // MARK: Glance & split
 

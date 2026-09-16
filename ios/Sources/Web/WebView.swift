@@ -158,6 +158,9 @@ struct WebView: UIViewRepresentable {
                 state.pageZoom.zoom(
                     for: webView.url, default: state.settings.defaultPageZoom))
             guard let tabID else { return }
+            // The last page's answer is not this page's, and an offer that
+            // survives a navigation would extract the wrong document (#008BC).
+            state.clearReaderAvailability(for: tabID)
             state.updateTab(tabID) { $0.loadFailure = nil }
         }
 
@@ -190,6 +193,20 @@ struct WebView: UIViewRepresentable {
             // announcement. Suppressed outright while the page is scrolling.
             Haptics.shared.fire(.pageLoaded)
             fetchFavicon(webView)
+            checkReaderable(zen)
+        }
+
+        /// Ask the cheap half of Readability whether this page is an article
+        /// (#008BC). Only the ~4 KB probe runs here — the 90 KB parser waits
+        /// until the reader is actually opened — but it has to run on every
+        /// page, because a reader button that appears *after* you have gone
+        /// looking for it in a menu is not an affordance.
+        private func checkReaderable(_ webView: ZenWebView?) {
+            guard let webView, let tabID else { return }
+            state.clearReaderAvailability(for: tabID)
+            webView.checkReaderable { [weak state] readerable in
+                state?.setReaderAvailable(readerable, for: tabID)
+            }
         }
 
         func webView(

@@ -42,6 +42,10 @@ struct ZenSettings: Codable, Equatable, Sendable {
     /// Page zoom for a site that has no opinion of its own (#008B7). 1.0 is
     /// 100 %; `PageZoom` owns the ladder and the clamping.
     var defaultPageZoom: Double = PageZoom.standard
+    /// How an article opens in reader mode on a site that has no opinion of its
+    /// own (#008BC). Per-site overrides live in `ReaderSiteStore`, not here —
+    /// this is only the fallback.
+    var readerDefaults: ReaderSettings = ReaderSettings()
 
     init() {}
 
@@ -55,7 +59,7 @@ struct ZenSettings: Codable, Equatable, Sendable {
         case searchEngine, compactModeEnabled, compactHidesSidebar, compactHidesToolbar
         case preferDesktopSite, sidebarPinnedOnPad, appearance, compactHideDelay, hapticLevel
         case showStatusBar, sidebarEdge
-        case defaultPageZoom
+        case defaultPageZoom, readerDefaults
     }
 
     init(from decoder: Decoder) throws {
@@ -94,6 +98,9 @@ struct ZenSettings: Codable, Equatable, Sendable {
         defaultPageZoom = PageZoom.clamp(
             try c.decodeIfPresent(Double.self, forKey: .defaultPageZoom)
                 ?? fallback.defaultPageZoom)
+        readerDefaults =
+            (try c.decodeIfPresent(ReaderSettings.self, forKey: .readerDefaults)
+            ?? fallback.readerDefaults).clamped()
     }
 }
 
