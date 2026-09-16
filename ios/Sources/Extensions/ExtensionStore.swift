@@ -323,10 +323,22 @@ final class ExtensionStore: ObservableObject {
 
     /// Prepare every bundled fixture that is not already installed at the same
     /// version. Returns them in declaration order.
+    ///
+    /// The already-installed filter matters more than it looks: the button is
+    /// "install the test extensions", and offering an install sheet for one
+    /// that is already there — identical version, identical package — is a
+    /// question with no useful answer. It also means tapping the button twice
+    /// finishes the job when the first pass only got through one.
     func prepareBundledFixtures(bundle: Bundle = .main) -> [PreparedExtension] {
         Self.bundledFixtureNames.compactMap { name in
             guard let url = Self.bundledFixtureURL(name, bundle: bundle) else { return nil }
-            return try? prepare(directory: url, source: .bundled(name: name))
+            guard let prepared = try? prepare(directory: url, source: .bundled(name: name))
+            else { return nil }
+            guard record(id: prepared.record.id)?.version != prepared.record.version else {
+                discard(prepared)
+                return nil
+            }
+            return prepared
         }
     }
 }

@@ -11,6 +11,7 @@
 //  sheet — talks to this and compiles unconditionally. On iOS 17 the engine is
 //  never created, `actions` stays empty, and the screens say why.
 
+import Combine
 import Foundation
 import SwiftUI
 import WebKit
@@ -42,9 +43,28 @@ final class ExtensionHost: ObservableObject {
 
     let store: ExtensionStore
 
+    /// The app's one runtime.
+    ///
+    /// A singleton for a specific, measured reason rather than for
+    /// convenience: `WKWebViewConfiguration.webExtensionController` can only be
+    /// set *before* a web view is built, and the first browsing web view is
+    /// built during the first layout pass — which happens before `RootView`'s
+    /// `onAppear` can hand anything to the pool. A tab whose view was made
+    /// without a controller never gets one, so the extension appears installed
+    /// and does nothing, which is precisely the failure mode this feature
+    /// exists to avoid. `Haptics` and `MediaSession` are shared for the same
+    /// class of reason.
+    static let shared = ExtensionHost()
+
     /// Typed as `AnyObject` on purpose — see the file comment. Nothing outside
     /// `engine` ever touches it.
     private var engineStorage: AnyObject?
+
+    /// The installed list lives on the store, but every view in the feature is
+    /// bound to *this* — so a change to the store has to be re-announced here
+    /// or Settings does not redraw after an install. Forwarding once beats
+    /// giving every view two `@ObservedObject`s to keep in step.
+    private var storeObservation: AnyCancellable?
 
     /// WebExtensions arrived in WebKit on iOS 18.4. Everything user-facing
     /// reads this rather than writing the version out again.
@@ -58,31 +78,44 @@ final class ExtensionHost: ObservableObject {
         + "WKWebExtension in. Everything else in Zen works as it does now."
 
     init(store: ExtensionStore? = nil) {
-        self.store = store ?? ExtensionStore()
+        let store = store ?? ExtensionStore()
+        self.store = store
+        storeObservation = store.objectWillChange.sink { [weak self] _ in
+            self?.objectWillChange.send()
+        }
     }
 
     @available(iOS 18.4, *)
     var engine: ExtensionEngine? { engineStorage as? ExtensionEngine }
 
+    /// Built on first use rather than in `start`.
+    ///
+    /// The first caller is a web view being configured during the first layout
+    /// pass, which is earlier than `RootView.onAppear`. An engine that waited
+    /// for `start` would hand that view no controller, and a web view cannot be
+    /// given one afterwards — the tab would be unable to run an extension for
+    /// as long as it lived. `ExtensionRuntimeTests` pins this.
+    @available(iOS 18.4, *)
+    @discardableResult
+    private func ensureEngine() -> ExtensionEngine {
+        if let existing = engineStorage as? ExtensionEngine { return existing }
+        let engine = ExtensionEngine(host: self, store: store)
+        engineStorage = engine
+        return engine
+    }
+
     /// Introduce the runtime to the browser. Called once, from `RootView`.
     func start(state: BrowserState, pool: WebViewPool) {
         guard #available(iOS 18.4, *) else { return }
-        let engine: ExtensionEngine
-        if let existing = engineStorage as? ExtensionEngine {
-            engine = existing
-        } else {
-            engine = ExtensionEngine(host: self, store: store)
-            engineStorage = engine
-        }
-        engine.state = state
-        engine.pool = pool
+        ensureEngine().attach(state: state, pool: pool)
     }
 
     /// The controller a browsing web view in this space belongs to. Returns nil
-    /// below 18.4, in Focus, and before `start`.
+    /// below 18.4 and in Focus — but *not* merely because `start` has not run
+    /// yet; see `ensureEngine`.
     @available(iOS 18.4, *)
     func controller(for space: Space, ephemeral: Bool) -> WKWebExtensionController? {
-        engine?.controller(for: space, ephemeral: ephemeral)
+        ensureEngine().controller(for: space, ephemeral: ephemeral)
     }
 
     // MARK: Driven from the view tree

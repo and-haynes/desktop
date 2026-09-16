@@ -42,6 +42,7 @@
 		1EB4D30E10664329711220BC /* ZenToast.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB438807025F397275AC8B4E /* ZenToast.swift */; };
 		1F22711FBF3649CA277A923D /* ExtensionStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22141BA4AAB85FB2EA801F7C /* ExtensionStoreTests.swift */; };
 		1F4326C74B645F3296BDFDEB /* LoadFailureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 782C96F203ECA8E99702C663 /* LoadFailureTests.swift */; };
+		21548F6FAA0E992848531D12 /* ExtensionRuntimeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43B484C209DE5C20FE421590 /* ExtensionRuntimeTests.swift */; };
 		21674D029F3F9EAA1087CEFC /* LocalService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 184829DDCA044CE2BB001C37 /* LocalService.swift */; };
 		22A88A81124CBA8EB3FD8A8B /* ExtensionHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF3070B88C1FE5198938E1B3 /* ExtensionHost.swift */; };
 		22B7AE3B562BF7D102577E75 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5B4C36D8CF492F87328958F /* SidebarView.swift */; };
@@ -70,6 +71,7 @@
 		459B0E8FE6A2898F2BA9B24F /* ZenColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACBD665DE4374F9877BC1681 /* ZenColor.swift */; };
 		4699799A2A28EF41FC6B7D3C /* NamedColorLibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD2B41BF8055939CD99B474A /* NamedColorLibraryView.swift */; };
 		49497DBB7B64C045BEB5E6D5 /* ClientsEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0384393307C90C69345E3440 /* ClientsEngine.swift */; };
+		4A6F443BCEB40E0195726B06 /* LoopbackServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42834C3B560428D82307A339 /* LoopbackServer.swift */; };
 		4B803AA72A2C37D17B0FEBC3 /* ExtensionCompatibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8912E688072F038998060A9A /* ExtensionCompatibility.swift */; };
 		4BFDB75AC44DC39DD5AB0EFE /* BarSwipeGesture.swift in Sources */ = {isa = PBXBuildFile; fileRef = C328A5EE18F01699DF47AE6A /* BarSwipeGesture.swift */; };
 		4C29522B846C8563F56C2015 /* ExtensionActionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E3B99B1A6C5DF17B3E0BF6E /* ExtensionActionState.swift */; };
@@ -298,8 +300,10 @@
 		40EFF13D1D831249A0FA7A4E /* BarFillTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BarFillTests.swift; sourceTree = "<group>"; };
 		416F737CB73FFC4D1EFCC941 /* LANScanFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LANScanFixtures.swift; sourceTree = "<group>"; };
 		4194E2945F49162AAE7F13E1 /* BitwardenCrypto.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BitwardenCrypto.swift; sourceTree = "<group>"; };
+		42834C3B560428D82307A339 /* LoopbackServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoopbackServer.swift; sourceTree = "<group>"; };
 		4297C472C3DEAD2D96846B2E /* BrowserState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserState.swift; sourceTree = "<group>"; };
 		439FB91CDAB39BD7F4A0FB00 /* ScreenshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotTests.swift; sourceTree = "<group>"; };
+		43B484C209DE5C20FE421590 /* ExtensionRuntimeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtensionRuntimeTests.swift; sourceTree = "<group>"; };
 		4510207940A3BC343CD08693 /* PageZoomTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageZoomTests.swift; sourceTree = "<group>"; };
 		4612602BC62424EB26D005AE /* PasswordVaultProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordVaultProvider.swift; sourceTree = "<group>"; };
 		46585DB0F80BC570B7EF0930 /* HTTPTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTPTransport.swift; sourceTree = "<group>"; };
@@ -881,6 +885,7 @@
 				FFEAF9FFAB621077229DC41F /* ExtensionCompatibilityTests.swift */,
 				12FDCA224666C8F0557D1C69 /* ExtensionFixtures.swift */,
 				6E816A2EE9AF0E6CF55907F3 /* ExtensionManifestTests.swift */,
+				43B484C209DE5C20FE421590 /* ExtensionRuntimeTests.swift */,
 				22141BA4AAB85FB2EA801F7C /* ExtensionStoreTests.swift */,
 				09F24B7F8C95A7BD963AFEE7 /* ExtensionTabMappingTests.swift */,
 				A85329F9BCB66962F38E0EA2 /* FocusModeTests.swift */,
@@ -893,6 +898,7 @@
 				782C96F203ECA8E99702C663 /* LoadFailureTests.swift */,
 				14E37899BD5634F912038987 /* LocalServiceStoreTests.swift */,
 				A19ECE92BD9923F1D55F4BF0 /* LoginFormFillTests.swift */,
+				42834C3B560428D82307A339 /* LoopbackServer.swift */,
 				64D39AA03895E2C6860E6633 /* MediaSessionTests.swift */,
 				773B35E2BE0EA1C9632F70C5 /* MockSyncServer.swift */,
 				AD33633950B572673E4F3923 /* NamedColorLibraryTests.swift */,
@@ -1319,6 +1325,7 @@
 				E765009F3AF71451CBAAA989 /* ExtensionCompatibilityTests.swift in Sources */,
 				EFD1414792AA82FE1D43929E /* ExtensionFixtures.swift in Sources */,
 				0BBA9CF66F913D3CE3DE7F4E /* ExtensionManifestTests.swift in Sources */,
+				21548F6FAA0E992848531D12 /* ExtensionRuntimeTests.swift in Sources */,
 				1F22711FBF3649CA277A923D /* ExtensionStoreTests.swift in Sources */,
 				0D1315276BD6506D577E75E2 /* ExtensionTabMappingTests.swift in Sources */,
 				C4F6A443C04D27948F298927 /* FocusModeTests.swift in Sources */,
@@ -1331,6 +1338,7 @@
 				1F4326C74B645F3296BDFDEB /* LoadFailureTests.swift in Sources */,
 				2DE414A52167E9774FDA40F1 /* LocalServiceStoreTests.swift in Sources */,
 				BD545AB0A5CC4AE8C611093C /* LoginFormFillTests.swift in Sources */,
+				4A6F443BCEB40E0195726B06 /* LoopbackServer.swift in Sources */,
 				C02651108A0C9836848DAAA5 /* MediaSessionTests.swift in Sources */,
 				982AB9E72B9E86A050208A62 /* MockSyncServer.swift in Sources */,
 				1BD5A162BEE76463B86552E6 /* NamedColorLibraryTests.swift in Sources */,

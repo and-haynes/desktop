@@ -740,7 +740,6 @@ struct BarPreset: Identifiable, Sendable {
                 BarSlotItem(.reloadStop), BarSlotItem(.share), BarSlotItem(.findInPage),
                 BarSlotItem(.desktopSite), BarSlotItem(.splitView), BarSlotItem(.compactToggle),
                 BarSlotItem(.focusMode), BarSlotItem(.layoutCycle), BarSlotItem(.passwords),
-                BarSlotItem(.extensions),
                 BarSlotItem(.history), BarSlotItem(.localServices), BarSlotItem(.settings),
             ]
             layout.gestures = [

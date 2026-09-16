@@ -19,7 +19,7 @@ struct RootView: View {
     /// Experimental (#008B8). Built unconditionally for the same reason the
     /// vault is: the settings screen has to be able to offer it, and below
     /// iOS 18.4 it simply never creates a runtime.
-    @StateObject private var extensions = ExtensionHost()
+    @StateObject private var extensions = ExtensionHost.shared
     @StateObject private var pool = PoolBox()
     @Environment(\.colorScheme) private var systemScheme
     @Environment(\.horizontalSizeClass) private var sizeClass
@@ -209,9 +209,8 @@ struct RootView: View {
             // The runtime holds the browser weakly, so this is the one place
             // the two are introduced — the same shape as `sync.attach` below
             // and `pool.vault` above (#008B8).
-            extensions.start(state: state, pool: pool.pool)
             pool.pool.extensions = extensions
-            extensions.installedChanged()
+            extensions.start(state: state, pool: pool.pool)
             // A restored session has icons for nothing it has not yet loaded;
             // fetch them so the sidebar is not a column of monograms.
             Task { await FaviconService.prefetchMissing(for: state) }

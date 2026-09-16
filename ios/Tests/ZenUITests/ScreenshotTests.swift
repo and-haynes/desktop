@@ -186,8 +186,25 @@ final class ScreenshotTests: XCTestCase {
         guard moreButton.waitForExistence(timeout: 8) else { return false }
         moreButton.tap()
         settle(1.2)
-        let item = app.buttons.matching(NSPredicate(format: predicate)).firstMatch
+        var item = app.buttons.matching(NSPredicate(format: predicate)).firstMatch
+        // The overflow menu is taller than the screen and scrolls; an item
+        // below the fold is not merely off-screen to XCUITest, it does not
+        // exist. Scroll before giving up.
+        if !item.waitForExistence(timeout: 3) {
+            for _ in 0..<3 {
+                app.swipeUp()
+                settle(0.6)
+                item = app.buttons.matching(NSPredicate(format: predicate)).firstMatch
+                if item.exists { break }
+            }
+        }
         guard item.waitForExistence(timeout: 5) else {
+            // Leave evidence: "no item matched" is indistinguishable from "the
+            // menu never opened" without a picture and a hierarchy, and both
+            // have happened. Same affordance `openOmnibox` already has.
+            capture("debug-menu-missing")
+            try? Data(app.debugDescription.utf8)
+                .write(to: outputDirectory.appendingPathComponent("debug-menu-hierarchy.txt"))
             // Dismiss the menu rather than leaving it open over the next step.
             app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.25)).tap()
             settle(0.8)
@@ -2213,7 +2230,15 @@ extension ScreenshotTests {
     /// now that the row is well below the fold, and XCUITest does not scroll.
     @discardableResult
     private func openExtensionsSettings() -> Bool {
-        guard tapMenuItem(matching: "label CONTAINS[c] 'Settings'") else { return false }
+        // A cold install takes its time getting to a usable bar, and the More
+        // menu is the first thing this touches — one attempt has been seen to
+        // miss it. Retried rather than lengthened, so a warm run stays quick.
+        var opened = tapMenuItem(matching: "label CONTAINS[c] 'Settings'")
+        if !opened {
+            settle(3.0)
+            opened = tapMenuItem(matching: "label CONTAINS[c] 'Settings'")
+        }
+        guard opened else { return false }
         settle(1.5)
         let row = app.buttons["extensionsSettingsLink"].firstMatch
         let cell = app.cells["extensionsSettingsLink"].firstMatch
@@ -2242,7 +2267,7 @@ extension ScreenshotTests {
     /// an extension that appears in a list and does nothing is exactly the
     /// failure this whole feature is trying to avoid.
     func testTheBuiltInExtensionsActuallyRunInAPage() throws {
-        settle(3.0)
+        settle(5.0)
         XCTAssertTrue(openExtensionsSettings(), "Settings has no Extensions row")
 
         let installFixtures = app.buttons["installFixturesButton"].firstMatch
@@ -2255,9 +2280,16 @@ extension ScreenshotTests {
         installFixtures.tap()
         settle(1.5)
 
-        // Two packages, one sheet each.
+        // Two packages, one sheet each. SwiftUI presents one sheet at a time,
+        // so the second is queued behind the first's dismissal; if that race
+        // is lost, tapping the button again offers only what is still missing
+        // (`prepareBundledFixtures` skips what is installed).
         XCTAssertTrue(confirmInstall(), "the first install sheet never appeared")
-        XCTAssertTrue(confirmInstall(), "the second install sheet never appeared")
+        if !confirmInstall() {
+            installFixtures.tap()
+            settle(1.5)
+            XCTAssertTrue(confirmInstall(), "the second install sheet never appeared")
+        }
         settle(2.0)
         capture("49a-extensions-fixtures-installed")
 

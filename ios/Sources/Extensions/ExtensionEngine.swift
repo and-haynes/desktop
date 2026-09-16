@@ -70,9 +70,18 @@ final class ExtensionEngine: NSObject, WKWebExtensionControllerDelegate, Extensi
 
     /// The controller a web view in this space should be configured with, or
     /// nil where extensions do not run.
+    ///
+    /// Deliberately works before `state` has been handed over. The first
+    /// browsing web view is built during the first layout pass, which is
+    /// earlier than any `onAppear`, and a configuration that missed its
+    /// controller cannot be given one afterwards — so the controller is
+    /// created here regardless and `attach(state:pool:)` finishes the job
+    /// (window, contexts, tabs) whenever the browser turns up.
     func controller(for space: Space, ephemeral: Bool) -> WKWebExtensionController? {
+        // Focus mode: `ephemeral` is the same condition the data store uses,
+        // and unlike `state` it is known at this point.
         guard !ephemeral else { return nil }
-        guard let state, state.focusSpaceID != space.id else { return nil }
+        if let state, state.focusSpaceID == space.id { return nil }
         if let existing = controllers[space.dataStoreID] { return existing }
 
         let configuration = WKWebExtensionController.Configuration(
@@ -81,17 +90,37 @@ final class ExtensionEngine: NSObject, WKWebExtensionControllerDelegate, Extensi
         let controller = WKWebExtensionController(configuration: configuration)
         controller.delegate = self
         controllers[space.dataStoreID] = controller
+        finishSetUp(space: space)
+        return controller
+    }
 
-        let window = ExtensionWindowProxy(state: state)
-        windows[space.dataStoreID] = window
-        controller.didOpenWindow(window)
-        controller.didFocusWindow(window)
+    /// The browser has arrived. Everything a controller could not be given
+    /// without it — its window, its contexts and its tabs — happens now.
+    func attach(state: BrowserState, pool: WebViewPool?) {
+        self.state = state
+        self.pool = pool
+        for dataStoreID in controllers.keys {
+            guard let space = space(forDataStoreID: dataStoreID) else { continue }
+            finishSetUp(space: space)
+        }
+        syncTabs()
+        publishActions()
+    }
 
-        // A space that is created, or first visited, after launch still has to
-        // end up with everything that is installed and enabled.
+    /// Idempotent: called both when a controller is created and when `state`
+    /// turns up, in whichever order those happen.
+    private func finishSetUp(space: Space) {
+        guard let state, let controller = controllers[space.dataStoreID] else { return }
+        if windows[space.dataStoreID] == nil {
+            let window = ExtensionWindowProxy(state: state)
+            windows[space.dataStoreID] = window
+            controller.didOpenWindow(window)
+            controller.didFocusWindow(window)
+        }
+        // A space created, or first visited, after launch still has to end up
+        // with everything that is installed and enabled.
         refresh(space: space)
         syncTabs()
-        return controller
     }
 
     private func spaceID(forController controller: WKWebExtensionController) -> UUID? {
@@ -129,11 +158,14 @@ final class ExtensionEngine: NSObject, WKWebExtensionControllerDelegate, Extensi
         // Unload anything that has gone or been switched off, first: an update
         // reinstalls under the same id, and loading a second context for one
         // identifier is an error rather than a replacement.
+        var unloadedAny = false
         for (identifier, context) in loaded
         where !wanted.contains(where: { $0.id == identifier }) {
             try? controller.unload(context)
             loaded[identifier] = nil
+            unloadedAny = true
         }
+        if unloadedAny { rebuildBrowsingViews() }
 
         for record in wanted {
             if let context = loaded[record.id] {
@@ -166,6 +198,7 @@ final class ExtensionEngine: NSObject, WKWebExtensionControllerDelegate, Extensi
                 self.syncTabs()
                 self.publishActions()
                 self.host.clearLoadError(record.id)
+                self.rebuildBrowsingViews()
             } catch {
                 // A package WebKit refuses — a persistent background page, an
                 // unreadable manifest, a bad declarativeNetRequest ruleset — is
@@ -214,6 +247,23 @@ final class ExtensionEngine: NSObject, WKWebExtensionControllerDelegate, Extensi
             context.isInspectable = true
             context.inspectionName = record.name
         #endif
+    }
+
+    /// Every live web view has to be built again.
+    ///
+    /// Content scripts do not need this — WebKit injects those per navigation,
+    /// into whatever is already open. A `declarativeNetRequest` rule list does:
+    /// it is compiled into the *configuration*, and a configuration cannot be
+    /// changed after its web view exists. So a tab that was open when a
+    /// blocker was installed would show its content scripts and block nothing,
+    /// which is a worse lie than doing neither.
+    ///
+    /// Only on a load or an unload, never on a permission edit, so toggling a
+    /// switch in Settings does not throw the page away underneath somebody.
+    private func rebuildBrowsingViews() {
+        guard let state else { return }
+        pool?.unloadAll()
+        state.invalidateWebViews()
     }
 
     private func allowedSitePatterns(_ record: InstalledExtension) -> [String] {

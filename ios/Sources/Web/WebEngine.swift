@@ -167,10 +167,13 @@ final class WebViewPool {
     /// keeps the change to the browsing path down to the two lines in
     /// `webView(for:…)` that install the observer (#008AD).
     weak var vault: PasswordVaultService?
-    /// The extension runtime, set by `RootView` at launch. Weak for the same
-    /// reason the vault is: the pool is owned by the view and must not keep
-    /// either alive (#008B8).
-    weak var extensions: ExtensionHost?
+    /// The extension runtime (#008B8).
+    ///
+    /// Defaulted rather than injected at `onAppear` like the vault is: a web
+    /// view's extension controller has to be on its *configuration*, so a view
+    /// built before the wiring ran would be one extensions can never reach.
+    /// See `ExtensionHost.shared`.
+    weak var extensions: ExtensionHost? = ExtensionHost.shared
     /// Kept alive for as long as their web views are: `WKUserContentController`
     /// holds its message handlers weakly, so an observer that only the
     /// configuration referenced would be gone before the first submit.
@@ -262,7 +265,11 @@ final class WebViewPool {
     }
 
     func unloadAll() {
-        for id in views.keys { unload(id) }
+        // `views.keys` is a view onto the dictionary `unload` mutates, so it
+        // has to be copied first — iterating it while removing entries is
+        // undefined. Never noticed while the only caller was Focus's erase,
+        // which unloads named tabs one at a time.
+        for id in Array(views.keys) { unload(id) }
     }
 
     private func touch(_ tabID: UUID) {

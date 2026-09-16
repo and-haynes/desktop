@@ -767,6 +767,31 @@ with nothing written down, and an extension with `storage` and a background
 page is the opposite of that. `AutoFillSuppressionTests.testFocusGetsNoExtensionController`
 pins it.
 
+### Installing an extension rebuilds the open tabs
+
+Worth knowing because it looks like a glitch and is not.
+
+Content scripts and blocking rules reach a page by different routes. WebKit
+injects a content script per navigation, into whatever is already open — so
+installing a content-script extension appears to work immediately. A
+`declarativeNetRequest` rule list does not: it is compiled into the *web view's
+configuration*, and a configuration cannot be changed once its view exists.
+Reloading does not help.
+
+So a tab that was open when a blocker was installed would show that extension's
+content scripts and block nothing at all — installed, visibly running, and
+silently useless. Rather than ship that, loading or unloading an extension
+throws away every live web view and has them built again (`BrowserState.webViewGeneration`,
+which `ContentArea` folds into each pane's identity). Pages reload; the scroll
+offset survives, because the pool stashes it on the way out. A *permission*
+edit does not do this — the page is not thrown away under you for a switch.
+
+`ExtensionRuntimeTests.testInstallingABlockerAffectsATabThatWasAlreadyOpen`
+pins the whole sequence against a real loopback HTTP server, which is the only
+way to tell "blocked" from "failed": against a hostname that does not resolve,
+every probe fails and the test passes whether or not the extension does
+anything.
+
 ### Tabs
 
 `tabs.query`, `tabs.create`, `tabs.onUpdated` and the rest are answered out of

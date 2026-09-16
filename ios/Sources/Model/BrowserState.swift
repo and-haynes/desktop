@@ -71,6 +71,20 @@ final class BrowserState: ObservableObject {
     /// Live swipe offset in points while a space-switch gesture is in progress.
     @Published var spaceSwipeOffset: CGFloat = 0
 
+    /// Bumped when every live web view has to be built again from scratch
+    /// (#008B8).
+    ///
+    /// Loading an extension gives its `declarativeNetRequest` rules to the
+    /// controller, but a *compiled rule list* only reaches a web view through
+    /// its configuration — so a tab whose view already existed keeps getting
+    /// content scripts (which WebKit injects per navigation) while its
+    /// blocking rules quietly do nothing. Reloading does not help; the view
+    /// has to be rebuilt. `ContentArea` folds this into each pane's identity,
+    /// which is what makes SwiftUI ask the pool for a new one.
+    ///
+    /// Runtime only: a generation number means nothing across a launch.
+    @Published private(set) var webViewGeneration: Int = 0
+
     /// Live navigation state per tab: what the bar's back / forward / reload
     /// buttons and its progress indicator read from. Runtime only — a restored
     /// tab has no history until it loads, so persisting this would be a lie.
@@ -297,6 +311,13 @@ final class BrowserState: ObservableObject {
         activeTabIDBySpace[spaceID] = tabID
         markLoaded(tabID)
         scheduleSave()
+    }
+
+    /// Throw away every live web view and have them rebuilt. The scroll
+    /// offset survives (the pool stashes it before unloading) and the page
+    /// reloads, which is the same cost as switching back to an unloaded tab.
+    func invalidateWebViews() {
+        webViewGeneration &+= 1
     }
 
     func markLoaded(_ tabID: UUID, _ loaded: Bool = true) {

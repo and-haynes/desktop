@@ -144,6 +144,11 @@
 			</dict>
 		</dict>
 	</array>
+	<!-- Zen reads a package and unpacks its own copy; it never edits the file
+	     it was handed. Declaring that explicitly is also what stops the build
+	     warning that an app supporting documents must answer this. -->
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<false/>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>

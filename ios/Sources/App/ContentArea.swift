@@ -62,6 +62,12 @@ struct ContentArea: View {
         }
     }
 
+    /// Kept as one function so the two places that need to agree — this view
+    /// and any test reasoning about it — cannot drift.
+    static func paneIdentity(_ tabID: UUID, generation: Int) -> String {
+        "\(tabID.uuidString)#\(generation)"
+    }
+
     @ViewBuilder
     private func pane(_ tabID: UUID) -> some View {
         if let tab = state.tab(id: tabID) {
@@ -99,7 +105,13 @@ struct ContentArea: View {
             .overlay { helperOverlay(tabID) }
             // A tab's identity must be stable or SwiftUI recycles the
             // representable across tabs and you get the wrong page.
-            .id(tab.id)
+            //
+            // The generation is the one thing allowed to change it: installing
+            // an extension has to produce a *new* web view, because a compiled
+            // blocking rule list only reaches a page through the configuration
+            // it was built with (#008B8). It moves once per install, not per
+            // navigation.
+            .id(ContentArea.paneIdentity(tab.id, generation: state.webViewGeneration))
         }
     }
 }

@@ -109,7 +109,11 @@ struct ExtensionsSettingsView: View {
             // A beat, or SwiftUI drops the second presentation on the floor
             // while the first sheet is still animating out.
             Task {
-                try? await Task.sleep(for: .milliseconds(450))
+                // Long enough for the first sheet's dismissal to finish. A
+                // presentation requested while one is still animating out is
+                // dropped silently, and 450ms was not always enough on a cold
+                // launch.
+                try? await Task.sleep(for: .milliseconds(800))
                 prepared = next
             }
         }
@@ -310,7 +314,12 @@ struct ExtensionsSettingsView: View {
     private func installFixtures() {
         let candidates = store.prepareBundledFixtures()
         guard let first = candidates.first else {
-            failure = "The built-in extensions are missing from this build."
+            // Nothing prepared means either a broken build or — far more
+            // likely — that both are already installed at this version.
+            failure =
+                store.extensions.isEmpty
+                ? "The built-in extensions are missing from this build."
+                : "Both test extensions are already installed."
             return
         }
         // One sheet at a time: the second is offered as soon as the first is

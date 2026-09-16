@@ -524,8 +524,13 @@ struct OmniboxPill: View {
         // layout carries an `.extensions` slot (#008B8). A deliberate
         // exception to "the menu is exactly what you put in it": an extension
         // you installed and cannot find is indistinguishable from one that is
-        // broken, and the submenu is empty — one inert row — when there is
-        // nothing loaded.
+        // broken.
+        //
+        // Gated on something actually being installed, and *not* also put in
+        // the shipped preset's overflow slots, because the two together would
+        // be the same thing twice. The shipped overflow already fills the
+        // menu's visible height — a thirteenth entry pushes Settings below the
+        // fold, which is how this was found.
         if let extensions, ExtensionHost.isSupported, extensions.hasAnythingInstalled {
             Divider()
             Menu {
