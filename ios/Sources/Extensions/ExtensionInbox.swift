@@ -109,10 +109,15 @@ enum ExtensionInbox {
         // Zen refuses is still a copy only Zen can delete. Deferring it after
         // the guard is how `Documents/Inbox` fills up with other people's PDFs.
         defer { discardInboxCopy(url) }
-        guard isPackage(url) else { throw InboxError.notAnExtension(name) }
 
+        // The access bracket goes around the `isPackage` check too: deciding
+        // what a security-scoped URL is means reading it, and reading one
+        // outside the bracket fails as "no such file" on a path that plainly
+        // exists — which would read here as "that is not an extension".
         let scoped = url.startAccessingSecurityScopedResource()
         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+
+        guard isPackage(url) else { throw InboxError.notAnExtension(name) }
 
         if isDirectory(url) {
             return try store.prepare(directory: url, source: .file(name: name))
