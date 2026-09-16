@@ -73,6 +73,74 @@ final class ExtensionRuntimeTests: XCTestCase {
         }
     }
 
+    // MARK: Measuring a block
+
+    /// What one pass of the probe page saw.
+    private struct BlockingProbe {
+        var attempts = 0
+        /// The control resource ran, so the page loaded at all. Without this
+        /// every other field is meaningless — an unreachable page also fails
+        /// to fetch the resource that was supposed to be blocked.
+        var pageLoaded = false
+        /// The blocked resource's script executed in the page.
+        var blockedArrived = true
+        /// The server was asked for it, which is the difference between
+        /// "blocked" and "requested and then failed".
+        var serverWasAsked = true
+
+        var isBlocked: Bool { pageLoaded && !blockedArrived && !serverWasAsked }
+    }
+
+    /// Load the probe page and report what the blocker did to it, retrying
+    /// with a freshly built web view until it blocks or the deadline passes.
+    ///
+    /// The retry is not flake-hiding, it is the API: WebKit compiles a
+    /// `declarativeNetRequest` ruleset asynchronously once the context is
+    /// loaded, `isLoaded` goes true before that finishes, and there is no
+    /// public signal for when the compiled list is live —
+    /// `WKWebExtensionContext` exposes `loaded` and nothing about its rules. A
+    /// single probe behind a fixed sleep therefore measures the machine's load
+    /// rather than the browser's behaviour, and did: both blocking tests passed
+    /// and failed on the same commit within ten minutes. A fresh view per
+    /// attempt because a compiled rule list reaches a page through the
+    /// configuration its view was built with, which is the same reason
+    /// installing an extension rebuilds the open tabs.
+    private func probeBlocking(
+        server: LoopbackServer,
+        page: URL,
+        window: UIWindow,
+        attempts: Int = 12,
+        makeView: () -> ZenWebView
+    ) async -> BlockingProbe {
+        var probe = BlockingProbe()
+        for attempt in 1...attempts {
+            probe = BlockingProbe(attempts: attempt)
+            server.resetRequests()
+            let view = makeView()
+            window.addSubview(view)
+            view.load(URLRequest(url: page))
+            for _ in 0..<100 {
+                if let arrived = try? await view.evaluateJavaScript(
+                    "window.zenAllowedArrived === true") as? Bool, arrived
+                {
+                    probe.pageLoaded = true
+                    break
+                }
+                try? await Task.sleep(for: .milliseconds(50))
+            }
+            // Long enough for a request that was going to arrive to arrive.
+            try? await Task.sleep(for: .milliseconds(500))
+            probe.blockedArrived =
+                (try? await view.evaluateJavaScript("window.zenBlockedArrived === true") as? Bool)
+                ?? true
+            probe.serverWasAsked = server.wasRequested("/zen-blocked-resource.js")
+            if probe.isBlocked { return probe }
+            view.removeFromSuperview()
+            try? await Task.sleep(for: .milliseconds(250))
+        }
+        return probe
+    }
+
     // MARK: The load
 
     func testWebKitLoadsOurFixturePackage() async throws {
@@ -263,14 +331,7 @@ final class ExtensionRuntimeTests: XCTestCase {
         defer { server.stop() }
         server.serve("/zen-blocked-resource.js", javascript: "window.zenBlockedArrived = true;")
         server.serve("/allowed.js", javascript: "window.zenAllowedArrived = true;")
-        server.serve(
-            "/page.html",
-            html: """
-                <!doctype html><html><body><h1>Probe</h1>
-                <script src="/allowed.js"></script>
-                <script src="/zen-blocked-resource.js"></script>
-                </body></html>
-                """)
+        server.serve("/page.html", html: server.probePage)
 
         let host = makeHost()
         let state = makeState()
@@ -286,38 +347,27 @@ final class ExtensionRuntimeTests: XCTestCase {
         XCTAssertNil(host.loadErrors[record.id], host.loadErrors[record.id] ?? "")
 
         let tab = try XCTUnwrap(state.newTab(url: server.url("/page.html")))
-        let view = pool.webView(for: tab, space: space, desktop: false)
         let window = UIWindow(frame: .init(x: 0, y: 0, width: 390, height: 844))
-        window.addSubview(view)
         window.isHidden = false
-        view.load(URLRequest(url: server.url("/page.html")))
+        let probe = await probeBlocking(
+            server: server, page: server.url("/page.html"), window: window
+        ) {
+            pool.unload(tab.id)
+            return pool.webView(for: tab, space: space, desktop: false)
+        }
 
         // The control script is what says the page finished at all — without
         // it, "the blocked script did not run" is also what a page that never
         // loaded looks like.
-        var allowedArrived = false
-        for _ in 0..<200 {
-            if let arrived = try? await view.evaluateJavaScript("window.zenAllowedArrived === true")
-                as? Bool, arrived
-            {
-                allowedArrived = true
-                break
-            }
-            try await Task.sleep(for: .milliseconds(50))
-        }
-        XCTAssertTrue(allowedArrived, "the page never loaded, so nothing here is measuring rules")
-
-        // Give a request that was going to arrive time to arrive.
-        try await Task.sleep(for: .milliseconds(600))
-        let blockedArrived =
-            try await view.evaluateJavaScript("window.zenBlockedArrived === true") as? Bool
-        XCTAssertEqual(
-            blockedArrived, false,
-            "declarativeNetRequest did not block a request its own rule matches")
         XCTAssertTrue(
-            server.wasRequested("/allowed.js"), "the control resource was served")
+            probe.pageLoaded, "the page never loaded, so nothing here is measuring rules")
+        XCTAssertTrue(server.wasRequested("/allowed.js"), "the control resource was served")
         XCTAssertFalse(
-            server.wasRequested("/zen-blocked-resource.js"),
+            probe.blockedArrived,
+            "declarativeNetRequest did not block a request its own rule matches, in "
+                + "\(probe.attempts) passes")
+        XCTAssertFalse(
+            probe.serverWasAsked,
             "the request reached the server, so it was not blocked — it merely failed")
     }
 
@@ -335,14 +385,7 @@ final class ExtensionRuntimeTests: XCTestCase {
         defer { server.stop() }
         server.serve("/zen-blocked-resource.js", javascript: "window.zenBlockedArrived = true;")
         server.serve("/allowed.js", javascript: "window.zenAllowedArrived = true;")
-        server.serve(
-            "/page.html",
-            html: """
-                <!doctype html><html><body><h1>Probe</h1>
-                <script src="/allowed.js"></script>
-                <script src="/zen-blocked-resource.js"></script>
-                </body></html>
-                """)
+        server.serve("/page.html", html: server.probePage)
 
         let host = makeHost()
         let state = makeState()
@@ -390,27 +433,19 @@ final class ExtensionRuntimeTests: XCTestCase {
         // a new web view — this time with the controller's rules on it.
         let second = pool.webView(for: tab, space: space, desktop: false)
         XCTAssertFalse(second === first, "the pool handed back the same stale view")
-        window.addSubview(second)
+        first.removeFromSuperview()
 
-        server.serve("/page.html", html: server.secondPassPage)
-        second.load(URLRequest(url: server.url("/page.html")))
-        var allowedArrived = false
-        for _ in 0..<200 {
-            if let arrived = try? await second.evaluateJavaScript(
-                "window.zenAllowedArrived === true") as? Bool, arrived
-            {
-                allowedArrived = true
-                break
-            }
-            try await Task.sleep(for: .milliseconds(50))
+        let probe = await probeBlocking(
+            server: server, page: server.url("/page.html"), window: window
+        ) {
+            pool.unload(tab.id)
+            return pool.webView(for: tab, space: space, desktop: false)
         }
-        XCTAssertTrue(allowedArrived, "the rebuilt view never loaded the page")
-        try await Task.sleep(for: .milliseconds(600))
-        let blockedArrived =
-            try await second.evaluateJavaScript("window.zenBlockedArrived === true") as? Bool
-        XCTAssertEqual(
-            blockedArrived, false,
-            "the blocker was installed and the tab still loaded the blocked resource")
+        XCTAssertTrue(probe.pageLoaded, "the rebuilt view never loaded the page")
+        XCTAssertFalse(
+            probe.blockedArrived,
+            "the blocker was installed and the tab still loaded the blocked resource, in "
+                + "\(probe.attempts) passes")
     }
 
     /// The bundled fixtures have to be in the *app* bundle, not only the test

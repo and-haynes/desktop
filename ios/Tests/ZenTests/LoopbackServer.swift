@@ -98,19 +98,24 @@ final class LoopbackServer: @unchecked Sendable {
             Response(contentType: "application/javascript; charset=utf-8", body: Data(javascript.utf8)))
     }
 
-    /// The same probe page, served again for a second pass — the paths are
-    /// re-requested, and `requestedPaths` is cleared so "did it arrive this
-    /// time" is a fresh question.
-    var secondPassPage: String {
+    /// The probe page: one control resource and one the blocker's rule matches.
+    var probePage: String {
+        """
+        <!doctype html><html><body><h1>Probe</h1>
+        <script src="/allowed.js"></script>
+        <script src="/zen-blocked-resource.js"></script>
+        </body></html>
+        """
+    }
+
+    /// Forget what has been asked for so far, so that "did it arrive *this*
+    /// time" is a fresh question on the next load. A probe that runs more than
+    /// once has to do this between passes or the first pass's requests answer
+    /// for the last one.
+    func resetRequests() {
         lock.lock()
         requestedPaths = []
         lock.unlock()
-        return """
-            <!doctype html><html><body><h1>Probe</h1>
-            <script src="/allowed.js"></script>
-            <script src="/zen-blocked-resource.js"></script>
-            </body></html>
-            """
     }
 
     func wasRequested(_ path: String) -> Bool {
