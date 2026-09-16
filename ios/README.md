@@ -900,6 +900,12 @@ Four routes, all landing on the same install sheet:
   stands.
 - **The two built-in fixtures**, above.
 
+![The install sheet, reached by handing Zen an XPI from outside the app](docs/screenshots/52-extension-from-share-sheet.png)
+
+Above: an `.xpi` handed to Zen from outside the app, landing on the install
+sheet. This one is already installed at the same version, so the sheet offers
+to replace it and says what that keeps.
+
 The ZIP reader is written here rather than taken from a dependency (this
 project has none) and rather than delegated to WebKit — which *would* take a
 ZIP as a `resourceBaseURL` — for two reasons: the compatibility scan has to
