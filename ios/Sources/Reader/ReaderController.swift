@@ -58,7 +58,7 @@ final class ReaderController: NSObject, ObservableObject {
     private var isForgetting = false
 
     init(sites: ReaderSiteStore? = nil) {
-        self.sites = sites ?? ReaderSiteStore()
+        self.sites = sites ?? .shared
         super.init()
         speech.onSentence = { [weak self] sentence in
             self?.highlight(sentence)

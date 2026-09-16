@@ -87,6 +87,12 @@ enum ReaderSite {
 /// settles, and the session snapshot carries every tab in the browser.
 @MainActor
 final class ReaderSiteStore: ObservableObject {
+    /// One store, because there is one file. Two instances over the same
+    /// document each hold their own idea of what is in it, and the later write
+    /// wins — so "Forget every site" in Settings would come back the next time
+    /// a slider moved in the reader.
+    static let shared = ReaderSiteStore()
+
     /// Site key → settings. Only sites with an explicit choice appear; a site
     /// that has never been adjusted has no entry and follows the global
     /// default, which is what makes changing that default do anything at all.

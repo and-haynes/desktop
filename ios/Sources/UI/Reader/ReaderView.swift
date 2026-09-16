@@ -53,7 +53,13 @@ struct ReaderView: View {
             .onChange(of: reader.isReadAloudVisible) { _, _ in updateInsets(proxy) }
         }
         .transition(.opacity)
-        .accessibilityIdentifier("readerView")
+        // No `accessibilityIdentifier` on this container, and none on the two
+        // bars below either. An accessibility modifier on a SwiftUI container
+        // is applied to *every element inside it*, so one here renames the
+        // close button, the appearance button and all three pill buttons to
+        // "readerView" — they are then unreachable by their own identifiers,
+        // while still being perfectly visible on screen. That is exactly how
+        // this feature's UI tests failed twice before the hierarchy was dumped.
     }
 
     /// The page has to start below the top bar and end above the pill, and
@@ -301,7 +307,7 @@ private struct ReaderTransport: View {
         }
         .clipShape(Capsule())
         .zenBigShadow()
-        .accessibilityIdentifier("readerTransport")
+        // Deliberately unidentified — see the note in `ReaderView.body`.
     }
 
     private var positionLabel: String {

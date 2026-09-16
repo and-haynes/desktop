@@ -53,7 +53,8 @@ struct ReaderControlsPanel: View {
         // so a slider is judged against the thing it is changing.
         .presentationBackgroundInteraction(.enabled(upThrough: .medium))
         .presentationDragIndicator(.visible)
-        .accessibilityIdentifier("readerControls")
+        // No identifier on the sheet itself: it would be applied to every
+        // control inside it and take their own identifiers away.
     }
 
     // MARK: Themes

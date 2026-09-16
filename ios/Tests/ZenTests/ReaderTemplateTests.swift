@@ -84,7 +84,10 @@ final class ReaderTemplateTests: XCTestCase {
         XCTAssertEqual(ReaderTemplate.trim(19), "19")
         XCTAssertEqual(ReaderTemplate.trim(1.6), "1.6")
         XCTAssertEqual(ReaderTemplate.trim(-0.03), "-0.03")
+        // `%g` would make this `1e-07`, which CSS cannot parse as a length —
+        // the property would be dropped and the control would look broken.
         XCTAssertFalse(ReaderTemplate.trim(0.0000001).contains("e"))
+        XCTAssertFalse(ReaderTemplate.trim(-0.0000001).contains("e"))
     }
 
     // MARK: The restyle script
@@ -160,8 +163,11 @@ final class ReaderTemplateTests: XCTestCase {
             textContent: "x", direction: "ltr", language: "", url: nil)
         let html = ReaderTemplate.document(
             article: article, settings: ReaderSettings(), insets: ReaderInsets())
-        XCTAssertFalse(html.contains("zen-reader-byline"))
-        XCTAssertFalse(html.contains("zen-reader-site"))
+        // The class names are always in the stylesheet; what must be absent is
+        // the *markup*, so that a byline-less article has no empty line under
+        // its headline.
+        XCTAssertFalse(html.contains("<p class=\"zen-reader-byline\">"))
+        XCTAssertFalse(html.contains("<p class=\"zen-reader-site\">"))
     }
 
     func testTheDocumentDeclaresTheCustomPropertiesItsStylesheetReads() {

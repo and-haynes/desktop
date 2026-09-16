@@ -13,7 +13,7 @@ import SwiftUI
 
 struct ReaderSettingsSection: View {
     @ObservedObject var state: BrowserState
-    @StateObject private var sites = ReaderSiteStore()
+    @ObservedObject private var sites = ReaderSiteStore.shared
 
     var body: some View {
         Section {
@@ -35,7 +35,6 @@ struct ReaderSettingsSection: View {
 private struct ReaderDefaultsScreen: View {
     @ObservedObject var state: BrowserState
     @ObservedObject var sites: ReaderSiteStore
-    @Environment(\.zenPalette) private var palette
 
     private var settings: ReaderSettings { state.settings.readerDefaults }
 
@@ -63,9 +62,10 @@ private struct ReaderDefaultsScreen: View {
                         + "the insect on which the plant depends."
                 )
                 .font(.system(size: settings.fontSize))
+                // Leading only: SwiftUI has no justified text, so the specimen
+                // shows the size, leading and colours honestly and says nothing
+                // about alignment rather than showing the wrong one.
                 .lineSpacing(settings.fontSize * (settings.lineHeight - 1))
-                .multilineTextAlignment(
-                    settings.alignment == .justified ? .leading : .leading)
             }
             .foregroundStyle(settings.palette.text.color)
             .padding(14)

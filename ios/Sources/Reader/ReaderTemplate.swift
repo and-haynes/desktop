@@ -515,11 +515,18 @@ enum ReaderTemplate {
     }
 
     /// `19.0` reads as a font size; `19` reads as a decision. Drops the
-    /// fraction where there is not one, and never emits exponent notation.
+    /// fraction where there is not one, and **never emits exponent notation** —
+    /// `%g` turns a very small number into `1e-07`, which is a perfectly good
+    /// Double and not a length CSS will parse, so the property would be
+    /// silently dropped and the control would appear to do nothing.
     static func trim(_ value: Double) -> String {
+        guard value.isFinite else { return "0" }
         if value == value.rounded() && abs(value) < 1e9 {
             return String(Int(value.rounded()))
         }
-        return String(format: "%.3g", value)
+        var text = String(format: "%.4f", value)
+        while text.hasSuffix("0") { text.removeLast() }
+        if text.hasSuffix(".") { text.removeLast() }
+        return (text.isEmpty || text == "-0") ? "0" : text
     }
 }

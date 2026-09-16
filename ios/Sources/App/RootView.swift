@@ -275,6 +275,14 @@ struct RootView: View {
             .animation(.easeInOut(duration: ZenTokens.hiddenToolbarTransition), value: barPhase)
             .animation(.easeInOut(duration: 0.2), value: state.isFindBarVisible)
         }
+        // The reader covers the page completely (#008BC), so a VoiceOver rotor
+        // must not be able to walk into it. This hides the chrome; the hosted
+        // `WKWebView` underneath keeps its own UIKit accessibility tree
+        // regardless, which SwiftUI has no say over — so the page's *text* is
+        // still reachable, and making it not be would mean reaching into the
+        // representable. Left as is: the page is the same document the reader
+        // is showing, so the worst case is hearing it twice.
+        .accessibilityHidden(state.isReaderOpen)
     }
 
     /// Expanded, collapsed, or gone — compact mode's three states (#008AF).
