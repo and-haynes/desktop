@@ -179,7 +179,7 @@ ios/
                            SyncService — one sync, start to finish
     UI/                    Sidebar/, Omnibox/, Glance/, Split/, History/,
                            Settings/, Reader/, plus NewTabPage and FindBar
-  Tests/ZenTests/          524 unit tests
+  Tests/ZenTests/          531 unit tests
   Tests/ZenUITests/        the screenshot driver
 ```
 
@@ -567,6 +567,11 @@ preferences screen: the article stays visible and live above the sheet, so
 dragging the size slider is something you watch happen.
 
 ### Per-site memory
+
+| | |
+|---|---|
+| ![Settings, Reader: the defaults with a live specimen](docs/screenshots/58-reader-settings.png) | ![The list of sites with settings of their own](docs/screenshots/58b-reader-settings-sites.png) |
+| Settings → Reader: the defaults, previewed on type rather than described | The sites that have since disagreed, and the one button that forgets them |
 
 The point of a reader's controls is that you set them once, and setting them
 once *globally* is not enough — a site whose own type is small is a standing

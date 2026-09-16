@@ -37,8 +37,6 @@ final class ReaderController: NSObject, ObservableObject {
     @Published var isPanelPresented = false
     /// The read-aloud transport, shown once you have asked for it.
     @Published var isReadAloudVisible = false
-    /// Set while an extraction is in flight, so the button can say so.
-    @Published private(set) var isExtracting = false
 
     let speech = ReaderSpeech()
     let sites: ReaderSiteStore
@@ -94,8 +92,6 @@ final class ReaderController: NSObject, ObservableObject {
         isReadAloudVisible = false
         webView = nil
     }
-
-    func setExtracting(_ extracting: Bool) { isExtracting = extracting }
 
     /// Whether this site is being read on its own terms rather than the
     /// browser's — what lets the panel offer "Use my defaults" only when there

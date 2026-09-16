@@ -1141,6 +1141,31 @@ extension ScreenshotTests {
 
         tapIfPresent(app.buttons["readerClose"])
         settle(1.5)
+
+        // Settings -> Reader: the defaults every site starts from, and the
+        // per-site memory this run just wrote an entry into.
+        if tapMenuItem(matching: "label CONTAINS[c] 'Settings'") {
+            let row = app.buttons["readerSettingsRow"].firstMatch
+            let cell = app.cells["readerSettingsRow"].firstMatch
+            for _ in 0..<6 {
+                if (row.exists && row.isHittable) || (cell.exists && cell.isHittable) { break }
+                app.swipeUp()
+                settle(0.6)
+            }
+            if row.exists && row.isHittable {
+                row.tap()
+            } else if cell.exists && cell.isHittable {
+                cell.tap()
+            }
+            settle(1.8)
+            capture("58-reader-settings\(suffix)")
+            // The per-site list is below the controls.
+            app.swipeUp()
+            app.swipeUp()
+            settle(1.0)
+            capture("58b-reader-settings-sites\(suffix)")
+        }
+
         try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-READER"))
     }
 

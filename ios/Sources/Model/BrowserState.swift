@@ -67,6 +67,10 @@ final class BrowserState: ObservableObject {
     /// a reader button on a page with no article is a button that can only
     /// disappoint.
     @Published private(set) var readerAvailability: [UUID: Bool] = [:]
+    /// True while Readability is parsing. On a long page the parse takes a
+    /// second or two, and a button that does nothing at all for a second reads
+    /// as broken — the same failure #0089A was about.
+    @Published var isExtractingReader = false
     @Published var isHistorySheetPresented: Bool = false
     @Published var isSettingsPresented: Bool = false
     @Published var findInPageQuery: String = ""

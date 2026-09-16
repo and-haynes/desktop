@@ -180,12 +180,20 @@ struct OmniboxPill: View {
             Haptics.shared.fire(open ? .glanceClose : .glanceOpen)
             NotificationCenter.default.post(name: .zenToggleReaderView, object: nil)
         } label: {
-            Image(systemName: open ? "doc.plaintext.fill" : "doc.plaintext")
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(open ? palette.accent.color : palette.text.withAlpha(0.6).color)
-                .frame(width: 30, height: 36)
+            Group {
+                if state.isExtractingReader {
+                    ProgressView().controlSize(.mini)
+                } else {
+                    Image(systemName: open ? "doc.plaintext.fill" : "doc.plaintext")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(
+                            open ? palette.accent.color : palette.text.withAlpha(0.6).color)
+                }
+            }
+            .frame(width: 30, height: 36)
         }
         .buttonStyle(ZenPressStyle())
+        .disabled(state.isExtractingReader)
         .accessibilityLabel(open ? "Close reader" : "Reader view")
         .accessibilityIdentifier("readerButton")
     }

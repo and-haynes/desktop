@@ -138,15 +138,18 @@ final class ReaderExtractionLiveTests: XCTestCase {
 
     // MARK: The parse
 
-    func testAnArticleExtractsItsTitleBylineAndBody() async {
+    func testAnArticleExtractsItsTitleBylineAndBody() async throws {
         let extracted = await extract(Self.article)
-        let article = try? XCTUnwrap(extracted)
-        XCTAssertNotNil(article)
-        XCTAssertEqual(article?.title, "The Bee Orchid")
-        XCTAssertTrue(article?.byline.contains("Jane Fixture") == true)
-        XCTAssertTrue(article?.contentHTML.contains("pseudocopulation") == true)
-        XCTAssertTrue(article?.textContent.contains("Ophrys apifera") == true)
-        XCTAssertEqual(article?.url?.absoluteString, "https://fixture.test/article")
+        let article = try XCTUnwrap(extracted)
+        // `contains`, not `==`: Readability takes the title from `<title>` when
+        // it cannot confidently strip the site name off it, so the headline
+        // arrives with or without " — Fixture Botanical Review" depending on
+        // the separator. Which of those it picks is Mozilla's call, not ours.
+        XCTAssertTrue(article.title.contains("The Bee Orchid"), article.title)
+        XCTAssertTrue(article.byline.contains("Jane Fixture"))
+        XCTAssertTrue(article.contentHTML.contains("pseudocopulation"))
+        XCTAssertTrue(article.textContent.contains("Ophrys apifera"))
+        XCTAssertEqual(article.url?.absoluteString, "https://fixture.test/article")
     }
 
     /// The furniture is the whole point of a reader: navigation, the related
@@ -184,12 +187,17 @@ final class ReaderExtractionLiveTests: XCTestCase {
         XCTAssertEqual(article?.readingMinutes, 1)
     }
 
-    func testAPageThatIsNotAnArticleExtractsToNothingUsable() async {
-        let article = await extract(Self.notAnArticle)
-        // Readability may still return *something* for a page of links; what
-        // must not happen is a reader full of the navigation bar.
-        if let article {
-            XCTAssertFalse(article.textContent.contains("Service three"))
-        }
+    /// Readability will hand *something* back for almost any page — it is a
+    /// salvage algorithm, not a classifier. That is precisely why the affordance
+    /// is gated on the probe (above) and not on the parse: what separates an
+    /// article from a dashboard here is how much prose comes out, and the
+    /// difference is an order of magnitude.
+    func testADashboardYieldsAFractionOfWhatAnArticleDoes() async throws {
+        let extracted = await extract(Self.article)
+        let article = try XCTUnwrap(extracted)
+        let dashboard = await extract(Self.notAnArticle)
+        XCTAssertLessThan(
+            dashboard?.wordCount ?? 0, article.wordCount / 4,
+            "a page of links extracted as much prose as an article did")
     }
 }

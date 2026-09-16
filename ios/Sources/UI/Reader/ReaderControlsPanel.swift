@@ -178,7 +178,7 @@ struct ReaderControlsPanel: View {
         } label: {
             VStack(spacing: 2) {
                 Text("Ag")
-                    .font(.system(size: 20, weight: .medium, design: specimenDesign(font)))
+                    .font(font.previewFont(size: 20, weight: .medium))
                 Text(font.displayName)
                     .font(.system(size: 10, weight: selected ? .semibold : .regular))
             }
@@ -198,17 +198,6 @@ struct ReaderControlsPanel: View {
         .buttonStyle(ZenPressStyle())
         .accessibilityLabel(font.displayName)
         .accessibilityIdentifier("readerFont-\(font.rawValue)")
-    }
-
-    /// SwiftUI has four system designs and we offer nine faces, so the specimen
-    /// is an approximation of the *kind* of type rather than the face itself —
-    /// enough to tell a serif chip from a rounded one at a glance.
-    private func specimenDesign(_ font: ReaderFont) -> Font.Design {
-        switch font {
-        case .systemMono: return .monospaced
-        case .systemRounded: return .rounded
-        default: return font.isSerif ? .serif : .default
-        }
     }
 
     private var sizeSection: some View {

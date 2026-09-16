@@ -56,12 +56,12 @@ private struct ReaderDefaultsScreen: View {
         Section {
             VStack(alignment: .leading, spacing: 6) {
                 Text("The Bee Orchid")
-                    .font(.system(size: settings.fontSize + 6, weight: .bold))
+                    .font(settings.font.previewFont(size: settings.fontSize + 6, weight: .bold))
                 Text(
                     "Its flowers resemble bees, and it is this mimicry that attracts "
                         + "the insect on which the plant depends."
                 )
-                .font(.system(size: settings.fontSize))
+                .font(settings.font.previewFont(size: settings.fontSize))
                 // Leading only: SwiftUI has no justified text, so the specimen
                 // shows the size, leading and colours honestly and says nothing
                 // about alignment rather than showing the wrong one.

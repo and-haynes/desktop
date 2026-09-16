@@ -570,9 +570,9 @@ private struct RootNotifications: ViewModifier {
             state.toast = ZenToastMessage("No page to read.", symbol: "doc.plaintext")
             return
         }
-        reader.setExtracting(true)
+        state.isExtractingReader = true
         view.extractArticle { article in
-            reader.setExtracting(false)
+            state.isExtractingReader = false
             guard let article else {
                 Haptics.shared.fire(.loadError)
                 state.toast = ZenToastMessage(
