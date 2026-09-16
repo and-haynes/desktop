@@ -285,7 +285,9 @@ struct RootView: View {
         .accessibilityHidden(state.isReaderOpen)
     }
 
-    /// Expanded, collapsed, or gone — compact mode's three states (#008AF).
+    /// Expanded or gone — compact mode's two states (#008AF, #008DC). When it
+    /// is gone, the grabber is the one and only way back; there is no
+    /// intermediate pill standing above it.
     @ViewBuilder
     private var bar: some View {
         switch barPhase {
@@ -294,9 +296,6 @@ struct RootView: View {
                 // Any touch on the bar keeps it, for as long as you are on it.
                 .simultaneousGesture(TapGesture().onEnded { compactBar.barInteracted() })
                 .transition(.move(edge: .bottom).combined(with: .opacity))
-        case .pill:
-            CompactPill(state: state) { compactBar.pillTapped() }
-                .transition(.scale(scale: 0.88).combined(with: .opacity))
         case .hidden:
             EmptyView()
         }
@@ -349,9 +348,7 @@ struct RootView: View {
     /// pill just above the home indicator, tapped or pulled up.
     @ViewBuilder
     private var compactGrabber: some View {
-        // Not while the pill is up: the pill is already the way back, and two
-        // affordances for one job is clutter.
-        if chromeHidden && barPhase != .pill {
+        if chromeHidden {
             VStack {
                 Spacer()
                 Capsule()

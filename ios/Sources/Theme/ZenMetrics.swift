@@ -117,13 +117,6 @@ enum ZenMetrics {
     static let compactGrabberWidth: CGFloat = 36
     static let compactGrabberHeight: CGFloat = 6
     static let compactGrabberHitHeight: CGFloat = 44
-    /// The collapsed pill (#008AF). Shorter than the full bar on purpose — it
-    /// carries a favicon and a domain, not controls — but still a comfortable
-    /// target at 34pt with the bar's own padding around it.
-    static let compactPillHeight: CGFloat = 34
-    /// A domain long enough to need more than this is better truncated than
-    /// allowed to become a full-width bar by another name.
-    static let compactPillMaxWidth: CGFloat = 260
 
     // MARK: Content
 

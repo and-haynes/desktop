@@ -52,7 +52,6 @@
 		4D86D9F0730D15CBFF2F493A /* JSONValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = D06FE302E103E94A2B0B70FE /* JSONValue.swift */; };
 		4E23EEBFCA930AD94495FCCD /* PasswordsSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C637E5D74CE1DB03EE0E068 /* PasswordsSettingsView.swift */; };
 		508BFA96B5CF670C7E44DD59 /* ZenApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E314F1A113B5A944AA437E9 /* ZenApp.swift */; };
-		508D81EAE3B70903F088B707 /* CompactPill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D06C8D8148A3844473E549E /* CompactPill.swift */; };
 		52754347A4EE689C839BF1B5 /* AppearanceModeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CC1263F0FF95AC80F83EDCB /* AppearanceModeTests.swift */; };
 		52D2889E3A1A18B197B46215 /* SearchEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6F50C30E6017F5CE0A3A949 /* SearchEngine.swift */; };
 		577B82B19A735DEC410CC6DE /* SuggestionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C856C6784CFBBAC153B6D5C /* SuggestionEngine.swift */; };
@@ -257,7 +256,6 @@
 		9A26034667026B42F78A6307 /* SyncDiagnosticsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncDiagnosticsTests.swift; sourceTree = "<group>"; };
 		9C89A165A5B3DE33E6C03E0B /* ColorParsing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorParsing.swift; sourceTree = "<group>"; };
 		9CC16663B504765C17227A6A /* ReaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderView.swift; sourceTree = "<group>"; };
-		9D06C8D8148A3844473E549E /* CompactPill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompactPill.swift; sourceTree = "<group>"; };
 		9D527E0502C91198924E8E5E /* SyncSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncSettingsView.swift; sourceTree = "<group>"; };
 		9F09F9DBA3529788D7567C97 /* Tab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tab.swift; sourceTree = "<group>"; };
 		9F681C0C47DE9E705652D352 /* TextSizeControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextSizeControl.swift; sourceTree = "<group>"; };
@@ -423,7 +421,6 @@
 			children = (
 				C328A5EE18F01699DF47AE6A /* BarSwipeGesture.swift */,
 				C6C6D1F5A9CFA5AF58CC7A93 /* CompactBarController.swift */,
-				9D06C8D8148A3844473E549E /* CompactPill.swift */,
 				00702F505256F196432DB86D /* OmniboxOverlay.swift */,
 				89CF4FD1B002F1922E42F267 /* OmniboxPill.swift */,
 				3E5240A82F9C160738FAA784 /* OmniboxTextField.swift */,
@@ -815,7 +812,6 @@
 				49497DBB7B64C045BEB5E6D5 /* ClientsEngine.swift in Sources */,
 				B8C0AC2A453AF455DD41C648 /* ColorParsing.swift in Sources */,
 				B1628A6E9B29E1648C35D3FD /* CompactBarController.swift in Sources */,
-				508D81EAE3B70903F088B707 /* CompactPill.swift in Sources */,
 				EDCF068803ADEC573CE28C5C /* ContentArea.swift in Sources */,
 				37048826351CB638FDF4835F /* ErrorPageView.swift in Sources */,
 				7C11E3E08187A3225F84258C /* EssentialsGrid.swift in Sources */,

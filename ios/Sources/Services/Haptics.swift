@@ -191,9 +191,6 @@ enum HapticEvent: String, CaseIterable, Equatable, Sendable {
     // Chrome
     case sidebarSnap
     case compactBarShow
-    /// The pill became the full bar. Distinct from `compactBarShow`: one is
-    /// "something came back", the other is "you opened it".
-    case compactBarExpand
     case compactBarHide
     case grabberDrag
     case layoutChange
@@ -255,7 +252,6 @@ enum HapticEvent: String, CaseIterable, Equatable, Sendable {
 
         case .sidebarSnap: return .impact(.rigid, intensity: 0.65)
         case .compactBarShow: return .impact(.soft, intensity: 0.5)
-        case .compactBarExpand: return .impact(.light, intensity: 0.7)
         case .compactBarHide: return .impact(.soft, intensity: 0.35)
         case .grabberDrag: return .selection
         case .layoutChange: return .impact(.rigid, intensity: 0.7)

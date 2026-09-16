@@ -1,5 +1,5 @@
 //  CompactBarTests.swift
-//  Compact mode's three states, driven on a clock the test owns (#008AF).
+//  Compact mode's two states, driven on a clock the test owns (#008AF, #008DC).
 //
 //  The countdown is the whole feature, so waiting for it in real time would
 //  make this suite slower than every other test put together and flakier than
@@ -59,14 +59,10 @@ final class CompactBarTests: XCTestCase {
 
     // MARK: (a) still → hidden
 
-    /// The whole ask: leave the page alone and the bar goes away entirely,
-    /// one step at a time.
-    func testAStillPageFallsAllTheWayToHidden() {
+    /// The whole ask: leave the page alone and the bar goes away entirely.
+    func testAStillPageHidesTheBar() {
         let bar = makeController()
         XCTAssertEqual(bar.phase, .expanded)
-
-        XCTAssertTrue(clock.fire())
-        XCTAssertEqual(bar.phase, .pill)
 
         XCTAssertTrue(clock.fire())
         XCTAssertEqual(bar.phase, .hidden)
@@ -79,8 +75,7 @@ final class CompactBarTests: XCTestCase {
         let bar = makeController(delay: 4.5)
         XCTAssertEqual(clock.lastDelay, 4.5)
         clock.fire()
-        XCTAssertEqual(bar.phase, .pill)
-        XCTAssertEqual(clock.lastDelay, 4.5)
+        XCTAssertEqual(bar.phase, .hidden)
     }
 
     /// A delay of zero would make the bar unusable; the floor is deliberate.
@@ -90,72 +85,45 @@ final class CompactBarTests: XCTestCase {
         XCTAssertEqual(bar.phase, .expanded)
     }
 
-    // MARK: (b) scroll → pill
-
-    func testScrollingBringsBackThePillAndNotTheBar() {
-        let bar = makeController()
-        clock.fire()
-        clock.fire()
-        XCTAssertEqual(bar.phase, .hidden)
-
-        bar.pageDidScroll()
-        XCTAssertEqual(bar.phase, .pill)
-    }
+    // MARK: (b) scroll never expands
 
     /// The rule Andy asked for in so many words: scrolling never expands.
-    func testScrollingNeverExpandsTheBar() {
+    /// There is no longer a pill for it to summon either (#008DC) — a hidden
+    /// bar stays hidden however much the page moves.
+    func testScrollingNeverBringsTheBarBack() {
         let bar = makeController()
-        clock.fire()
-        XCTAssertEqual(bar.phase, .pill)
-        for _ in 0..<5 {
-            bar.pageDidScroll()
-            XCTAssertEqual(bar.phase, .pill)
-        }
-    }
-
-    /// Scrolling the page is not using the bar, so an expanded bar goes back
-    /// to the pill rather than riding along.
-    func testScrollingCollapsesAnExpandedBarToThePill() {
-        let bar = makeController()
-        XCTAssertEqual(bar.phase, .expanded)
-        bar.pageDidScroll()
-        XCTAssertEqual(bar.phase, .pill)
-    }
-
-    /// The pill stays for as long as the scrolling lasts — a long flick must
-    /// not flicker it away mid-gesture.
-    func testThePillStaysWhileScrollingAndTheTimerOnlyStartsWhenItStops() {
-        let bar = makeController()
-        bar.pageDidScroll()
-        XCTAssertFalse(clock.hasPending, "the still-timer should not run during a scroll")
-
-        bar.scrollDidEnd()
-        XCTAssertTrue(clock.hasPending)
         clock.fire()
         XCTAssertEqual(bar.phase, .hidden)
+        for _ in 0..<5 {
+            bar.pageDidScroll()
+            XCTAssertEqual(bar.phase, .hidden)
+            bar.scrollDidEnd()
+            XCTAssertEqual(bar.phase, .hidden)
+        }
+        XCTAssertFalse(clock.hasPending, "nothing to count down from once hidden")
     }
 
-    // MARK: (c) tap → expanded
-
-    func testTappingThePillExpandsTheBar() {
+    /// Scrolling the page is not using the bar, so an expanded bar goes away
+    /// rather than riding along.
+    func testScrollingHidesAnExpandedBar() {
         let bar = makeController()
-        clock.fire()
-        XCTAssertEqual(bar.phase, .pill)
-
-        bar.pillTapped()
         XCTAssertEqual(bar.phase, .expanded)
+        bar.pageDidScroll()
+        XCTAssertEqual(bar.phase, .hidden)
+        XCTAssertFalse(clock.hasPending, "the still-timer has nothing left to do")
     }
 
-    /// Expanded is not a terminal state: it falls back to the pill and then to
-    /// nothing on the same timer.
-    func testAnExpandedBarCollapsesToThePillAndThenHides() {
+    // MARK: (c) grabber → expanded
+
+    func testTheGrabberRevealsTheWholeBar() {
         let bar = makeController()
         clock.fire()
-        bar.pillTapped()
-        XCTAssertEqual(bar.phase, .expanded)
+        XCTAssertEqual(bar.phase, .hidden)
 
-        clock.fire()
-        XCTAssertEqual(bar.phase, .pill)
+        bar.grabberRevealed()
+        XCTAssertEqual(bar.phase, .expanded)
+        // And it is not permanent — it falls on the same timer.
+        XCTAssertTrue(clock.hasPending)
         clock.fire()
         XCTAssertEqual(bar.phase, .hidden)
     }
@@ -163,13 +131,13 @@ final class CompactBarTests: XCTestCase {
     func testUsingTheBarKeepsIt() {
         let bar = makeController()
         clock.fire()
-        bar.pillTapped()
+        bar.grabberRevealed()
         for _ in 0..<4 {
             bar.barInteracted()
             XCTAssertEqual(bar.phase, .expanded)
         }
         clock.fire()
-        XCTAssertEqual(bar.phase, .pill)
+        XCTAssertEqual(bar.phase, .hidden)
     }
 
     // MARK: The whole sequence, in order
@@ -179,29 +147,27 @@ final class CompactBarTests: XCTestCase {
 
         // still → hidden
         clock.fire()
-        clock.fire()
         XCTAssertEqual(bar.phase, .hidden)
 
-        // scroll → pill
+        // scroll → still hidden
         bar.pageDidScroll()
-        XCTAssertEqual(bar.phase, .pill)
+        XCTAssertEqual(bar.phase, .hidden)
         bar.scrollDidEnd()
+        XCTAssertEqual(bar.phase, .hidden)
 
-        // tap → expanded
-        bar.pillTapped()
+        // grabber → expanded
+        bar.grabberRevealed()
         XCTAssertEqual(bar.phase, .expanded)
 
-        // still → pill → hidden
-        clock.fire()
-        XCTAssertEqual(bar.phase, .pill)
+        // still → hidden
         clock.fire()
         XCTAssertEqual(bar.phase, .hidden)
     }
 
     // MARK: (d) swipe up opens the sidebar
 
-    /// The pill carries the bar's own gesture table, so up is the drawer from
-    /// either state — and the existing right-swipe is untouched.
+    /// The bar carries its own gesture table, so up is the drawer — and the
+    /// existing right-swipe is untouched.
     func testSwipingUpFromTheBarOpensTheSidebar() {
         XCTAssertEqual(
             BarSwipeGesture.resolve(direction: .up, isSidebarOpen: false), .openSidebar)
@@ -218,25 +184,13 @@ final class CompactBarTests: XCTestCase {
         }
     }
 
-    // MARK: Page taps and the grabber
+    // MARK: Page taps
 
     func testTappingThePagePutsTheChromeAwayImmediately() {
         let bar = makeController()
         bar.pageTapped()
         XCTAssertEqual(bar.phase, .hidden)
         XCTAssertFalse(clock.hasPending)
-    }
-
-    func testTheGrabberRevealsTheWholeBar() {
-        let bar = makeController()
-        clock.fire()
-        clock.fire()
-        XCTAssertEqual(bar.phase, .hidden)
-
-        bar.grabberRevealed()
-        XCTAssertEqual(bar.phase, .expanded)
-        // And it is not permanent — it falls on the same ladder.
-        XCTAssertTrue(clock.hasPending)
     }
 
     // MARK: A covered page
@@ -255,11 +209,10 @@ final class CompactBarTests: XCTestCase {
         XCTAssertTrue(clock.hasPending, "the timer should resume once the omnibox is gone")
     }
 
-    /// You opened the omnibox from a pill; you should not be handed a pill
-    /// back when you dismiss it.
+    /// You opened the omnibox from a hidden bar; you get the whole bar back
+    /// when you dismiss it, and it falls on the usual timer.
     func testUncoveringHandsBackTheWholeBar() {
         let bar = makeController()
-        clock.fire()
         clock.fire()
         XCTAssertEqual(bar.phase, .hidden)
 
@@ -268,7 +221,7 @@ final class CompactBarTests: XCTestCase {
         bar.coveredDidChange(false)
         XCTAssertEqual(bar.phase, .expanded)
         clock.fire()
-        XCTAssertEqual(bar.phase, .pill)
+        XCTAssertEqual(bar.phase, .hidden)
     }
 
     // MARK: Compact mode off
@@ -287,7 +240,6 @@ final class CompactBarTests: XCTestCase {
     func testLeavingCompactModeRestoresTheBar() {
         let bar = makeController()
         clock.fire()
-        clock.fire()
         XCTAssertEqual(bar.phase, .hidden)
 
         bar.isEnabled = false
@@ -296,35 +248,30 @@ final class CompactBarTests: XCTestCase {
 
     // MARK: Haptics
 
-    /// Show, expand and hide each get one — and nothing fires twice for one
-    /// change, which is `Haptics`' own house rule.
-    func testHapticsOnShowExpandAndHide() {
+    /// Show and hide each get one — and nothing fires twice for one change,
+    /// which is `Haptics`' own house rule.
+    func testHapticsOnShowAndHide() {
         let bar = makeController()
-        clock.fire()
         clock.fire()
         XCTAssertEqual(bar.phase, .hidden)
         XCTAssertEqual(haptics, [.compactBarHide])
 
         haptics = []
-        bar.pageDidScroll()
+        bar.grabberRevealed()
         XCTAssertEqual(haptics, [.compactBarShow])
-
-        haptics = []
-        bar.pillTapped()
-        XCTAssertEqual(haptics, [.compactBarExpand])
 
         haptics = []
         bar.pageTapped()
         XCTAssertEqual(haptics, [.compactBarHide])
     }
 
-    /// Collapsing from the full bar to the pill is not a disappearance, and
-    /// buzzing for it would be noise on every idle page.
-    func testCollapsingToThePillIsSilent() {
+    /// The bar going because you scrolled is not news, and a buzz mid-flick
+    /// would be noise on every long page.
+    func testHidingOnScrollIsSilent() {
         let bar = makeController()
         haptics = []
-        clock.fire()
-        XCTAssertEqual(bar.phase, .pill)
+        bar.pageDidScroll()
+        XCTAssertEqual(bar.phase, .hidden)
         XCTAssertEqual(haptics, [])
     }
 
