@@ -10,7 +10,7 @@
 //
 //      hidden  ──grabber──▶  expanded
 //         ▲                     │
-//         └──── still / scroll ─┘
+//         └──── page tap / scroll ┘
 //
 //  * **hidden** — nothing but the page, and the grabber above the home
 //    indicator as the way back.
@@ -22,8 +22,8 @@
 //
 //  The rules that matter: *scrolling never expands the bar* (only the grabber
 //  does — otherwise reading a long page is a toolbar flashing at you), and an
-//  expanded bar falls back to hidden on the still-timer, which is the one
-//  number in Settings.
+//  explicit reveal stays expanded until the page is used again. The still
+//  timer only hides the initial chrome when compact mode is first enabled.
 //
 //  The countdown runs on an injected clock so the whole machine is testable in
 //  microseconds rather than in multiples of three seconds.
@@ -72,13 +72,17 @@ final class CompactBarController: ObservableObject {
     /// setting itself.
     @Published private(set) var phase: CompactBarPhase = .expanded
 
-    /// How long "still" is, in seconds — the number Settings advertises.
+    /// How long the initial chrome stays up when entering compact mode.
     var stillDelay: TimeInterval = ZenSettings().compactHideDelay
+
+    private var isHeldOpen = false
+    private var isCovered = false
 
     /// Compact mode's toolbar half. Off means the bar is simply always there.
     var isEnabled: Bool = false {
         didSet {
             guard isEnabled != oldValue else { return }
+            isHeldOpen = isEnabled && isCovered
             if isEnabled {
                 // Entering compact mode should not snatch the bar away
                 // mid-thought; it starts whole and falls on the usual timer.
@@ -111,7 +115,8 @@ final class CompactBarController: ObservableObject {
     /// Silently: mid-flick is no time for a buzz, and the bar going is what
     /// you asked for by scrolling.
     func pageDidScroll() {
-        guard isEnabled else { return }
+        guard isEnabled, !isCovered else { return }
+        isHeldOpen = false
         clock.cancel()
         set(.hidden, haptic: nil)
     }
@@ -124,64 +129,54 @@ final class CompactBarController: ObservableObject {
     }
 
     /// The chrome is being used — a touch on the bar, the omnibox closing.
-    /// Keeps it whole for as long as you are working with it, and fires no
-    /// haptic: you are already holding the thing that moved.
+    /// A deliberate interaction keeps it open until the page is used again.
+    /// No haptic: you are already holding the thing that moved.
     func barInteracted() {
         guard isEnabled else { return }
+        isHeldOpen = true
+        clock.cancel()
         set(.expanded, haptic: nil)
-        startCountdown()
     }
 
     /// Something is covering the page — the omnibox overlay, Settings, the
     /// history sheet, the tab drawer.
     ///
-    /// While one of those is up the bar is not on screen to fall, so the
-    /// countdown is *paused* rather than left running. Two reasons, and the
-    /// second is the one that bites: a timer firing behind an overlay buzzes a
-    /// hide haptic at someone who is mid-word in the search field, and a bar
-    /// that quietly collapsed while you were reading a sheet is gone when you
-    /// come back from it — which reads as the app having lost your place.
-    /// Uncovering hands the bar back whole for the same reason.
-    ///
-    /// SwiftUI's `Menu` is the gap: it reports nothing about being open, so the
-    /// overflow menu cannot pause the timer. Its items still work — a menu is
-    /// its own presentation — but the bar behind it may have collapsed by the
-    /// time it closes.
+    /// Keep the chrome open while it is being used, including after closing
+    /// the overlay. Scroll notifications can still arrive from a decelerating
+    /// page behind the drawer; they must not dismiss the selected chrome.
     func coveredDidChange(_ covered: Bool) {
-        guard isEnabled else { return }
-        if covered {
-            clock.cancel()
-            set(.expanded, haptic: nil)
-        } else {
-            barInteracted()
-        }
+        guard covered != isCovered else { return }
+        isCovered = covered
+        barInteracted()
     }
 
     /// The deliberate reveal from the grabber: the one gesture that expands
     /// the bar. It then behaves like any other chrome touch.
     func grabberRevealed() {
         guard isEnabled else { return }
+        isHeldOpen = true
+        clock.cancel()
         set(.expanded, haptic: .compactBarShow)
-        startCountdown()
     }
 
     /// The page was tapped: put the chrome away now rather than on the timer.
     func pageTapped() {
-        guard isEnabled, phase != .hidden else { return }
+        guard isEnabled, !isCovered, phase != .hidden else { return }
+        isHeldOpen = false
         clock.cancel()
         set(.hidden, haptic: .compactBarHide)
     }
 
     /// The still-timer fired: the bar goes.
     private func timerFired() {
-        guard isEnabled else { return }
+        guard isEnabled, !isHeldOpen, !isCovered else { return }
         set(.hidden, haptic: .compactBarHide)
     }
 
     // MARK: Plumbing
 
     private func startCountdown() {
-        guard isEnabled, phase != .hidden else {
+        guard isEnabled, phase != .hidden, !isHeldOpen, !isCovered else {
             clock.cancel()
             return
         }

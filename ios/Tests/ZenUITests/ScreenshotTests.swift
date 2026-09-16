@@ -257,7 +257,8 @@ final class ScreenshotTests: XCTestCase {
         XCTAssertTrue(
             tapMenuItem(matching: "label CONTAINS[c] 'Compact Mode'"),
             "compact mode menu item missing")
-        settle(9.0)
+        app.webViews.firstMatch.swipeUp()
+        settle(1.0)
 
         let grabber = app.buttons["Show toolbar"]
         XCTAssertTrue(grabber.waitForExistence(timeout: 3), "the grabber never appeared")

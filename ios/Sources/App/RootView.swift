@@ -199,6 +199,7 @@ struct RootView: View {
     }
 
     private var showPadSidebar: Bool {
+        if state.isSidebarVisible { return true }
         guard state.settings.sidebarPinnedOnPad else { return state.isSidebarVisible }
         return !sidebarHidden
     }
@@ -268,6 +269,9 @@ struct RootView: View {
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
                 bar
+                    // The outgoing toolbar must not accept the grabber's drag.
+                    .allowsHitTesting(barPhase == .expanded && (isPad || !state.isSidebarVisible))
+                    .accessibilityHidden(barPhase == .hidden || (!isPad && state.isSidebarVisible))
             }
             .padding(.horizontal, 10)
             .padding(.top, 8)
@@ -376,20 +380,25 @@ struct RootView: View {
                     .frame(height: ZenMetrics.compactGrabberHitHeight)
                     .frame(maxWidth: .infinity)
                     .contentShape(Rectangle())
-                    .onTapGesture { revealChrome() }
                     .gesture(
                         DragGesture(minimumDistance: 8)
                             .onChanged { _ in Haptics.shared.prepare(.grabberDrag) }
-                            .onEnded { value in
-                                // Pull up to reveal; a downward flick is the
-                                // user reaching for the home gesture.
-                                if value.translation.height < -8 {
-                                    Haptics.shared.fire(.grabberDrag)
+                            .exclusively(before: TapGesture())
+                            .onEnded { gesture in
+                                switch gesture {
+                                case .second:
                                     revealChrome()
+                                case .first(let value):
+                                    // Pull up to reveal; a downward flick belongs to Home.
+                                    if value.translation.height < -8 {
+                                        Haptics.shared.fire(.grabberDrag)
+                                        revealChrome()
+                                    }
                                 }
                             }
                     )
                     .accessibilityLabel("Show toolbar")
+                    .accessibilityAction { revealChrome() }
                     .accessibilityAddTraits(.isButton)
             }
             .transition(.opacity)
@@ -633,8 +642,7 @@ private struct CompactBarBridge: ViewModifier {
             .onChange(of: state.settings.compactModeEnabled) { _, _ in sync() }
             .onChange(of: state.settings.compactHideDelay) { _, _ in sync() }
             .onChange(of: controller.phase) { _, phase in state.compactBarPhase = phase }
-            // Anything covering the page pauses the countdown and hands the
-            // bar back whole on the way out — see `coveredDidChange`.
+            // Selected chrome stays open through covering and uncovering.
             .onChange(of: isCovered) { _, covered in
                 controller.coveredDidChange(covered)
             }
@@ -651,6 +659,7 @@ private struct CompactBarBridge: ViewModifier {
     /// *toolbar* follows it.
     private func sync() {
         controller.stillDelay = state.settings.compactHideDelay
+        controller.coveredDidChange(isCovered)
         controller.isEnabled = state.settings.compactModeEnabled
         state.compactBarPhase = controller.phase
     }
