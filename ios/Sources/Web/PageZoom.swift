@@ -91,54 +91,17 @@ enum PageZoom {
     /// A bare IP address or a single-label homelab host (`pi-a`, `vault`) has
     /// no registrable domain, so it is its own key: grouping every
     /// `192.168.x.y` under one site would be exactly wrong.
+    ///
+    /// The matching itself is `SiteKey`'s — shared with `ReaderSite`
+    /// (#008BC), which wants the same "is this the same site" answer for a
+    /// different memory. Only the suffix list is our own.
     static func siteKey(for url: URL?) -> String? {
-        guard let url, let scheme = url.scheme?.lowercased(),
-            scheme == "http" || scheme == "https",
-            let host = url.host?.lowercased(), !host.isEmpty
-        else { return nil }
-        let trimmed = host.hasSuffix(".") ? String(host.dropLast()) : host
-        guard !trimmed.isEmpty else { return nil }
-        return registrableDomain(ofHost: trimmed) ?? trimmed
-    }
-
-    /// One label below the public suffix, for the suffixes in `suffixes`;
-    /// otherwise the last two labels. See the file comment for why that
-    /// approximation is acceptable *here* and not in the vault.
-    static func registrableDomain(ofHost host: String) -> String? {
-        let labels = host.split(separator: ".").map(String.init)
-        guard labels.count >= 2 else { return nil }
-        guard !isIPv4(labels) else { return nil }
-        for length in stride(from: min(3, labels.count), through: 2, by: -1) {
-            let candidate = labels.suffix(length).joined(separator: ".")
-            guard suffixes.contains(candidate) else { continue }
-            guard labels.count > length else { return nil }
-            return labels.suffix(length + 1).joined(separator: ".")
-        }
-        return labels.suffix(2).joined(separator: ".")
-    }
-
-    private static func isIPv4(_ labels: [String]) -> Bool {
-        labels.count == 4 && labels.allSatisfy { label in
-            guard let value = Int(label), label.count <= 3 else { return false }
-            return (0...255).contains(value)
-        }
+        SiteKey.of(url, suffixes: suffixes)
     }
 
     /// Multi-label suffixes, kept to the ones a person actually browses under.
     /// Deliberately much shorter than the vault's table — see the file comment.
-    static let suffixes: Set<String> = [
-        "co.uk", "org.uk", "me.uk", "ac.uk", "gov.uk", "net.uk",
-        "com.au", "net.au", "org.au", "edu.au", "gov.au",
-        "co.nz", "net.nz", "org.nz", "govt.nz", "ac.nz",
-        "co.jp", "or.jp", "ne.jp", "ac.jp", "go.jp",
-        "com.br", "com.cn", "com.mx", "com.tr", "com.ar", "com.tw", "com.sg",
-        "co.in", "co.za", "co.kr", "co.il", "co.th", "com.hk",
-        // Private suffixes that behave like public ones: two GitHub Pages
-        // sites are two different sites, and should zoom separately.
-        "github.io", "gitlab.io", "pages.dev", "netlify.app", "vercel.app",
-        "herokuapp.com", "web.app", "workers.dev", "fly.dev",
-        "duckdns.org", "ts.net",
-    ]
+    static let suffixes: Set<String> = SiteKey.commonSuffixes
 }
 
 // MARK: - The per-site memory

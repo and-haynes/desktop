@@ -55,7 +55,11 @@ xcodebuild test -scheme Zen -project Zen.xcodeproj \
 without xcodegen, but `project.yml` is the source of truth — regenerate after
 adding files.
 
-There are **no third-party dependencies**: SwiftUI, WebKit and Foundation only.
+There are **no third-party Swift dependencies**: SwiftUI, WebKit and Foundation
+only. There is exactly one vendored third-party file — Mozilla's
+**Readability.js** (Apache-2.0), which reader mode runs in the page, as Firefox
+and Zen desktop do. It is checked in verbatim at `Sources/Reader/`, with its
+provenance in a header comment; there is no package manager involved.
 
 ### Screenshots
 
@@ -197,6 +201,7 @@ cookies outright, scoped to third-party loads so first-party logins survive.
 | — | **Local services** (#0089C) | Done | Imported services with editable aliases, notes and last-seen, grouped by host. A third segment beside History and Bookmarks, its own sheet from the bar, omnibox suggestions, and a bare alias that navigates. |
 | — | **Trust certificates** (#0089C) | Done | One button approves the certificates the imported HTTPS services are currently serving, and shows exactly what it approved. A host that later serves a different one still re-prompts. |
 | 12 | **Reader mode** | **TODO** | WebKit exposes no reader/readability API to third-party apps. Implementing it means injecting a Readability port and rendering the result ourselves. |
+| 12 | Reader appearance controls | Done | Nine faces, five themes including a custom one wired to #0088F's colour tool, size, line height, letter spacing, paragraph gap, column width, alignment with hyphenation, an in-app dim, images, drop cap, reading progress and estimated time, read aloud with the spoken sentence highlighted, and a per-site memory for all of it. |
 
 ### Also not done
 
@@ -229,6 +234,11 @@ ios/
     Security/              LANHost, the trust evaluator and the trusted-
                            certificate store; SecurityBadge, which decides
                            what the URL pill's glyph opens
+    Reader/                Readability.js + Readability-readerable.js (vendored,
+                           Apache-2.0), the two scripts that drive them, the
+                           settings value and its themes, the HTML/CSS template,
+                           the sentence chunker and the speech transport, and
+                           the per-site memory
     Services/              Haptics — the semantic event table and the
                            UIKit / Core Haptics backend behind it
                            MediaSession — who owns the audio session, and
@@ -247,6 +257,8 @@ ios/
     UI/                    Sidebar/, Omnibox/, Glance/, Split/, History/,
                            Settings/, plus NewTabPage and FindBar
   Tests/ZenTests/          542 unit tests
+                           Settings/, Reader/, plus NewTabPage and FindBar
+  Tests/ZenTests/          531 unit tests
   Tests/ZenUITests/        the screenshot driver
 ```
 
@@ -929,6 +941,118 @@ which an extension uses.
 - **`WKWebExtensionMessagePort`** (`connectUsing:`) is not implemented, for the
   same reason.
 
+
+## Reader
+
+![The reader on a Wikipedia article](docs/screenshots/53-reader-view.png)
+
+Safari's Reader is Safari's. WebKit exposes no reader or readability API to a
+third-party app, so Zen does what Firefox for iOS and Zen desktop both do: it
+runs **Mozilla's Readability.js** over the page and renders the result itself.
+The library is vendored verbatim at `Sources/Reader/Readability.js`
+(Apache-2.0), with its provenance in a header comment.
+
+### Two libraries, because they cost different amounts
+
+`Readability-readerable.js` is about 4 KB and answers "does this look like an
+article?" without parsing anything. That is cheap enough to ask of every page
+that finishes loading, which is what lets the reader button *appear by itself*
+next to the address instead of being a menu item that usually disappoints.
+
+`Readability.js` is about 90 KB and rewrites a clone of the document. That is
+not something to do on every page load, so it is evaluated only when the reader
+is actually opened, and cached on `window` so a second opening of the same page
+costs one function call. It runs on `document.cloneNode(true)` — Readability
+mutates what it is given, and gutting the live page would leave nothing to go
+back to.
+
+**Neither is a user script**, and that is the load-bearing part (#008AB). A
+`WKUserScript` runs in every page, including the one you type a password into,
+and one that touches login markup stops iOS recognising the fields — Password
+AutoFill then goes quiet with no error to explain it. Both scripts are
+`evaluateJavaScript` into the isolated `.defaultClient` content world, on
+demand. `ReaderExtractionTests` pins that the browsing configuration still
+carries exactly one user script, the media observer.
+
+### The controls
+
+| | |
+|---|---|
+| ![The appearance panel over the live article](docs/screenshots/54-reader-controls.png) | ![The dark theme](docs/screenshots/55-reader-dark-theme.png) |
+| The panel at its medium detent — the article stays live above it | Dark, one of five themes |
+| ![A custom background and text colour](docs/screenshots/56-reader-custom-colors.png) | ![Read aloud, with the spoken sentence lit](docs/screenshots/57-reader-read-aloud.png) |
+| Custom: background, text and link colours picked with #0088F's colour tool | Read aloud, with the sentence being spoken highlighted |
+
+Nine typefaces, size, line height, letter spacing, paragraph gap, three column
+widths plus a measure slider, left or justified with hyphenation, an in-reader
+dim, images on or off, a drop cap, reading progress and estimated time, and the
+speech rate. Five themes — light, sepia, dark, true black, and a custom one
+whose background, text and link colours go through the same wheel, brightness
+track, HSB/RGB sliders and validated hex entry that pick a space accent.
+
+Every control is a **CSS custom property** or a class on `<html>`, set through
+one `evaluateJavaScript`. Nothing reloads, because a reload loses your place in
+a long article and an appearance control that scrolls you back to the top is
+one you use once. The initial document and the live update are generated from
+the same function, so the two cannot drift.
+
+The panel is a sheet at `.medium` with `presentationBackgroundInteraction`
+enabled. That property is most of the difference between a control panel and a
+preferences screen: the article stays visible and live above the sheet, so
+dragging the size slider is something you watch happen.
+
+### Per-site memory
+
+| | |
+|---|---|
+| ![Settings, Reader: the defaults with a live specimen](docs/screenshots/58-reader-settings.png) | ![The list of sites with settings of their own](docs/screenshots/58b-reader-settings-sites.png) |
+| Settings → Reader: the defaults, previewed on type rather than described | The sites that have since disagreed, and the one button that forgets them |
+
+The point of a reader's controls is that you set them once, and setting them
+once *globally* is not enough — a site whose own type is small is a standing
+exception. So the lookup is two-level: an override per **registrable domain**
+falling back to the global default in Settings → Reader. It follows the same
+convention `PageZoom` uses for text size (#008B7): its own small JSON document,
+a short public-suffix table rather than the whole list, and a bare IP or
+single-label homelab host as its own key.
+
+### Judgement calls
+
+- **No fonts are bundled.** Every face on offer is already on the device: the
+  four system families plus the book faces Apple ships (Georgia, Palatino,
+  Charter, Avenir Next, New York). Vendoring web fonts would cost a megabyte, a
+  licence review and a second rendering path, and would buy a reader nothing
+  they cannot already get.
+- **The read-aloud highlight is drawn, not inserted.** Marking the spoken
+  sentence with a `<mark>` needs `Range.surroundContents`, which throws the
+  moment a sentence crosses an inline element — and a sentence containing a
+  link is most of them. So the highlight is a set of absolutely positioned
+  rectangles taken from `Range.getClientRects()`, painted behind the text.
+  Nothing in the article moves.
+- **The synthesizer gets one sentence at a time.** One utterance per sentence,
+  the next enqueued only when the last finishes. That costs a barely
+  perceptible beat between sentences and buys an exactly known current
+  sentence — so the highlight cannot drift — and a skip that is "stop and start
+  the next one" rather than queue surgery.
+- **Sentence offsets are UTF-16**, because that is what a JavaScript string
+  index counts. The reader page hands Swift its own flattened text index and
+  the chunking happens over that, so an offset pair always maps back onto a
+  real DOM range. One emoji before the text would otherwise put every later
+  highlight a character out, silently.
+- **Leaving the reader is removing a layer.** The reader is a second
+  `WKWebView` over the page, not a takeover of it, so the article's own web
+  view is untouched underneath — same scroll offset, same history. There is no
+  position to restore and so nothing that can fail to.
+
+### Not done here
+
+- **The probe is Mozilla's heuristic, and it is a heuristic.** It says no to
+  pages that read perfectly well in the reader, which is why *Show Reader* is
+  in the overflow menu as well as on the bar.
+- **Cross-origin `<iframe>` content is out of reach**, as it is for everything
+  else a script can see.
+- **No "reader by default for this site".** The per-site memory remembers how
+  an article looks, not whether to open the reader automatically.
 
 ## Screenshots
 

@@ -2462,3 +2462,152 @@ extension ScreenshotTests {
         try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-REALEXT"))
     }
 }
+
+// MARK: - Reader mode (#008BC)
+
+extension ScreenshotTests {
+
+    /// The reader on a real article, and the appearance panel driving it.
+    ///
+    /// A Wikipedia article rather than a fixture on purpose: what is being
+    /// checked here is not our template, it is whether Mozilla's Readability
+    /// finds an article in a page nobody wrote for us. A fixture shaped like
+    /// what Readability likes would prove nothing.
+    func testCaptureReaderMode() throws {
+        let suffix = UIDevice.current.userInterfaceIdiom == .pad ? "-ipad" : ""
+        settle(4.0)
+        navigate(to: "https://en.wikipedia.org/wiki/Ophrys_apifera")
+        settle(4.0)
+
+        XCTAssertTrue(openReader(), "no route into the reader")
+        settle(3.0)
+        XCTAssertTrue(
+            app.buttons["readerClose"].waitForExistence(timeout: 12), "the reader did not open")
+        capture("53-reader-view\(suffix)")
+
+        // The panel at its medium detent, with the article still live above it.
+        XCTAssertTrue(openReaderPanel(), "the appearance panel did not open")
+        capture("54-reader-controls\(suffix)")
+
+        // Dark, seen on the article rather than on a swatch.
+        tapIfPresent(app.buttons["readerTheme-dark"])
+        settle(1.2)
+        dismissReaderPanel()
+        capture("55-reader-dark-theme\(suffix)")
+
+        // Custom: two colours picked by hand through #0088F's colour tool.
+        XCTAssertTrue(openReaderPanel(), "the appearance panel did not reopen")
+        tapIfPresent(app.buttons["readerTheme-custom"])
+        settle(1.0)
+        setCustomColour("readerCustomBackground", hex: "#12263A")
+        setCustomColour("readerCustomText", hex: "#EFE3C8")
+        settle(1.0)
+        dismissReaderPanel()
+        capture("56-reader-custom-colors\(suffix)")
+
+        // Read aloud, with the transport up and the spoken sentence lit.
+        tapIfPresent(app.buttons["readerReadAloud"])
+        settle(1.2)
+        tapIfPresent(app.buttons["readerPlayPause"])
+        settle(3.5)
+        capture("57-reader-read-aloud\(suffix)")
+        tapIfPresent(app.buttons["readerStop"])
+
+        tapIfPresent(app.buttons["readerClose"])
+        settle(1.5)
+
+        // Settings -> Reader: the defaults every site starts from, and the
+        // per-site memory this run just wrote an entry into.
+        if tapMenuItem(matching: "label CONTAINS[c] 'Settings'") {
+            let row = app.buttons["readerSettingsRow"].firstMatch
+            let cell = app.cells["readerSettingsRow"].firstMatch
+            for _ in 0..<6 {
+                if (row.exists && row.isHittable) || (cell.exists && cell.isHittable) { break }
+                app.swipeUp()
+                settle(0.6)
+            }
+            if row.exists && row.isHittable {
+                row.tap()
+            } else if cell.exists && cell.isHittable {
+                cell.tap()
+            }
+            settle(1.8)
+            capture("58-reader-settings\(suffix)")
+            // The per-site list is below the controls.
+            app.swipeUp()
+            app.swipeUp()
+            settle(1.0)
+            capture("58b-reader-settings-sites\(suffix)")
+        }
+
+        try? Data("ok".utf8).write(to: outputDirectory.appendingPathComponent("DONE-READER"))
+    }
+
+    /// The bar button where the probe found an article, the overflow menu
+    /// where it did not — the menu item exists precisely to overrule the
+    /// heuristic, so it is also the fallback here.
+    fileprivate func openReader() -> Bool {
+        revealChrome()
+        let button = app.buttons["readerButton"]
+        if button.waitForExistence(timeout: 14) {
+            button.tap()
+            return true
+        }
+        return tapMenuItem(matching: "label CONTAINS[c] 'Show Reader'")
+    }
+
+    fileprivate func openReaderPanel() -> Bool {
+        let top = app.buttons["readerAppearance"]
+        let pill = app.buttons["readerAppearancePill"]
+        if top.waitForExistence(timeout: 6) {
+            top.tap()
+        } else if pill.waitForExistence(timeout: 4) {
+            pill.tap()
+        } else {
+            return false
+        }
+        settle(1.8)
+        return app.buttons["readerTheme-sepia"].waitForExistence(timeout: 6)
+    }
+
+    fileprivate func dismissReaderPanel() {
+        let done = app.buttons["Done"].firstMatch
+        if done.exists { done.tap() } else { app.swipeDown() }
+        settle(1.4)
+    }
+
+    /// Push into the colour tool, type a hex, apply, come back.
+    fileprivate func setCustomColour(_ row: String, hex: String) {
+        let link = app.buttons[row].firstMatch
+        let cell = app.cells[row].firstMatch
+        if link.waitForExistence(timeout: 5) {
+            link.tap()
+        } else if cell.waitForExistence(timeout: 5) {
+            cell.tap()
+        } else {
+            XCTFail("the \(row) row is missing")
+            return
+        }
+        settle(1.8)
+        let field = app.textFields["hexField"].firstMatch
+        if field.waitForExistence(timeout: 6) {
+            field.tap()
+            settle(0.5)
+            if let existing = field.value as? String, !existing.isEmpty, existing != "#5B6EE1" {
+                field.typeText(
+                    String(repeating: XCUIKeyboardKey.delete.rawValue, count: existing.count))
+            }
+            field.typeText(hex + "\n")
+        }
+        settle(1.2)
+        // Back out of the pushed screen; the sheet's own nav bar owns the arrow.
+        let back = app.navigationBars.buttons.element(boundBy: 0)
+        if back.exists { back.tap() } else { app.swipeRight() }
+        settle(1.4)
+    }
+
+    fileprivate func tapIfPresent(_ element: XCUIElement) {
+        guard element.waitForExistence(timeout: 6) else { return }
+        element.tap()
+    }
+}

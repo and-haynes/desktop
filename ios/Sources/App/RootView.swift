@@ -33,6 +33,10 @@ struct RootView: View {
     /// for the same reason the compact bar is: only the root sees the
     /// page-scroll notifications.
     @StateObject private var navigationHelper = NavigationHelperController()
+    /// Reader mode's one object (#008BC). Owned here because the reader is a
+    /// layer over the whole window rather than something inside a tab, and
+    /// because extraction has to reach the web view pool.
+    @StateObject private var reader = ReaderController()
     /// The window's top safe-area inset, measured once at the root. The content
     /// ignores the safe area in two of the three layouts, so the web view needs
     /// the number explicitly to keep the page's own header out from under the
@@ -237,6 +241,9 @@ struct RootView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .zenPopOutVideo)) { note in
             popOutVideo(webView(for: note))
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .zenToggleReaderView)) { _ in
+            toggleReader()
         }
         .modifier(CompactBarBridge(state: state, controller: compactBar))
         .onReceive(NotificationCenter.default.publisher(for: .zenPageScrollBegan)) { _ in
@@ -652,6 +659,14 @@ struct RootView: View {
         .animation(.easeInOut(duration: 0.2), value: state.isFindBarVisible)
         .animation(.spring(response: 0.3, dampingFraction: 0.9), value: barRows)
         .animation(.spring(response: 0.34, dampingFraction: 0.9), value: state.activeSpaceID)
+        // The reader covers the page completely (#008BC), so a VoiceOver rotor
+        // must not be able to walk into it. This hides the chrome; the hosted
+        // `WKWebView` underneath keeps its own UIKit accessibility tree
+        // regardless, which SwiftUI has no say over — so the page's *text* is
+        // still reachable, and making it not be would mean reaching into the
+        // representable. Left as is: the page is the same document the reader
+        // is showing, so the worst case is hearing it twice.
+        .accessibilityHidden(state.isReaderOpen)
     }
 
     /// The bar's own vertical offset, on top of whatever the safe area needs.
@@ -669,6 +684,21 @@ struct RootView: View {
 
     @ViewBuilder
     private var overlays: some View {
+        // Over everything but the toast: the reader *replaces* the page for as
+        // long as it is up, and a glance card or an omnibox belonging to the
+        // page underneath would be showing through something you have left.
+        if state.readerTabID != nil, reader.article != nil, let space = state.activeSpace {
+            ReaderView(
+                state: state, reader: reader, space: space,
+                onClose: { closeReader() },
+                onOpenLink: { url in openFromReader(url) }
+            )
+            .environment(\.zenPalette, palette)
+            // A new article is a new document, not a restyle of the old one.
+            .id(reader.article?.url?.absoluteString ?? "reader")
+            .zIndex(3.5)
+        }
+
         if let glanceID = state.glanceTabID, let tab = state.tab(id: glanceID),
             let space = state.activeSpace
         {
@@ -778,6 +808,57 @@ struct RootView: View {
             )
             .accessibilityLabel("Show toolbar")
             .accessibilityAddTraits(.isButton)
+    }
+
+    // MARK: Reader mode (#008BC)
+
+    /// Open the reader on the active tab, or close it. This is where the
+    /// 90 KB of Readability is finally evaluated — on the press, not on page
+    /// load. Extraction is asynchronous because it runs in the page's own
+    /// process, so the button reports "working" and then either a reader or
+    /// a reason.
+    private func toggleReader() {
+        guard !state.isReaderOpen else {
+            closeReader()
+            return
+        }
+        guard let tabID = state.activeTabID, let view = pool.pool.existing(for: tabID) else {
+            state.toast = ZenToastMessage("No page to read.", symbol: "doc.plaintext")
+            return
+        }
+        state.isExtractingReader = true
+        view.extractArticle { article in
+            state.isExtractingReader = false
+            guard let article else {
+                Haptics.shared.fire(.loadError)
+                state.toast = ZenToastMessage(
+                    "No article to read on this page.", symbol: "doc.plaintext")
+                // An extraction that came back empty is the honest answer to
+                // the probe as well; leaving the button up invites a second
+                // press with the same result.
+                state.setReaderAvailable(false, for: tabID)
+                return
+            }
+            Haptics.shared.fire(.glanceOpen)
+            reader.open(article, defaults: state.settings.readerDefaults)
+            withAnimation(.easeInOut(duration: 0.22)) { state.readerTabID = tabID }
+        }
+    }
+
+    /// Leaving the reader is removing a layer. The tab's own web view has been
+    /// sitting underneath the whole time — same scroll offset, same history —
+    /// so there is no position to restore and nothing that can fail to.
+    private func closeReader() {
+        withAnimation(.easeInOut(duration: 0.22)) { state.readerTabID = nil }
+        reader.close()
+    }
+
+    /// A link tapped in an article means "go there", and going there means the
+    /// browser: a second article rendered inside the reader would have no
+    /// address bar, no back gesture and no way out.
+    private func openFromReader(_ url: URL) {
+        closeReader()
+        state.newTab(url: url)
     }
 
     /// The grabber's deliberate reveal: no countdown, it stays until the page

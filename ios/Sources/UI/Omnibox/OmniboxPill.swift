@@ -498,6 +498,17 @@ struct OmniboxPill: View {
         // Not a slot: text size is a *control*, two buttons on one row, and
         // the slot system only knows how to draw single glyphs (#008B7).
         TextSizeMenuSection(state: state, zoom: state.pageZoom, tabID: tabID)
+        // Also not a slot yet (#008D4 tracks giving reader mode a proper
+        // BarAction so it can join the customisable bar itself): the probe is
+        // a heuristic, and it says no to plenty of pages that read perfectly
+        // well in the reader, so the menu item is how you overrule it.
+        Button {
+            NotificationCenter.default.post(name: .zenToggleReaderView, object: nil)
+        } label: {
+            Label(
+                state.isReaderOpen ? "Hide Reader" : "Show Reader",
+                systemImage: "doc.plaintext")
+        }
         ForEach(layout.overflowSlots) { item in
             if item.action == .layoutCycle {
                 layoutMenu
@@ -735,4 +746,9 @@ extension Notification.Name {
     /// Enter or leave Focus. RootView owns it, because entering has to compile
     /// the blocklist before any Focus tab is created.
     static let zenToggleFocusMode = Notification.Name("zen.toggleFocusMode")
+    /// Open the reader on the active tab, or close it if it is open (#008BC).
+    /// Posted by the overflow menu; RootView observes it, for the same reason
+    /// as the ones above — extraction runs against the web view, and only the
+    /// root can reach the pool.
+    static let zenToggleReaderView = Notification.Name("zen.toggleReaderView")
 }
