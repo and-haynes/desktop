@@ -29,6 +29,7 @@ enum BarAction: String, Codable, CaseIterable, Identifiable, Sendable {
     // This page
     case share
     case bookmark
+    case readerToggle
     case copyURL
     case findInPage
     case desktopSite
@@ -83,6 +84,7 @@ enum BarAction: String, Codable, CaseIterable, Identifiable, Sendable {
         case .reloadStop: return "Reload / Stop"
         case .scrollToTop: return "Scroll to Top"
         case .share: return "Share"
+        case .readerToggle: return "Reader"
         case .bookmark: return "Bookmark"
         case .copyURL: return "Copy URL"
         case .findInPage: return "Find in Page"
@@ -123,6 +125,7 @@ enum BarAction: String, Codable, CaseIterable, Identifiable, Sendable {
         case .reloadStop: return "arrow.clockwise"
         case .scrollToTop: return "arrow.up.to.line"
         case .share: return "square.and.arrow.up"
+        case .readerToggle: return "doc.plaintext"
         case .bookmark: return "bookmark"
         case .copyURL: return "doc.on.doc"
         case .findInPage: return "text.magnifyingglass"
@@ -169,7 +172,7 @@ enum BarAction: String, Codable, CaseIterable, Identifiable, Sendable {
         switch self {
         case .none: return .other
         case .back, .forward, .reloadStop, .scrollToTop: return .navigation
-        case .share, .bookmark, .copyURL, .findInPage, .desktopSite, .popOutVideo, .passwords,
+        case .share, .bookmark, .readerToggle, .copyURL, .findInPage, .desktopSite, .popOutVideo, .passwords,
             .extensions:
             return .page
         case .sidebar, .newTab, .closeTab, .nextTab, .previousTab, .spaceSwitcher:

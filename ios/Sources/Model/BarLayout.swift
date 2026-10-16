@@ -734,6 +734,7 @@ struct BarPreset: Identifiable, Sendable {
             layout.leftSlots = [BarSlotItem(.sidebar, longPress: .newTab)]
             layout.rightSlots = [
                 BarSlotItem(.bookmark, longPress: .history),
+                BarSlotItem(.readerToggle),
                 BarSlotItem(.overflowMenu),
             ]
             layout.overflowSlots = [

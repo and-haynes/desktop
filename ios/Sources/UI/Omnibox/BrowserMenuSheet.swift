@@ -219,9 +219,7 @@ struct BrowserMenuSheet: View {
         } label: {
             VStack(spacing: 8) {
                 Image(
-                    systemName: action.symbol(
-                        isLoading: navigation.isLoading,
-                        isBookmarked: BarActionRunner.isOn(.bookmark, state: state, tabID: tabID))
+                    systemName: BarActionRunner.symbol(action, state: state, tabID: tabID)
                 )
                 .font(.system(size: 19, weight: .medium))
                 Text(title(action))

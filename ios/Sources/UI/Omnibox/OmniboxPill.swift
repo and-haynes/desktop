@@ -297,9 +297,7 @@ struct OmniboxPill: View {
     /// toggle from a button.
     private func glyph(for action: BarAction, enabled: Bool) -> some View {
         let isOn = BarActionRunner.isOn(action, state: state, tabID: tabID)
-        let symbol = action.symbol(
-            isLoading: navigation.isLoading,
-            isBookmarked: BarActionRunner.isOn(.bookmark, state: state, tabID: tabID))
+        let symbol = BarActionRunner.symbol(action, state: state, tabID: tabID)
         return Image(systemName: symbol)
             .font(.system(size: 14, weight: .medium))
             .foregroundStyle(
