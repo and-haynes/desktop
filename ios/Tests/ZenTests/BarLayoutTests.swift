@@ -20,6 +20,61 @@ final class BarLayoutTests: XCTestCase {
         try JSONDecoder().decode(BarLayout.self, from: Data(json.utf8))
     }
 
+    func testReaderIsCustomisableAndIncludedInTheZenPreset() throws {
+        XCTAssertTrue(BarAction.slotLibrary.contains(.readerToggle))
+        XCTAssertTrue(BarAction.gestureLibrary.contains(.readerToggle))
+        XCTAssertEqual(BarAction.readerToggle.group, .page)
+        XCTAssertTrue(BarPreset.zen.layout.rightSlots.contains { $0.action == .readerToggle })
+        let data = try JSONEncoder().encode(BarSlotItem(.readerToggle))
+        XCTAssertEqual(try JSONDecoder().decode(BarSlotItem.self, from: data).action, .readerToggle)
+    }
+
+    @MainActor
+    func testReaderActionReflectsAvailabilityLoadingAndOpenState() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ZenReaderBar-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let state = BrowserState(
+            session: SessionStore(file: JSONFileStore<SessionSnapshot>(name: "session.json", directory: directory), debounceInterval: 60),
+            history: HistoryStore(file: JSONFileStore<[HistoryEntry]>(name: "history.json", directory: directory)),
+            bookmarks: BookmarkStore(file: JSONFileStore<[Bookmark]>(name: "bookmarks.json", directory: directory)),
+            restore: false)
+        state.newTab(url: URL(string: "https://example.invalid/article")!)
+        let tab = try XCTUnwrap(state.activeTabID)
+        let enabled = { BarActionRunner.isEnabled(.readerToggle, state: state, tabID: tab) }
+        let symbol = { BarActionRunner.symbol(.readerToggle, state: state, tabID: tab) }
+        XCTAssertFalse(enabled())
+        XCTAssertEqual(symbol(), "doc.plaintext")
+        state.setReaderAvailable(true, for: tab)
+        XCTAssertTrue(enabled())
+        let dispatched = expectation(description: "Reader action reaches the existing extraction seam")
+        dispatched.assertForOverFulfill = true
+        let observer = NotificationCenter.default.addObserver(
+            forName: .zenToggleReaderView, object: nil, queue: nil) { note in
+                XCTAssertEqual(note.userInfo?["tab"] as? String, tab.uuidString)
+                dispatched.fulfill()
+            }
+        defer { NotificationCenter.default.removeObserver(observer) }
+        BarActionRunner.perform(.readerToggle, state: state,
+                                context: BarActionContext(tabID: tab, hapticFeedback: false))
+        wait(for: [dispatched], timeout: 1)
+        state.isExtractingReader = true
+        BarActionRunner.perform(.readerToggle, state: state,
+                                context: BarActionContext(tabID: tab, hapticFeedback: false))
+        XCTAssertFalse(enabled())
+        XCTAssertEqual(symbol(), "hourglass")
+        state.isExtractingReader = false
+        state.readerTabID = tab
+        XCTAssertTrue(enabled())
+        XCTAssertTrue(BarActionRunner.isOn(.readerToggle, state: state, tabID: tab))
+        XCTAssertEqual(symbol(), "doc.plaintext.fill")
+        // The notification consumer operates on the active tab, so secondary
+        // split-pane actions must not accidentally extract the primary page.
+        state.newTab(url: URL(string: "https://example.invalid/second")!)
+        XCTAssertFalse(enabled())
+    }
+
     // MARK: Round trip
 
     func testAnEditedLayoutSurvivesARoundTrip() throws {

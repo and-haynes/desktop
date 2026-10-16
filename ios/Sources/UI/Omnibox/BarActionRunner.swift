@@ -37,6 +37,12 @@ enum BarActionRunner {
         let tab = tabID.flatMap { state.tab(id: $0) } ?? state.activeTab
         let navigation = state.navigation(for: tab?.id)
         switch action {
+        case .readerToggle:
+            // Reader is an active-tab overlay; a secondary split bar must not
+            // extract a different page through the active-tab notification.
+            return tab?.id == state.activeTabID && tab != nil
+                && !state.isExtractingReader
+                && (state.isReaderOpen || state.isReaderAvailable(tab?.id))
         case .none: return false
         case .back: return navigation.canGoBack
         case .forward: return navigation.canGoForward
@@ -58,6 +64,7 @@ enum BarActionRunner {
         let tab = tabID.flatMap { state.tab(id: $0) } ?? state.activeTab
         switch action {
         case .bookmark: return tab.map { state.bookmarks.isBookmarked($0.url) } ?? false
+        case .readerToggle: return state.readerTabID == tab?.id && tab != nil
         case .splitView: return state.isSplitActive
         case .compactToggle: return state.display.compactModeEnabled
         case .focusMode: return state.isFocusMode
@@ -65,6 +72,16 @@ enum BarActionRunner {
         case .sidebar: return state.isSidebarVisible
         default: return false
         }
+    }
+
+    static func symbol(_ action: BarAction, state: BrowserState, tabID: UUID?) -> String {
+        if action == .readerToggle {
+            if state.isExtractingReader { return "hourglass" }
+            return isOn(action, state: state, tabID: tabID) ? "doc.plaintext.fill" : "doc.plaintext"
+        }
+        let tab = tabID.flatMap { state.tab(id: $0) } ?? state.activeTab
+        return action.symbol(isLoading: state.navigation(for: tab?.id).isLoading,
+                             isBookmarked: isOn(.bookmark, state: state, tabID: tabID))
     }
 
     // swiftlint:disable:next cyclomatic_complexity
@@ -177,6 +194,9 @@ enum BarActionRunner {
             state.isHistorySheetPresented = true
         case .localServices:
             state.isLocalServicesPresented = true
+        case .readerToggle:
+            guard isEnabled(action, state: state, tabID: tabID) else { return }
+            post(.zenToggleReaderView, tabID)
         case .settings:
             state.isSettingsPresented = true
 
